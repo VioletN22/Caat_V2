@@ -4,7 +4,12 @@ import * as React from "react"
 
 import logo from "@/components/assets/logo.webp"
 import Image from "next/image"
-import {User, School, FileUser } from "lucide-react"
+import {
+  User, 
+  School, 
+  FileUser, 
+  LayoutDashboard
+} from "lucide-react"
 
 import {
   Sidebar,
@@ -25,6 +30,7 @@ import { Card } from "@/components/ui/card"
 // This is sample data.
 const data = {
   apps: [
+    { title: "Dashboard", icon: LayoutDashboard, url: "", },
     { title: "My Profile", icon: User, url: "", },
     { title: "Schools", icon: School, url: "", },
     { title: "Resume Builder", icon: FileUser, url: "", },
