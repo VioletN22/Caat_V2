@@ -26,9 +26,15 @@ import {
   SidebarGroupLabel
 } from "@/components/ui/sidebar"
 import { Card } from "@/components/ui/card"
+import { NavUser } from "./nav-user"
 
 // This is sample data.
 const data = {
+  user: {
+    name: "name-placeholder",
+    email: "name@email.com",
+    avatar: "/avatars/shadcn.jpg",
+  },
   apps: [
     { title: "Dashboard", icon: LayoutDashboard, url: "/dashboard", },
     { title: "My Profile", icon: User, url: "/profile", },
@@ -38,7 +44,8 @@ const data = {
 }
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar collapsible="icon" {...props}>
+    // <Sidebar collapsible="icon" {...props}>
+    <Sidebar {...props}>
       <SidebarHeader className="p-0">
         <Card className="m-2">
           {/* Header container with your branding color #8b1723 */}
@@ -75,6 +82,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter>
+        <NavUser user={data.user} />
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )
