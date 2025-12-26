@@ -26,9 +26,15 @@ import {
   SidebarGroupLabel
 } from "@/components/ui/sidebar"
 import { Card } from "@/components/ui/card"
+import { NavUser } from "./nav-user"
 
 // This is sample data.
 const data = {
+  user: {
+    name: "name-placeholder",
+    email: "name@email.com",
+    avatar: "/avatars/shadcn.jpg",
+  },
   apps: [
     { title: "Dashboard", icon: LayoutDashboard, url: "/dashboard", },
     { title: "My Profile", icon: User, url: "/profile", },
@@ -77,9 +83,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <Card>
-          Login or Sign Out
-        </Card>
+        <NavUser user={data.user} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
