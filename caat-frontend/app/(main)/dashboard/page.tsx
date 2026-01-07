@@ -32,21 +32,20 @@ const iconMap = {
 }
 
 export default async function DashboardPage() {
-  const widgets = await getWidgetsFromDB()
+  const widgets = await getWidgetsFromDB("current_user_id_placeholder");
 
 
   const main = widgets
-    .filter(w => w.position === 'main')
-    .sort((a, b) => a.order - b.order)
-    
+    .filter(w => w.section === 'main')
+    .sort((a, b) => a.ordering - b.ordering)
+
   const active = widgets
-    .filter(w => w.position === 'active')
-    .sort((a, b) => a.order - b.order)
+    .filter(w => w.section === 'active')
+    .sort((a, b) => a.ordering - b.ordering)
 
   const hidden = widgets
-    .filter(w => w.position === 'hidden')
-    .sort((a, b) => a.order - b.order)
-
+    .filter(w => w.section === 'hidden')
+    .sort((a, b) => a.ordering - b.ordering)
   return (
     <>
       <header className="flex h-16 shrink-0 items-center gap-2 px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
@@ -81,27 +80,24 @@ export default async function DashboardPage() {
               <WidgetSection title="Main">
                 {main.map(widget => (
                   <WidgetLabel
-                    key={widget.id}
-                    icon={iconMap[widget.type as keyof typeof iconMap]}
-                    title={widget.title}
+                    icon={iconMap[widget.icon as keyof typeof iconMap]}
+                    title={widget.widget_key}
                   />
                 ))}
               </WidgetSection>
               <WidgetSection title="Active">
                 {active.map(widget => (
                   <WidgetLabel
-                    key={widget.id}
-                    icon={iconMap[widget.type as keyof typeof iconMap]}
-                    title={widget.title}
+                    icon={iconMap[widget.icon as keyof typeof iconMap]}
+                    title={widget.widget_key}
                   />
                 ))}
               </WidgetSection>
               <WidgetSection title="Hidden">
                 {hidden.map(widget => (
                   <WidgetLabel
-                    key={widget.id}
-                    icon={iconMap[widget.type as keyof typeof iconMap]}
-                    title={widget.title}
+                    icon={iconMap[widget.icon as keyof typeof iconMap]}
+                    title={widget.widget_key}
                   />
                 ))}
               </WidgetSection>
