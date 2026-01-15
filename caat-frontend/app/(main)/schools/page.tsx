@@ -81,6 +81,8 @@ export default async function SchoolsPage({
           {/* Main school cards section */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
             {schools?.map((school) => (
+              
+              // Each school card
               <Card
                 key={school.id}
                 className="flex flex-col h-full hover:shadow-lg transition-shadow"
@@ -94,7 +96,15 @@ export default async function SchoolsPage({
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex-grow"/>
-                <CardFooter className="justify-end"> {/* Align icon to the right */}
+
+                {/* Footer buttons */}
+                <CardFooter className="justify-end flex gap-2"> {/* Align icon to the right */}
+                  <Button asChild size="sm" variant="default">
+                    <Link href={`/schools/${school.id}`}>
+                        Bookmark
+                    </Link>
+                  </Button>
+
                   {school.website ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
