@@ -104,6 +104,7 @@ export async function loadOrCreateResumeState(): Promise<ResumeState> {
         return {
                 resumeId: resume.id,
                 title: resume.title ?? "Main Resume",
+                
                 template: resume.template ?? null,
                 sections: (sectionRows ?? []).map(rowToState),
         };
