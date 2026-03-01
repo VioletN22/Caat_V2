@@ -8,7 +8,8 @@ import {
   User, 
   School, 
   FileUser, 
-  LayoutDashboard
+  LayoutDashboard,
+  FileText
 } from "lucide-react"
 
 import {
@@ -40,6 +41,7 @@ const data = {
     { title: "My Profile", icon: User, url: "/profile", },
     { title: "Schools", icon: School, url: "/schools", },
     { title: "Resume Builder", icon: FileUser, url: "/resume-builder", },
+    { title: "Essays", icon: FileText, url: "/essays", },
   ]
 }
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
