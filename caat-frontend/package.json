@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"No tests defined yet for caat-frontend\" && exit 0"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

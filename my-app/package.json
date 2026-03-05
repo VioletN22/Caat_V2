@@ -7,7 +7,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"No tests defined yet for my-app\" && exit 0"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.89.0",
