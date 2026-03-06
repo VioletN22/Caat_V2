@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"No tests defined yet for caat-frontend\" && exit 0"
+    "test": "node tests/smoke.test.cjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

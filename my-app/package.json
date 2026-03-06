@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"No tests defined yet for my-app\" && exit 0"
+    "test": "node tests/smoke.test.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.89.0",
