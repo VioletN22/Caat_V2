@@ -78,6 +78,7 @@ const projects = discoverProjects(repoRoot);
 // GitHub Actions matrix expects an object with an "include" array.
 const matrix = { include: projects };
 
-// This JSON is consumed by the workflow via fromJSON().
-console.log(JSON.stringify(matrix, null, 2));
+// This JSON is consumed by the workflow via fromJSON(). Output is minified so
+// it can be safely passed as a single-line GitHub Actions output.
+console.log(JSON.stringify(matrix));
 
