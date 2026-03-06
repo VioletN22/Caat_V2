@@ -24,13 +24,13 @@ function main() {
   expectFile('app/layout.tsx');
   expectFile('app/page.tsx');
 
-  console.log('caat-frontend smoke tests passed.');
+  console.log('caat-frontend smoke tests PASSED.');
 }
 
 try {
   main();
 } catch (err) {
-  console.error('❌ caat-frontend smoke tests failed:');
+  console.error('caat-frontend smoke tests FAILED:');
   console.error(err && err.stack ? err.stack : err);
   process.exit(1);
 }

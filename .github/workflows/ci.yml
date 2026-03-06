@@ -89,6 +89,15 @@ jobs:
     name: Project CI
     needs: discover-projects
     runs-on: ubuntu-latest
+    env:
+      # Supabase environment variables required at build time. Store these as
+      # GitHub Actions secrets in your repository settings:
+      #   - NEXT_PUBLIC_SUPABASE_URL
+      #   - NEXT_PUBLIC_SUPABASE_ANON_KEY
+      #
+      # They are injected here so that Next.js can read them during `next build`.
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
     strategy:
       # Allow one project to continue even if another fails, while still failing
       # the overall workflow at the end if any project is red.
@@ -149,6 +158,8 @@ jobs:
 
       - name: Build
         # Build only when a "build" script exists (e.g. Next.js "next build").
+        # This will run `next build` with Supabase environment variables provided
+        # via GitHub Actions secrets configured in the repository settings.
         if: ${{ matrix.project.scripts.build }}
         run: npm run build
 
