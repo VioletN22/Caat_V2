@@ -1,0 +1,59 @@
+####################################
+Dependencies
+####################################
+node_modules/
+/node_modules/
+
+####################################
+Build outputs
+####################################
+.next/
+out/
+dist/
+build/
+/.next/
+/dist/
+/build/
+
+####################################
+Environment variables
+####################################
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+.env.test
+
+####################################
+Logs
+####################################
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+logs/
+*.log
+
+####################################
+OS / Editor files
+####################################
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+####################################
+Vercel / deployment
+####################################
+.vercel/
+
+####################################
+Supabase local (if used later)
+####################################
+.supabase/
+
+####################################
+Claude files
+####################################
+caat-frontend/MAJORS_FEATURE_PLAN.md

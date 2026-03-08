@@ -1,0 +1,166 @@
+name: CI
+
+on:
+  # Run CI for all changes targeting the main integration branches.
+  push:
+    branches:
+      - develop
+      - main # Safe even if the branch does not exist yet.
+  pull_request:
+    branches:
+      - develop
+      - main
+
+jobs:
+  discover-projects:
+    name: Discover JavaScript/TypeScript projects
+    runs-on: ubuntu-latest
+    outputs:
+      project_matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        # Node is required here only to run the discovery script.
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Discover subprojects for CI
+        # This script scans the repo for package.json files (excluding build artifacts)
+        # and emits a matrix object describing each project and which npm scripts it supports.
+        id: set-matrix
+        run: |
+          node .github/scripts/discover-projects.js > projects.json
+          echo "matrix=$(cat projects.json)" >> "$GITHUB_OUTPUT"
+
+  lint:
+    name: Lint (non-blocking)
+    needs: discover-projects
+    runs-on: ubuntu-latest
+    continue-on-error: true  # Lint failures show red on the job but do not fail the PR
+    strategy:
+      # Run lint for every discovered project, but keep it as a separate job so
+      # it can be marked as a non-required check in branch protection rules.
+      fail-fast: false
+      matrix:
+        project: ${{ fromJSON(needs.discover-projects.outputs.project_matrix).include }}
+
+    defaults:
+      run:
+        working-directory: ${{ matrix.project.path }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: |
+            ${{ matrix.project.path }}/package-lock.json
+            ${{ matrix.project.path }}/pnpm-lock.yaml
+            ${{ matrix.project.path }}/yarn.lock
+
+      - name: Install dependencies
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            corepack enable
+            pnpm install --frozen-lockfile
+          elif [ -f yarn.lock ]; then
+            yarn install --frozen-lockfile
+          elif [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --no-fund --no-audit
+          fi
+
+      - name: Lint
+        # This job is intentionally separate so that lint failures do not have
+        # to block merging. In GitHub branch protection settings, only mark the
+        # main "Project CI" job as required if you want to allow merges with lint
+        # failures while you are still iterating on rules.
+        if: ${{ matrix.project.scripts.lint }}
+        run: npm run lint
+
+  ci:
+    name: Project CI
+    needs: discover-projects
+    runs-on: ubuntu-latest
+    env:
+      # Supabase environment variables required at build time. Store these as
+      # GitHub Actions secrets in your repository settings:
+      #   - NEXT_PUBLIC_SUPABASE_URL
+      #   - NEXT_PUBLIC_SUPABASE_ANON_KEY
+      #
+      # They are injected here so that Next.js can read them during `next build`.
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+    strategy:
+      # Allow one project to continue even if another fails, while still failing
+      # the overall workflow at the end if any project is red.
+      fail-fast: false
+      matrix:
+        # The discovery job returns a JSON object with an "include" array.
+        project: ${{ fromJSON(needs.discover-projects.outputs.project_matrix).include }}
+
+    # Use each discovered project directory as the default working directory
+    # so that scripts like "npm run lint" are scoped correctly.
+    defaults:
+      run:
+        working-directory: ${{ matrix.project.path }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        # Uses a single Node.js version for now; this can be extended to a matrix
+        # over Node versions if you later need multi-version testing.
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          # Enable built-in dependency caching for faster, more scalable CI.
+          cache: npm
+          cache-dependency-path: |
+            ${{ matrix.project.path }}/package-lock.json
+            ${{ matrix.project.path }}/pnpm-lock.yaml
+            ${{ matrix.project.path }}/yarn.lock
+
+      - name: Install dependencies
+        # Prefer deterministic installs (npm ci / pnpm / yarn) when a lockfile exists.
+        # Fall back to npm install only when no lockfile is available yet.
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            corepack enable
+            pnpm install --frozen-lockfile
+          elif [ -f yarn.lock ]; then
+            yarn install --frozen-lockfile
+          elif [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --no-fund --no-audit
+          fi
+
+      - name: Typecheck
+        # Only run type checking when a dedicated "typecheck" script exists.
+        # For the Next.js apps in this repo, this will use "tsc --noEmit".
+        if: ${{ matrix.project.scripts.typecheck }}
+        run: npm run typecheck
+
+      - name: Test
+        # Lightweight smoke tests: these currently just echo that no tests exist yet.
+        # The placeholder script is intentional and can be replaced with a real test runner later.
+        if: ${{ matrix.project.scripts.test }}
+        run: npm test
+
+      - name: Build
+        # Build only when a "build" script exists (e.g. Next.js "next build").
+        # This will run `next build` with Supabase environment variables provided
+        # via GitHub Actions secrets configured in the repository settings.
+        if: ${{ matrix.project.scripts.build }}
+        run: npm run build
+
