@@ -26,6 +26,11 @@ function scoreMaxLabel(score: StandardisedTestScore): string | null {
     case "ATAR": return "/ 99.95";
     case "IB": return "/ 46";
     case "GPA": return score.score_scale ? `/ ${score.score_scale}` : null;
+    case "CBSE": return "/ 100";
+    case "CISCE": return "/ 100";
+    case "French Baccalauréat": return "/ 20";
+    case "Gaokao": return "/ 750";
+    case "German Abitur": return "/ 900";
     case "English Proficiency": {
       const test = ENGLISH_PROFICIENCY_TESTS.find(
         (t) => t.label === score.score_scale
@@ -89,8 +94,12 @@ function ScoreEditor({
   onChange: (updated: StandardisedTestScore) => void;
   onRemove: () => void;
 }) {
-  const hasSubjects = score.curriculum === "A-Levels" || score.curriculum === "IB";
-  const hasCumulative = score.curriculum !== "A-Levels";
+  // Curricula that support per-subject grade entries
+  const SUBJECTS_CURRICULA = ["A-Levels", "IB", "AP", "IGCSE"];
+  // Curricula that are subjects-only (no single cumulative score)
+  const SUBJECTS_ONLY_CURRICULA = ["A-Levels", "IGCSE", "AP"];
+  const hasSubjects = SUBJECTS_CURRICULA.includes(score.curriculum);
+  const hasCumulative = !SUBJECTS_ONLY_CURRICULA.includes(score.curriculum);
 
   return (
     <div className="flex flex-col gap-2 p-3 rounded-lg border border-border bg-muted/30">
@@ -208,7 +217,11 @@ function ScoreEditor({
                 className="h-8 text-sm flex-1"
               />
               <Input
-                placeholder={score.curriculum === "IB" ? "1–7" : "A*, A, B…"}
+                placeholder={
+                  score.curriculum === "IB" ? "1–7" :
+                  score.curriculum === "AP" ? "1–5" :
+                  "A*, A, B…"
+                }
                 value={sub.grade}
                 onChange={(e) => {
                   const updated = [...score.subjects];

@@ -49,8 +49,16 @@ export const CURRICULUM_OPTIONS = [
   "ATAR",
   "A-Levels",
   "IB",
+  "AP",
+  "IGCSE",
+  "CBSE",
+  "CISCE",
+  "French Baccalauréat",
+  "German Abitur",
+  "Gaokao",
   "GPA",
   "English Proficiency",
+  "Other",
 ] as const;
 
 export type CurriculumType = (typeof CURRICULUM_OPTIONS)[number];

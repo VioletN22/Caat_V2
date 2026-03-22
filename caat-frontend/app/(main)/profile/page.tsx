@@ -33,6 +33,14 @@ const CURRICULUM_TO_TEST: Record<string, string> = {
   "A-Levels": "A-Levels",
   "IB Diploma (IBDP)": "IB",
   "ATAR": "ATAR",
+  "AP (Advanced Placement)": "AP",
+  "CBSE": "CBSE",
+  "CISCE (ICSE/ISC)": "CISCE",
+  "IGCSE": "IGCSE",
+  "French Baccalauréat": "French Baccalauréat",
+  "German Abitur": "German Abitur",
+  "Gaokao": "Gaokao",
+  "Other": "Other",
 };
 
 // ── Completion scoring ─────────────────────────────────────────────────────────
