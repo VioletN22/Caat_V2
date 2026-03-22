@@ -21,7 +21,6 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
-  SidebarSeparator,
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
@@ -29,7 +28,6 @@ import {
   SidebarMenuItem,
   SidebarGroupLabel
 } from "@/components/ui/sidebar"
-import { Card } from "@/components/ui/card"
 import { NavUser } from "./nav-user"
 
 // This is sample data.
@@ -52,45 +50,43 @@ const data = {
 }
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
-    // <Sidebar collapsible="icon" {...props}>
     <Sidebar {...props}>
-      <SidebarHeader className="p-0">
-        <Card className="m-2">
-          {/* Header container with your branding color #8b1723 */}
-          <div className="flex items-center px-8">
-            <div className="relative h-10 w-32">
-              <Image 
-                src={logo} 
-                alt="myCAAT Logo" 
-                fill 
-                className="object-contain object-left"
-                priority
-              />
-            </div>
-          </div>
-        </Card>
+      <SidebarHeader className="py-5 px-6 border-b border-sidebar-border">
+        
+        <div className="relative h-11 w-36 items-center justify-center">
+          <Image 
+            src={logo} 
+            alt="myCAAT Logo" 
+            fill 
+            className="object-contain object-left"
+            priority
+          />
+        </div>
+      
       </SidebarHeader>
 
       <SidebarContent className="">
         <SidebarGroup>
-          <SidebarGroupLabel>Tools</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-[10px] tracking-widest font-semibold px-4 mb-1">
+            Tools
+          </SidebarGroupLabel>
           <SidebarGroupContent>
-            {/* <SidebarMenu> */}
+            <SidebarMenu>
               {data.apps.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild className="gap-3 px-4 py-2.5 text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent">
                     <a href={item.url}>
-                      <item.icon/>
-                      <span>{item.title}</span>
+                      <item.icon className="size-4 shrink-0"/>
+                      <span className="text-sm font-medium">{item.title}</span>
                     </a>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-            {/* </SidebarMenu> */}
+            </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="border-t border-sidebar-border">
         <NavUser user={data.user} />
       </SidebarFooter>
       <SidebarRail />
