@@ -38,6 +38,18 @@ export async function updateProfile(
   if (error) throw new Error(error.message);
 }
 
+// ── Majors ────────────────────────────────────────────────────────────────────
+
+export async function fetchMajorNames(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("majors")
+    .select("name")
+    .order("name", { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r) => r.name as string);
+}
+
 // ── Standardised test scores ───────────────────────────────────────────────────
 
 export async function fetchTestScores(

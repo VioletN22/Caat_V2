@@ -22,6 +22,7 @@ import { ExtracurricularsCard } from "@/components/profile/ExtracurricularsCard"
 import type { ProfileRow, StandardisedTestScore } from "@/types/profile";
 import {
   fetchProfile,
+  fetchMajorNames,
   updateProfile,
   fetchTestScores,
   saveTestScores,
@@ -115,15 +116,17 @@ function ProfileSkeleton() {
 export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [scores, setScores] = useState<StandardisedTestScore[]>([]);
+  const [majorOptions, setMajorOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
-        const p = await fetchProfile();
+        const [p, majors] = await Promise.all([fetchProfile(), fetchMajorNames()]);
         const s = await fetchTestScores(p.id);
         setProfile(p);
         setScores(s);
+        setMajorOptions(majors);
       } catch (err) {
         console.error(err);
         toast.error("Failed to load profile.");
@@ -355,6 +358,7 @@ export default function ProfilePage() {
               targetMajors: profile.target_majors ?? [],
               preferredCountries: profile.preferred_countries ?? [],
             }}
+            majorOptions={majorOptions}
             onSave={handleInterestsSave}
           />
         </div>
