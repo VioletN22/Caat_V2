@@ -20,6 +20,13 @@ import { StandardisedTestingCard } from "@/components/profile/StandardisedTestin
 import { InterestsGoalsCard } from "@/components/profile/InterestsGoalsCard";
 import { ExtracurricularsCard } from "@/components/profile/ExtracurricularsCard";
 import type { ProfileRow, StandardisedTestScore } from "@/types/profile";
+
+// Maps academic curriculum → standardised test curriculum key
+const CURRICULUM_TO_TEST: Record<string, string> = {
+  "A-Levels": "A-Levels",
+  "IB Diploma (IBDP)": "IB",
+  "ATAR": "ATAR",
+};
 import {
   fetchProfile,
   updateProfile,
@@ -131,6 +138,28 @@ export default function ProfilePage() {
             }
           : p
       );
+
+      // Auto-add matching test score entry if not already present
+      const testCurriculum = CURRICULUM_TO_TEST[data.curriculum];
+      if (testCurriculum) {
+        setScores((prev) => {
+          if (prev.some((s) => s.curriculum === testCurriculum)) return prev;
+          return [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              profile_id: profile.id,
+              curriculum: testCurriculum,
+              cumulative_score: null,
+              score_scale: null,
+              subjects: [],
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+          ];
+        });
+      }
+
       toast.success("Academic profile saved.");
     } catch {
       toast.error("Failed to save academic profile.");

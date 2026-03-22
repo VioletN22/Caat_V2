@@ -5,6 +5,20 @@ import { GraduationCap } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ProfileCard, InfoRow } from "./ProfileCard";
 
+const CURRICULUM_OPTIONS = [
+  "A-Levels",
+  "AP (Advanced Placement)",
+  "ATAR",
+  "CBSE",
+  "CISCE (ICSE/ISC)",
+  "IB Diploma (IBDP)",
+  "IGCSE",
+  "French Baccalauréat",
+  "German Abitur",
+  "Gaokao",
+  "Other",
+] as const;
+
 interface AcademicInfo {
   schoolName: string;
   curriculum: string;
@@ -74,11 +88,21 @@ export function AcademicProfileCard({ data, onSave }: AcademicProfileCardProps) 
             value={draft.schoolName}
             onChange={(v) => setDraft((d) => ({ ...d, schoolName: v }))}
           />
-          <EditField
-            label="Curriculum"
-            value={draft.curriculum}
-            onChange={(v) => setDraft((d) => ({ ...d, curriculum: v }))}
-          />
+          <div className="flex flex-col gap-1 py-1.5">
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Curriculum
+            </label>
+            <select
+              value={draft.curriculum}
+              onChange={(e) => setDraft((d) => ({ ...d, curriculum: e.target.value }))}
+              className="h-8 rounded-md border border-input bg-background px-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="" disabled>Select curriculum…</option>
+              {CURRICULUM_OPTIONS.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
           <EditField
             label="Graduation Year"
             value={draft.graduationYear}

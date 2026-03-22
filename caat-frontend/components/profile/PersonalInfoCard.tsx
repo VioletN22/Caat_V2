@@ -5,6 +5,14 @@ import { User } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ProfileCard, InfoRow } from "./ProfileCard";
 
+/** Converts YYYY-MM-DD → DD/MM/YYYY for display */
+function formatDOB(value: string): string {
+  if (!value) return "";
+  const [y, m, d] = value.split("-");
+  if (!y || !m || !d) return value;
+  return `${d}/${m}/${y}`;
+}
+
 interface PersonalInfo {
   firstName: string;
   lastName: string;
@@ -82,11 +90,17 @@ export function PersonalInfoCard({ data, onSave }: PersonalInfoCardProps) {
             onChange={(v) => setDraft((d) => ({ ...d, lastName: v }))}
           />
           <div className="col-span-2">
-            <EditField
-              label="Date of Birth"
-              value={draft.birthDate}
-              onChange={(v) => setDraft((d) => ({ ...d, birthDate: v }))}
-            />
+            <div className="flex flex-col gap-1 py-1.5">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Date of Birth
+              </label>
+              <input
+                type="date"
+                value={draft.birthDate}
+                onChange={(e) => setDraft((d) => ({ ...d, birthDate: e.target.value }))}
+                className="h-8 rounded-md border border-input bg-background px-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
           </div>
           <div className="col-span-2">
             <EditField
@@ -106,7 +120,7 @@ export function PersonalInfoCard({ data, onSave }: PersonalInfoCardProps) {
       ) : (
         <>
           <InfoRow label="Full Name" value={`${data.firstName} ${data.lastName}`.trim() || null} />
-          <InfoRow label="Date of Birth" value={data.birthDate} />
+          <InfoRow label="Date of Birth" value={formatDOB(data.birthDate)} />
           <InfoRow label="Nationality" value={data.nationality} />
           <InfoRow label="Current Location" value={data.currentLocation} />
         </>
