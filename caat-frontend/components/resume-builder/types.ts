@@ -16,7 +16,7 @@ export type ResumeSection = {
   contentHtml: string;
 
   // Only used when mode is guided
-  structuredData?: Record<string, any>;
+  structuredData?: Record<string, unknown>;
 };
 
 export type ResumeRow = {
@@ -36,7 +36,7 @@ export type ResumeSectionRow = {
         content_html: string;       // text
         mode: string;               // text (store SectionMode values here)
         sort_order: number;         // int4
-        structured_data: Record<string, any> | null;
+        structured_data: Record<string, unknown> | null;
         created_at: string;         // timestamptz ISO string
         updated_at: string;         // timestamptz ISO string
 };
@@ -70,7 +70,7 @@ export type SaveResumePayload = {
                 label: string;
                 mode: SectionMode;
                 contentHtml: string;
-                structuredData?: Record<string, any>;
+                structuredData?: Record<string, unknown>;
                 sortOrder: number;
         }>;
 };

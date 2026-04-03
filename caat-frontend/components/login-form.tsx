@@ -10,7 +10,6 @@ import {
   FieldDescription,
   FieldGroup,
   FieldLabel,
-  // FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 
@@ -42,8 +41,8 @@ export function LoginForm({
       // Successful login
       router.push("/dashboard")
       router.refresh() // Ensures server components re-run with new auth state
-    } catch (err: any) {
-      setError(err.message || "Invalid login credentials")
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Invalid login credentials")
     } finally {
       setLoading(false)
     }
@@ -91,7 +90,7 @@ export function LoginForm({
             required 
           />
           <a
-            href="#"
+            href="/forgot-password"
             className="ml-auto text-sm underline-offset-4 hover:underline"
           >
             Forgot your password?

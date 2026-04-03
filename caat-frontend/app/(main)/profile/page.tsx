@@ -354,8 +354,9 @@ export default function ProfilePage() {
                 {firstName || lastName ? `${firstName} ${lastName}`.trim() : "Your Name"}
               </h1>
               <p className="text-sm text-muted-foreground mt-0.5">
-                {profile.graduation_year ? `Class of ${profile.graduation_year} · ` : ""}
-                International Applicant
+                {profile.graduation_year ? `Class of ${profile.graduation_year}` : ""}
+                {profile.graduation_year && profile.nationality ? " · " : ""}
+                {profile.nationality ?? ""}
               </p>
               {profile.current_location && (
                 <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">

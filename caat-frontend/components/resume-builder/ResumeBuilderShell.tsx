@@ -8,6 +8,7 @@ import {
   closestCenter,
   useSensor,
   useSensors,
+  type DragEndEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -152,7 +153,7 @@ export default function ResumeBuilderShell() {
   // --------------------------------------------------
   // Drag & drop ordering
   // --------------------------------------------------
-  function onDragEnd(event: any) {
+  function onDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
