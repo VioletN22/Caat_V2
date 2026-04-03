@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import ScholarshipBookmarkButton from "./bookmark-button";
 import { ScholarshipRow, deriveDisplayTags, formatAmountDisplay } from "@/types/scholarships";
+import { TAG_COLORS } from "@/constants/scholarships";
 
 // ---------------------------------------------------------------------------
 // Display helpers
@@ -67,16 +68,6 @@ const FUNDING_LABELS: Record<string, string> = {
   need: "Need-Based",
   full_ride: "Full Ride",
   tuition: "Tuition Remission",
-};
-
-const TAG_COLORS: Record<string, string> = {
-  "FULL RIDE":   "bg-green-100 text-green-700",
-  "MERIT-BASED": "bg-purple-100 text-purple-700",
-  "NEED-BLIND":  "bg-blue-100 text-blue-700",
-  "REGIONAL":    "bg-orange-100 text-orange-700",
-  "POST-GRAD":   "bg-indigo-100 text-indigo-700",
-  "PRESTIGIOUS": "bg-amber-100 text-amber-700",
-  "STEM":        "bg-teal-100 text-teal-700",
 };
 
 // ---------------------------------------------------------------------------

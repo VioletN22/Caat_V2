@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { ArrowLeftRight } from "lucide-react";
-import { Major, MajorCategory } from "@/types/majors";
+import { Major, FilterView } from "@/types/majors";
 import MajorCard from "@/components/majors/major-card";
 import MajorFilters from "@/components/majors/major-filters";
 import CompareTable from "@/components/majors/compare-table";
@@ -10,8 +10,6 @@ import { Button } from "@/components/ui/button";
 import * as Dialog from "@radix-ui/react-dialog";
 import { supabase } from "@/src/lib/supabaseClient";
 import { toast } from "sonner";
-
-export type FilterView = MajorCategory | "All" | "Bookmarked";
 
 const MAX_COMPARE = 3;
 

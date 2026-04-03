@@ -4,20 +4,7 @@ import React, { useState } from "react";
 import { GraduationCap } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ProfileCard, InfoRow } from "./ProfileCard";
-
-const CURRICULUM_OPTIONS = [
-  "A-Levels",
-  "AP (Advanced Placement)",
-  "ATAR",
-  "CBSE",
-  "CISCE (ICSE/ISC)",
-  "IB Diploma (IBDP)",
-  "IGCSE",
-  "French Baccalauréat",
-  "German Abitur",
-  "Gaokao",
-  "Other",
-] as const;
+import { CURRICULUM_OPTIONS } from "@/types/profile";
 
 interface AcademicInfo {
   schoolName: string;
