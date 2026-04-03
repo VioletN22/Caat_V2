@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Circle, ChevronRight } from "lucide-react";
+import { CheckCircle2, Circle, ChevronRight, AlertCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,6 +15,7 @@ interface ReadinessStep {
   description: string;
   href: string;
   completed: boolean;
+  failed?: boolean;
 }
 
 async function checkReadiness(): Promise<ReadinessStep[]> {
@@ -53,18 +54,35 @@ async function checkReadiness(): Promise<ReadinessStep[]> {
         .eq("user_id", user.id),
     ]);
 
+  function isOk(res: PromiseSettledResult<{ error: unknown }>) {
+    return res.status === "fulfilled" && !res.value.error;
+  }
+
   const profileDone =
-    profileRes.status === "fulfilled" && profileRes.value.data !== null;
+    isOk(profileRes) &&
+    (profileRes as PromiseFulfilledResult<{ data: unknown; error: unknown }>).value.data !== null;
+  const profileFailed = profileRes.status === "rejected" || (profileRes.status === "fulfilled" && !!profileRes.value.error);
+
   const docsDone =
-    documentsRes.status === "fulfilled" &&
-    (documentsRes.value.count ?? 0) > 0;
+    isOk(documentsRes) &&
+    ((documentsRes as PromiseFulfilledResult<{ count: number | null; error: unknown }>).value.count ?? 0) > 0;
+  const docsFailed = documentsRes.status === "rejected" || (documentsRes.status === "fulfilled" && !!documentsRes.value.error);
+
   const essaysDone =
-    essaysRes.status === "fulfilled" && (essaysRes.value.count ?? 0) > 0;
+    isOk(essaysRes) &&
+    ((essaysRes as PromiseFulfilledResult<{ count: number | null; error: unknown }>).value.count ?? 0) > 0;
+  const essaysFailed = essaysRes.status === "rejected" || (essaysRes.status === "fulfilled" && !!essaysRes.value.error);
+
   const schoolsDone =
-    schoolsRes.status === "fulfilled" && (schoolsRes.value.count ?? 0) > 0;
+    isOk(schoolsRes) &&
+    ((schoolsRes as PromiseFulfilledResult<{ count: number | null; error: unknown }>).value.count ?? 0) > 0;
+  const schoolsFailed = schoolsRes.status === "rejected" || (schoolsRes.status === "fulfilled" && !!schoolsRes.value.error);
+
   const scholarshipsDone =
-    scholarshipsRes.status === "fulfilled" &&
-    (scholarshipsRes.value.count ?? 0) > 0;
+    isOk(scholarshipsRes) &&
+    ((scholarshipsRes as PromiseFulfilledResult<{ count: number | null; error: unknown }>).value.count ?? 0) > 0;
+  const scholarshipsFailed =
+    scholarshipsRes.status === "rejected" || (scholarshipsRes.status === "fulfilled" && !!scholarshipsRes.value.error);
 
   return [
     {
@@ -73,6 +91,7 @@ async function checkReadiness(): Promise<ReadinessStep[]> {
       description: "Add your personal details and academic background.",
       href: "/profile",
       completed: profileDone,
+      failed: profileFailed && !profileDone,
     },
     {
       id: "schools",
@@ -80,6 +99,7 @@ async function checkReadiness(): Promise<ReadinessStep[]> {
       description: "Save at least one school you're interested in.",
       href: "/schools",
       completed: schoolsDone,
+      failed: schoolsFailed && !schoolsDone,
     },
     {
       id: "documents",
@@ -87,6 +107,7 @@ async function checkReadiness(): Promise<ReadinessStep[]> {
       description: "Upload transcripts, test scores, or other documents.",
       href: "/documents",
       completed: docsDone,
+      failed: docsFailed && !docsDone,
     },
     {
       id: "essays",
@@ -94,6 +115,7 @@ async function checkReadiness(): Promise<ReadinessStep[]> {
       description: "Begin drafting your application essays.",
       href: "/essays",
       completed: essaysDone,
+      failed: essaysFailed && !essaysDone,
     },
     {
       id: "scholarships",
@@ -101,6 +123,7 @@ async function checkReadiness(): Promise<ReadinessStep[]> {
       description: "Bookmark at least one scholarship opportunity.",
       href: "/scholarships",
       completed: scholarshipsDone,
+      failed: scholarshipsFailed && !scholarshipsDone,
     },
   ];
 }
@@ -171,11 +194,14 @@ export function ApplicationReadiness() {
               href={step.href}
               className={cn(
                 "flex items-start gap-3 rounded-lg border p-3 text-sm transition-colors hover:bg-muted/50",
-                step.completed && "bg-muted/30 border-transparent"
+                step.completed && "bg-muted/30 border-transparent",
+                step.failed && "border-dashed opacity-60"
               )}
             >
               {step.completed ? (
                 <CheckCircle2 className="h-4 w-4 mt-0.5 text-green-500 shrink-0" />
+              ) : step.failed ? (
+                <AlertCircle className="h-4 w-4 mt-0.5 text-amber-500 shrink-0" />
               ) : (
                 <Circle className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
               )}
@@ -188,13 +214,15 @@ export function ApplicationReadiness() {
                 >
                   {step.label}
                 </p>
-                {step.description && !step.completed && (
+                {step.failed ? (
+                  <p className="text-xs text-amber-500 mt-0.5 leading-snug">Could not check</p>
+                ) : step.description && !step.completed ? (
                   <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
                     {step.description}
                   </p>
-                )}
+                ) : null}
               </div>
-              {!step.completed && (
+              {!step.completed && !step.failed && (
                 <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
               )}
             </Link>
