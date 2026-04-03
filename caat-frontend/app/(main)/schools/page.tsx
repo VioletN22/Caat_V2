@@ -118,7 +118,7 @@ export default async function SchoolsPage({
 
                   <CardFooter className="justify-end flex gap-2">
                     <Button asChild size="sm" variant="default">
-                      <Link href={`/schools/${school.id}`}>Bookmark</Link>
+                      <Link href={`/schools/${school.id}`}>View Details</Link>
                     </Button>
 
                     {school.website ? (
