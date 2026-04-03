@@ -33,6 +33,7 @@ import {
   type EssayDraft,
 } from "./api";
 import { supabase } from "@/src/lib/supabaseClient";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 /* ---------------------------
@@ -113,6 +114,7 @@ export default function EssaysShell() {
           setDrafts([]);
           setActiveDraft(null);
           setEssayContent("");
+          toast.error("Could not load drafts for this prompt. Please try again.");
         }
       })
       .finally(() => {

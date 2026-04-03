@@ -44,8 +44,11 @@ export function DashboardShell() {
 
     fetchDashboardWidgets()
       .then(setPlacedWidgets)
-      .catch(() => {
-        // User may not be logged in yet; silently ignore
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!msg.includes("Not authenticated")) {
+          toast.error("Could not load your dashboard. Please refresh.");
+        }
       })
       .finally(() => setLoading(false));
   }, []);

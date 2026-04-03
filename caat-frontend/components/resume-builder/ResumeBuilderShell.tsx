@@ -31,6 +31,7 @@ import {
 
 import { Pencil, Trash2 } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
+import { toast } from "sonner";
 
 import DocumentStructurePanel from "./DocumentStructurePanel";
 import SectionEditorPanel from "./SectionEditorPanel";
@@ -129,8 +130,9 @@ export default function ResumeBuilderShell() {
         setActiveSectionId(loadedSections[0]?.id ?? "");
       } catch (err) {
         console.error(err);
+        toast.error("Could not load your resume. Working offline with default sections.");
 
-        // If anything fails, fall back to local defaults so UI still works
+        // Fall back to local defaults so the UI still works
         const defaults = getDefaultSections();
         if (cancelled) return;
 
@@ -210,6 +212,7 @@ export default function ResumeBuilderShell() {
 
     deleteSectionFromDb(id).catch((err) => {
       console.error("Failed to delete section from database:", err);
+      toast.error("Section removed locally but could not be deleted from the server.");
     });
   }
 
@@ -240,6 +243,7 @@ export default function ResumeBuilderShell() {
       setLastSavedAt(new Date());
     } catch (err) {
       console.error(err);
+      toast.error("Failed to save resume. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -317,6 +321,7 @@ export default function ResumeBuilderShell() {
       setResumeList(list.map((r) => ({ id: r.id, title: r.title ?? "Untitled" })));
     } catch (err) {
       console.error(err);
+      toast.error("Could not switch resume. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -355,6 +360,7 @@ export default function ResumeBuilderShell() {
       setResumeList(list.map((r) => ({ id: r.id, title: r.title ?? "Untitled" })));
     } catch (err) {
       console.error(err);
+      toast.error("Could not create a new resume. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -417,6 +423,7 @@ export default function ResumeBuilderShell() {
       }
     } catch (err) {
       console.error(err);
+      toast.error("Could not delete resume. Please try again.");
     }
   }
 

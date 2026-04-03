@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/sidebar"
 
 import { supabase } from "@/src/lib/supabaseClient"
+import { toast } from "sonner"
 
 function getInitials(name: string): string {
   return name
@@ -64,8 +65,13 @@ export function NavUser({
   const initials = getInitials(user.name)
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push("/login")
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+      router.push("/login")
+    } catch {
+      toast.error("Sign out failed. Please try again.")
+    }
   }
 
   return (
