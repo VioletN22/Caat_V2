@@ -1,9 +1,8 @@
 ## Caat V2 Monorepo
 
-This repository currently contains multiple Next.js applications:
+This repository contains the main Next.js application:
 
-- `caat-frontend`
-- `my-app`
+- `caat-frontend` — the CAAT admissions portal (Next.js + TypeScript + Supabase)
 
 Each subproject is a standalone Next.js + TypeScript app with its own `package.json`, lockfile, and configuration.
 
@@ -27,8 +26,7 @@ This repo uses GitHub Actions for continuous integration. The main workflow live
 If any subproject fails one of these steps, the overall CI check fails, so problems in one app cannot be hidden by success in another.
 
 - **Secrets**
-  - The CI workflow is designed to be safe for pull requests and does **not** require any secrets.
-  - If you later add steps that need secrets (for example, deployments), add them behind `if:` guards so external PRs can still run safely.
+  - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` must be set as GitHub Actions secrets in the repository settings so that `next build` can run in CI.
 
 ### Running checks locally
 
@@ -39,23 +37,8 @@ From the repository root, change into the subproject you want to work on and run
 ```bash
 cd caat-frontend
 
-# Lint
-npm run lint
-
-# Typecheck
-npm run typecheck
-
-# Tests (currently a placeholder that simply notes there are no tests yet)
-npm test
-
-# Build
-npm run build
-```
-
-#### `my-app`
-
-```bash
-cd my-app
+# Install dependencies
+npm install
 
 # Lint
 npm run lint
@@ -63,7 +46,7 @@ npm run lint
 # Typecheck
 npm run typecheck
 
-# Tests (currently a placeholder that simply notes there are no tests yet)
+# Tests
 npm test
 
 # Build
@@ -72,6 +55,5 @@ npm run build
 
 As you add more tests or additional tooling (for example, e2e tests or storybook), you can:
 
-- Update each subproject's `package.json` with new scripts (for example, `test:e2e`)
+- Update `caat-frontend/package.json` with new scripts (for example, `test:e2e`)
 - Extend `.github/workflows/ci.yml` by adding new steps that run these scripts, guarded by `if: ${{ matrix.project.scripts.<name> }}` so the workflow remains scalable and non-breaking.
-
