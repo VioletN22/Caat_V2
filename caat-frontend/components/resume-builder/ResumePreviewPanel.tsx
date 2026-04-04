@@ -14,21 +14,21 @@ function safeText(x: unknown) {
 }
 
 // True A4 dimensions at 96 CSS-dpi (210mm x 297mm)
-const PAGE_WIDTH_PX = 794;
-const PAGE_HEIGHT_PX = 1123;
-const PAGE_PADDING_PX = 68; // ~18mm margins
+export const PAGE_WIDTH_PX = 794;
+export const PAGE_HEIGHT_PX = 1123;
+export const PAGE_PADDING_PX = 68; // ~18mm margins
 
 // All spacing constants scaled proportionally to the A4 width
-const FIRST_PAGE_GAP_PX = 60;
-const SECTION_GROUP_GAP_PX = 45;
-const SECTION_HEADER_MARGIN_PX = 23;
-const PAGE_BOTTOM_RESERVE_PX = 60;
+export const FIRST_PAGE_GAP_PX = 60;
+export const SECTION_GROUP_GAP_PX = 45;
+export const SECTION_HEADER_MARGIN_PX = 23;
+export const PAGE_BOTTOM_RESERVE_PX = 60;
 
 // Font sizes tuned for A4 output (≈11pt body when printed)
-const NAME_FONT_PX = 45;
-const CONTACT_FONT_PX = 21;
-const SECTION_LABEL_FONT_PX = 21;
-const FOOTER_FONT_PX = 19;
+export const NAME_FONT_PX = 45;
+export const CONTACT_FONT_PX = 21;
+export const SECTION_LABEL_FONT_PX = 21;
+export const FOOTER_FONT_PX = 19;
 
 type RenderBlock = {
   id: string;
