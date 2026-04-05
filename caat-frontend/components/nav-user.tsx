@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useTheme } from "next-themes"
 import {
+  IconDeviceDesktop,
   IconDotsVertical,
   IconLogout,
   IconMoon,
@@ -56,13 +57,12 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
-  const { resolvedTheme, setTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = React.useState(false)
   const router = useRouter()
 
   React.useEffect(() => setMounted(true), [])
 
-  const isDark = mounted && resolvedTheme === "dark"
   const initials = getInitials(user.name)
 
   const handleSignOut = async () => {
@@ -113,10 +113,24 @@ export function NavUser({
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem onClick={() => setTheme(isDark ? "light" : "dark")}>
-                {isDark ? <IconSun /> : <IconMoon />}
-                {isDark ? "Light Mode" : "Dark Mode"}
-              </DropdownMenuItem>
+              {(["light", "dark", "system"] as const).map((t) => {
+                const isActive = mounted && theme === t;
+                const Icon = t === "light" ? IconSun : t === "dark" ? IconMoon : IconDeviceDesktop;
+                const label = t === "light" ? "Light" : t === "dark" ? "Dark" : "System";
+                return (
+                  <DropdownMenuItem
+                    key={t}
+                    onClick={() => setTheme(t)}
+                    className={isActive ? "bg-accent font-medium" : ""}
+                  >
+                    <Icon />
+                    {label}
+                    {isActive && (
+                      <span className="ml-auto h-1.5 w-1.5 rounded-full bg-foreground" />
+                    )}
+                  </DropdownMenuItem>
+                );
+              })}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut}>
