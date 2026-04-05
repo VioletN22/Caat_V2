@@ -35,7 +35,10 @@ export default function BookmarkButton({ majorId }: Props) {
   }, [majorId]);
 
   async function handleToggle() {
-    if (!userId) return;
+    if (!userId) {
+      toast.error("Sign in to bookmark majors.");
+      return;
+    }
 
     const prev = isBookmarked;
     setIsBookmarked(!prev);

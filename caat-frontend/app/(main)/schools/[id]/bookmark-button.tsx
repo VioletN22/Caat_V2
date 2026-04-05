@@ -37,7 +37,10 @@ export default function SchoolBookmarkButton({ schoolId }: Props) {
   }, [schoolId]);
 
   async function handleToggle() {
-    if (!userId) return;
+    if (!userId) {
+      toast.error("Sign in to bookmark schools.");
+      return;
+    }
 
     const prev = isBookmarked;
     setIsBookmarked(!prev);

@@ -37,7 +37,10 @@ export default function ScholarshipBookmarkButton({ scholarshipId }: Props) {
   }, [scholarshipId]);
 
   async function handleToggle() {
-    if (!userId) return;
+    if (!userId) {
+      toast.error("Sign in to bookmark scholarships.");
+      return;
+    }
 
     const prev = isBookmarked;
     setIsBookmarked(!prev);

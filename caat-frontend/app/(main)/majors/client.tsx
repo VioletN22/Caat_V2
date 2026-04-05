@@ -81,7 +81,10 @@ export default function MajorsClient({
   }
 
   async function handleToggleBookmark(id: string) {
-    if (!userId) return;
+    if (!userId) {
+      toast.error("Sign in to bookmark majors.");
+      return;
+    }
 
     const isCurrentlyBookmarked = bookmarkedIds.has(id);
 

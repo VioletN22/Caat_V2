@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -22,6 +23,16 @@ export function SignupForm({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmationSent, setConfirmationSent] = useState(false)
+  const [password, setPassword] = useState("")
+  const [passwordTouched, setPasswordTouched] = useState(false)
+
+  const passwordTooShort = password.length > 0 && password.length < 8
+  const passwordValid = password.length >= 8
+
+  const handlePasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value)
+    setPasswordTouched(true)
+  }, [])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -33,6 +44,12 @@ export function SignupForm({
     const email = formData.get("email") as string
     const password = formData.get("password") as string
     const confirmPassword = formData.get("confirm-password") as string
+
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long")
+      setLoading(false)
+      return
+    }
 
     if (password !== confirmPassword) {
       setError("Passwords do not match")
@@ -78,7 +95,7 @@ export function SignupForm({
           </p>
         </div>
         <Button variant="outline" asChild>
-          <a href="/login">Go to Login</a>
+          <Link href="/login">Go to Login</Link>
         </Button>
       </div>
     )
@@ -118,10 +135,29 @@ export function SignupForm({
         </Field>
         <Field>
           <FieldLabel htmlFor="password">Password</FieldLabel>
-          <Input name="password" id="password" type="password" required />
-          <FieldDescription>
-            Must be at least 8 characters long.
-          </FieldDescription>
+          <Input
+            name="password"
+            id="password"
+            type="password"
+            required
+            minLength={8}
+            value={password}
+            onChange={handlePasswordChange}
+            className={passwordTouched && passwordTooShort ? "border-destructive focus-visible:ring-destructive" : ""}
+          />
+          {passwordTouched && passwordTooShort ? (
+            <FieldDescription className="text-destructive">
+              Must be at least 8 characters long.
+            </FieldDescription>
+          ) : passwordTouched && passwordValid ? (
+            <FieldDescription className="text-green-600">
+              Password looks good.
+            </FieldDescription>
+          ) : (
+            <FieldDescription>
+              Must be at least 8 characters long.
+            </FieldDescription>
+          )}
         </Field>
         <Field>
           <FieldLabel htmlFor="confirm-password">Confirm Password</FieldLabel>
@@ -135,7 +171,10 @@ export function SignupForm({
         </Field>
         <Field>
           <FieldDescription className="px-6 text-center">
-            Already have an account? <a href="/login">Log in</a>
+            Already have an account?{" "}
+            <Link href="/login" className="underline underline-offset-4">
+              Log in
+            </Link>
           </FieldDescription>
         </Field>
       </FieldGroup>
