@@ -23,13 +23,14 @@ export default defineConfig({
       name: "setup",
       testMatch: /auth\.setup\.ts/,
     },
-    // All E2E tests reuse the saved auth session
+    // All E2E tests reuse the saved auth session (excludes unauth spec)
     {
       name: "e2e",
       use: {
         ...devices["Desktop Chrome"],
         storageState: "tests/e2e/.auth/user.json",
       },
+      testIgnore: /unauth\.spec\.ts/,
       dependencies: ["setup"],
     },
     // Unauthenticated tests (route protection, public pages)

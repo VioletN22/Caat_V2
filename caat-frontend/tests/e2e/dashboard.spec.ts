@@ -4,28 +4,27 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Dashboard", () => {
-  test("loads with greeting containing user name", async ({ page }) => {
+  test("loads with greeting", async ({ page }) => {
     await page.goto("/dashboard");
     await expect(page.getByRole("main")).toBeVisible();
-    // Greeting should say Good morning/afternoon/evening
     await expect(page.getByText(/good (morning|afternoon|evening)/i)).toBeVisible({ timeout: 10_000 });
   });
 
   test("application readiness checklist renders", async ({ page }) => {
     await page.goto("/dashboard");
-    // Checklist should show profile, schools, documents etc.
     await expect(
       page.getByText(/profile|schools|documents|essays|scholarships/i).first()
     ).toBeVisible({ timeout: 10_000 });
   });
 
-  test("Customize button opens widget store", async ({ page }) => {
+  test("Widget Store button is visible and opens store", async ({ page }) => {
     await page.goto("/dashboard");
-    const customizeBtn = page.getByRole("button", { name: /customize/i });
-    await expect(customizeBtn).toBeVisible({ timeout: 10_000 });
-    await customizeBtn.click();
-    // Widget store should open
-    await expect(page.getByText(/widget|add/i).first()).toBeVisible({ timeout: 5_000 });
+    // Button text is "Widget Store"
+    const storeBtn = page.getByRole("button", { name: /widget store/i });
+    await expect(storeBtn).toBeVisible({ timeout: 10_000 });
+    await storeBtn.click();
+    // Sheet should open showing "Widget Store" title
+    await expect(page.getByText("Widget Store").nth(1)).toBeVisible({ timeout: 5_000 });
   });
 
   test("page reloads without crashing", async ({ page }) => {

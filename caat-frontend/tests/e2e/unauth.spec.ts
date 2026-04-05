@@ -42,18 +42,17 @@ test("public: /login accessible without auth", async ({ page }) => {
 
 test("public: /signup accessible without auth", async ({ page }) => {
   await page.goto("/signup");
-  await expect(page.getByRole("button", { name: /sign up/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /create account/i })).toBeVisible();
 });
 
 test("public: /forgot-password accessible without auth", async ({ page }) => {
   await page.goto("/forgot-password");
-  await expect(page.getByRole("button", { name: /send/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /send|reset|submit/i })).toBeVisible();
 });
 
 test("public: /reset-password accessible without auth", async ({ page }) => {
   await page.goto("/reset-password");
-  // Should show invalid/expired message when no recovery session
-  await expect(page.getByText(/invalid|expired/i)).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("Invalid or expired link")).toBeVisible({ timeout: 10_000 });
 });
 
 // ── 2.1 Login form ─────────────────────────────────────────────────────────────
@@ -104,8 +103,8 @@ test("signup: mismatched passwords shows error", async ({ page }) => {
   await page.getByLabel(/email/i).fill("test@example.com");
   await page.getByLabel(/^password/i).fill("password123");
   await page.getByLabel(/confirm/i).fill("differentpassword");
-  await page.getByRole("button", { name: /sign up/i }).click();
-  await expect(page.getByText(/match|do not match/i)).toBeVisible({ timeout: 5_000 });
+  await page.getByRole("button", { name: /create account/i }).click();
+  await expect(page.getByText(/do not match/i)).toBeVisible({ timeout: 5_000 });
 });
 
 // ── 2.1 Forgot password ────────────────────────────────────────────────────────
@@ -125,10 +124,10 @@ test("forgot-password: back to login link", async ({ page }) => {
 
 test("reset-password: without token shows invalid link message", async ({ page }) => {
   await page.goto("/reset-password");
-  await expect(page.getByText(/invalid|expired/i)).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("Invalid or expired link")).toBeVisible({ timeout: 10_000 });
 });
 
 test("reset-password: shows link to request new reset when invalid", async ({ page }) => {
   await page.goto("/reset-password");
-  await expect(page.getByRole("link", { name: /request|forgot|new/i })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("button", { name: /request new link/i })).toBeVisible({ timeout: 10_000 });
 });
