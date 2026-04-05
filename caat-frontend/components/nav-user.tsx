@@ -113,30 +113,24 @@ export function NavUser({
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem
-                onClick={() => setTheme("light")}
-                data-active={mounted && theme === "light"}
-                className="data-[active=true]:font-medium"
-              >
-                <IconSun />
-                Light
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setTheme("dark")}
-                data-active={mounted && theme === "dark"}
-                className="data-[active=true]:font-medium"
-              >
-                <IconMoon />
-                Dark
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setTheme("system")}
-                data-active={mounted && theme === "system"}
-                className="data-[active=true]:font-medium"
-              >
-                <IconDeviceDesktop />
-                System
-              </DropdownMenuItem>
+              {(["light", "dark", "system"] as const).map((t) => {
+                const isActive = mounted && theme === t;
+                const Icon = t === "light" ? IconSun : t === "dark" ? IconMoon : IconDeviceDesktop;
+                const label = t === "light" ? "Light" : t === "dark" ? "Dark" : "System";
+                return (
+                  <DropdownMenuItem
+                    key={t}
+                    onClick={() => setTheme(t)}
+                    className={isActive ? "bg-accent font-medium" : ""}
+                  >
+                    <Icon />
+                    {label}
+                    {isActive && (
+                      <span className="ml-auto h-1.5 w-1.5 rounded-full bg-foreground" />
+                    )}
+                  </DropdownMenuItem>
+                );
+              })}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut}>
