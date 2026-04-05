@@ -115,7 +115,10 @@ export default function ScholarshipsClient({ scholarships }: Props) {
   // Optimistic bookmark toggle, persisted to Supabase
   // -------------------------------------------------------------------------
   async function handleToggleBookmark(id: string) {
-    if (!userId) return;
+    if (!userId) {
+      toast.error("Sign in to bookmark scholarships.");
+      return;
+    }
 
     const isBookmarked = bookmarkedIds.has(id);
 

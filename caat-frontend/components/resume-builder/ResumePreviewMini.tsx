@@ -163,6 +163,7 @@ export function ResumePreviewMini({ sections }: { sections: ResumeSection[] }) {
 
   useLayoutEffect(() => {
     if (!measureRef.current || blocks.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPage({ pageIndex: 0, sections: [] });
       return;
     }

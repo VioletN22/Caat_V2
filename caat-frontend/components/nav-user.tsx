@@ -2,12 +2,14 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { useTheme } from "next-themes"
 import {
   IconDotsVertical,
   IconLogout,
   IconMoon,
   IconSun,
+  IconUser,
 } from "@tabler/icons-react"
 
 import {
@@ -101,6 +103,15 @@ export function NavUser({
             align="end"
             sideOffset={4}
           >
+            <DropdownMenuGroup>
+              <DropdownMenuItem asChild>
+                <Link href="/profile">
+                  <IconUser />
+                  My Profile
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem onClick={() => setTheme(isDark ? "light" : "dark")}>
                 {isDark ? <IconSun /> : <IconMoon />}

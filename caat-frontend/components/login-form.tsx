@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
 import { supabase } from "@/src/lib/supabaseClient"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -18,6 +19,7 @@ export function LoginForm({
   ...props
 }: React.ComponentProps<"form">) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -38,9 +40,14 @@ export function LoginForm({
 
       if (signInError) throw signInError
 
-      // Successful login
-      router.push("/dashboard")
-      router.refresh() // Ensures server components re-run with new auth state
+      // Redirect to the page the user originally tried to access, or dashboard
+      const next = searchParams.get("next")
+      const destination =
+        next && next.startsWith("/") && !next.startsWith("//")
+          ? next
+          : "/dashboard"
+      router.push(destination)
+      router.refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Invalid login credentials")
     } finally {
@@ -89,12 +96,12 @@ export function LoginForm({
             type="password" 
             required 
           />
-          <a
+          <Link
             href="/forgot-password"
             className="ml-auto text-sm underline-offset-4 hover:underline"
           >
             Forgot your password?
-          </a>
+          </Link>
         </Field>
         <Field>
           <Button type="submit" disabled={loading}>
@@ -105,9 +112,9 @@ export function LoginForm({
         <Field>
           <FieldDescription className="text-center">
             Don&apos;t have an account?{" "}
-            <a href="/signup" className="underline underline-offset-4">
+            <Link href="/signup" className="underline underline-offset-4">
               Sign up
-            </a>
+            </Link>
           </FieldDescription>
         </Field>
       </FieldGroup>
