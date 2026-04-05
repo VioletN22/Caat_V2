@@ -1,11 +1,16 @@
 "use client"
 
+import * as React from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { useTheme } from "next-themes"
 import {
-  IconCreditCard,
+  IconDeviceDesktop,
   IconDotsVertical,
   IconLogout,
-  IconNotification,
-  IconUserCircle,
+  IconMoon,
+  IconSun,
+  IconUser,
 } from "@tabler/icons-react"
 
 import {
@@ -19,7 +24,6 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -31,6 +35,10 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 
+import { supabase } from "@/src/lib/supabaseClient"
+import { toast } from "sonner"
+import { getInitials } from "@/lib/user-utils"
+
 export function NavUser({
   user,
 }: {
@@ -41,6 +49,23 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = React.useState(false)
+  const router = useRouter()
+
+  React.useEffect(() => setMounted(true), [])
+
+  const initials = getInitials(user.name)
+
+  const handleSignOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+      router.push("/login")
+    } catch {
+      toast.error("Sign out failed. Please try again.")
+    }
+  }
 
   return (
     <SidebarMenu>
@@ -52,8 +77,8 @@ export function NavUser({
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className="h-8 w-8 rounded-lg grayscale">
-                {/* <AvatarImage src={user.avatar} alt={user.name} /> */}
-                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                <AvatarImage src={user.avatar} alt={user.name} />
+                <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
@@ -70,39 +95,37 @@ export function NavUser({
             align="end"
             sideOffset={4}
           >
-            {/* <DropdownMenuLabel className="p-0 font-normal">
-              <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
-                </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.name}</span>
-                  <span className="text-muted-foreground truncate text-xs">
-                    {user.email}
-                  </span>
-                </div>
-              </div>
-            </DropdownMenuLabel> */}
-            {/* <DropdownMenuSeparator /> */}
             <DropdownMenuGroup>
-                
-              {/* <DropdownMenuItem>
-                <IconUserCircle />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <IconCreditCard />
-                Billing
-              </DropdownMenuItem> */}
-
-              <DropdownMenuItem>
-                <IconNotification />
-                Notifications
+              <DropdownMenuItem asChild>
+                <Link href="/profile">
+                  <IconUser />
+                  My Profile
+                </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuGroup>
+              {(["light", "dark", "system"] as const).map((t) => {
+                const isActive = mounted && theme === t;
+                const Icon = t === "light" ? IconSun : t === "dark" ? IconMoon : IconDeviceDesktop;
+                const label = t === "light" ? "Light" : t === "dark" ? "Dark" : "System";
+                return (
+                  <DropdownMenuItem
+                    key={t}
+                    onClick={() => setTheme(t)}
+                    className={isActive ? "bg-accent font-medium" : ""}
+                  >
+                    <Icon />
+                    {label}
+                    {isActive && (
+                      <span className="ml-auto h-1.5 w-1.5 rounded-full bg-foreground" />
+                    )}
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleSignOut}>
               <IconLogout />
               Log out
             </DropdownMenuItem>

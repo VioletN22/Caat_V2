@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
   Search,
   ChevronDown,
@@ -31,18 +32,8 @@ import {
   formatAmountDisplay,
 } from "@/types/scholarships";
 import { supabase } from "@/src/lib/supabaseClient";
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-const MAJOR_FIELDS = [
-  "Engineering",
-  "Business",
-  "Natural Sciences",
-  "Social Sciences",
-  "Arts & Humanities",
-  "Health Sciences",
-];
+import { useAuth } from "@/src/context/AuthContext";
+import { toast } from "sonner";
 
 const ELIGIBILITY_MAP: Record<string, (s: ScholarshipRow) => boolean> = {
   "Merit-Based":   (s) => s.merit_based,
@@ -54,9 +45,6 @@ const ELIGIBILITY_MAP: Record<string, (s: ScholarshipRow) => boolean> = {
 
 const ITEMS_PER_PAGE = 6;
 
-// ---------------------------------------------------------------------------
-// Helper — map a DB row to the flat Scholarship shape the card expects
-// ---------------------------------------------------------------------------
 function rowToCard(row: ScholarshipRow): Scholarship {
   return {
     id: row.id,
@@ -68,114 +56,131 @@ function rowToCard(row: ScholarshipRow): Scholarship {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+function parseArray(val: string | null): string[] {
+  if (!val) return [];
+  return val.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
 interface Props {
   scholarships: ScholarshipRow[];
 }
 
 export default function ScholarshipsClient({ scholarships }: Props) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [locationQuery, setLocationQuery] = useState("");
-  const [selectedFields, setSelectedFields] = useState<string[]>([]);
-  const [selectedEligibility, setSelectedEligibility] = useState<string[]>([]);
+  const router = useRouter();
+  const pathname = usePathname();
+  const sp = useSearchParams();
+
+  const [searchQuery, setSearchQuery] = useState(sp.get("q") ?? "");
+  const [locationQuery, setLocationQuery] = useState(sp.get("location") ?? "");
+  const [selectedEligibility, setSelectedEligibility] = useState<string[]>(
+    parseArray(sp.get("eligibility")),
+  );
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
-  const [showBookmarked, setShowBookmarked] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [showBookmarked, setShowBookmarked] = useState(sp.get("bookmarked") === "1");
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  const [currentPage, setCurrentPage] = useState(Number(sp.get("page")) || 1);
 
-  // -------------------------------------------------------------------------
-  // Load the logged-in user's existing scholarship bookmarks on mount
-  // -------------------------------------------------------------------------
-  useEffect(() => {
-    async function loadBookmarks() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.user) return;
-
-      setUserId(session.user.id);
-
-      const { data } = await supabase
-        .from("user_bookmarked_scholarships")
-        .select("scholarship_id")
-        .eq("user_id", session.user.id);
-
-      if (data) {
-        setBookmarkedIds(new Set(data.map((r) => r.scholarship_id as string)));
+  const pushParams = useCallback(
+    (overrides: Record<string, string | null>) => {
+      const params = new URLSearchParams(sp.toString());
+      for (const [k, v] of Object.entries(overrides)) {
+        if (v) { params.set(k, v); } else { params.delete(k); }
       }
+      params.delete("page");
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [router, pathname, sp],
+  );
+
+  useEffect(() => {
+    if (!userId) {
+      setBookmarkedIds(new Set());
+      return;
     }
 
-    loadBookmarks();
-  }, []);
+    supabase
+      .from("user_bookmarked_scholarships")
+      .select("scholarship_id")
+      .eq("user_id", userId)
+      .then(({ data }) => {
+        if (data) setBookmarkedIds(new Set(data.map((r) => r.scholarship_id as string)));
+      });
+  }, [userId]);
 
-  // -------------------------------------------------------------------------
-  // Optimistic bookmark toggle, persisted to Supabase
-  // -------------------------------------------------------------------------
   async function handleToggleBookmark(id: string) {
-    if (!userId) return;
+    if (!userId) {
+      toast.error("Sign in to bookmark scholarships.");
+      return;
+    }
 
     const isBookmarked = bookmarkedIds.has(id);
 
     setBookmarkedIds((prev) => {
       const next = new Set(prev);
-      isBookmarked ? next.delete(id) : next.add(id);
+      if (isBookmarked) { next.delete(id); } else { next.add(id); }
       return next;
     });
 
-    if (isBookmarked) {
-      await supabase
-        .from("user_bookmarked_scholarships")
-        .delete()
-        .eq("user_id", userId)
-        .eq("scholarship_id", id);
-    } else {
-      await supabase
-        .from("user_bookmarked_scholarships")
-        .upsert({ user_id: userId, scholarship_id: id });
+    try {
+      if (isBookmarked) {
+        const { error } = await supabase
+          .from("user_bookmarked_scholarships")
+          .delete()
+          .eq("user_id", userId)
+          .eq("scholarship_id", id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("user_bookmarked_scholarships")
+          .upsert({ user_id: userId, scholarship_id: id });
+        if (error) throw error;
+      }
+    } catch {
+      setBookmarkedIds((prev) => {
+        const next = new Set(prev);
+        if (isBookmarked) { next.add(id); } else { next.delete(id); }
+        return next;
+      });
+      toast.error("Failed to update bookmark. Please try again.");
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Filter helpers
-  // -------------------------------------------------------------------------
   function toggleMultiFilter<T>(
     value: T,
-    setter: React.Dispatch<React.SetStateAction<T[]>>
+    setter: React.Dispatch<React.SetStateAction<T[]>>,
+    paramKey: string,
+    current: T[],
   ) {
-    setter((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
-    );
+    const next = current.includes(value)
+      ? current.filter((v) => v !== value)
+      : [...current, value];
+    setter(next);
+    setCurrentPage(1);
+    pushParams({ [paramKey]: next.length > 0 ? next.join(",") : null });
   }
 
   function clearAll() {
     setLocationQuery("");
-    setSelectedFields([]);
     setSelectedEligibility([]);
     setShowBookmarked(false);
     setSearchQuery("");
     setCurrentPage(1);
+    router.replace(pathname, { scroll: false });
   }
 
   const hasActiveFilters =
     locationQuery.trim().length > 0 ||
-    selectedFields.length > 0 ||
     selectedEligibility.length > 0 ||
     showBookmarked ||
     searchQuery.trim().length > 0;
 
-  // -------------------------------------------------------------------------
-  // Client-side filtering against DB fields
-  // -------------------------------------------------------------------------
   const filtered = useMemo(() => {
     const q = searchQuery.toLowerCase();
 
     return scholarships.filter((s) => {
-      // Bookmarked-only view
       if (showBookmarked && !bookmarkedIds.has(s.id)) return false;
 
-      // Search: title or provider_name
       if (
         q &&
         !s.title.toLowerCase().includes(q) &&
@@ -184,7 +189,6 @@ export default function ScholarshipsClient({ scholarships }: Props) {
         return false;
       }
 
-      // Location: case-insensitive partial match across country, school_name, state_region
       if (locationQuery.trim()) {
         const lq = locationQuery.trim().toLowerCase();
         const matchesLocation =
@@ -194,7 +198,6 @@ export default function ScholarshipsClient({ scholarships }: Props) {
         if (!matchesLocation) return false;
       }
 
-      // Eligibility: all selected criteria must match
       if (
         selectedEligibility.length > 0 &&
         !selectedEligibility.every((opt) => ELIGIBILITY_MAP[opt]?.(s))
@@ -202,24 +205,19 @@ export default function ScholarshipsClient({ scholarships }: Props) {
         return false;
       }
 
-      // Major/Field: placeholder — junction table data not fetched yet
-      // selectedFields is intentionally unused until scholarship_majors join is added
-
       return true;
     });
   }, [scholarships, searchQuery, locationQuery, selectedEligibility, showBookmarked, bookmarkedIds]);
 
-  // -------------------------------------------------------------------------
-  // Pagination
-  // -------------------------------------------------------------------------
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const paginated = filtered.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    currentPage * ITEMS_PER_PAGE,
   );
 
   function goToPage(page: number) {
-    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+    const clamped = Math.max(1, Math.min(page, totalPages));
+    setCurrentPage(clamped);
   }
 
   const pageNumbers = useMemo(() => {
@@ -234,21 +232,32 @@ export default function ScholarshipsClient({ scholarships }: Props) {
     return pages;
   }, [currentPage, totalPages]);
 
-  // -------------------------------------------------------------------------
-  // Render
-  // -------------------------------------------------------------------------
   return (
-    <div className="min-h-screen p-8 pt-4">
+    <div className="p-6">
       <main className="max-w-5xl mx-auto">
 
-        {/* Page title + filter row */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight mb-4">
             Scholarships
           </h1>
 
+          {/* Search bar */}
+          <div className="relative mb-4 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              className="pl-9"
+              placeholder="Search scholarships..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+                pushParams({ q: e.target.value.trim() || null });
+              }}
+            />
+          </div>
+
           <div className="flex flex-wrap items-center gap-2">
-            {/* Location — free-text search */}
+            {/* Location */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -269,11 +278,12 @@ export default function ScholarshipsClient({ scholarships }: Props) {
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                   <Input
                     className="pl-8 h-8 text-sm"
-                    placeholder="e.g. aus, canada, uk…"
+                    placeholder="e.g. aus, canada, uk..."
                     value={locationQuery}
                     onChange={(e) => {
                       setLocationQuery(e.target.value);
                       setCurrentPage(1);
+                      pushParams({ location: e.target.value.trim() || null });
                     }}
                     autoFocus
                   />
@@ -281,45 +291,16 @@ export default function ScholarshipsClient({ scholarships }: Props) {
                 {locationQuery.trim() && (
                   <button
                     className="mt-1.5 text-xs text-muted-foreground hover:text-foreground w-full text-right pr-1"
-                    onClick={() => setLocationQuery("")}
+                    onClick={() => {
+                      setLocationQuery("");
+                      pushParams({ location: null });
+                    }}
                   >
                     Clear
                   </button>
                 )}
               </PopoverContent>
             </Popover>
-
-            {/* Major/Field */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={`gap-1.5 ${selectedFields.length > 0 ? "border-primary" : ""}`}
-                >
-                  Major/Field
-                  {selectedFields.length > 0 && (
-                    <span className="bg-primary text-primary-foreground text-[10px] font-semibold rounded-full px-1.5 py-0.5 leading-none">
-                      {selectedFields.length}
-                    </span>
-                  )}
-                  <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-52">
-                {MAJOR_FIELDS.map((field) => (
-                  <DropdownMenuCheckboxItem
-                    key={field}
-                    checked={selectedFields.includes(field)}
-                    onCheckedChange={() =>
-                      toggleMultiFilter(field, setSelectedFields)
-                    }
-                  >
-                    {field}
-                  </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
 
             {/* Eligibility */}
             <DropdownMenu>
@@ -344,7 +325,7 @@ export default function ScholarshipsClient({ scholarships }: Props) {
                     key={opt}
                     checked={selectedEligibility.includes(opt)}
                     onCheckedChange={() =>
-                      toggleMultiFilter(opt, setSelectedEligibility)
+                      toggleMultiFilter(opt, setSelectedEligibility, "eligibility", selectedEligibility)
                     }
                   >
                     {opt}
@@ -359,8 +340,10 @@ export default function ScholarshipsClient({ scholarships }: Props) {
               variant={showBookmarked ? "default" : "outline"}
               className="gap-1.5"
               onClick={() => {
-                setShowBookmarked((prev) => !prev);
+                const next = !showBookmarked;
+                setShowBookmarked(next);
                 setCurrentPage(1);
+                pushParams({ bookmarked: next ? "1" : null });
               }}
             >
               <Bookmark

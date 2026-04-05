@@ -1,5 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+
+repomix-output.xml
+
 # dependencies
 /node_modules
 /.pnp
@@ -12,6 +15,9 @@
 
 # testing
 /coverage
+/playwright-report
+/test-results
+/tests/e2e/.auth
 
 # next.js
 /.next/

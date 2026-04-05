@@ -1,19 +1,8 @@
 import { Search, Bookmark } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { MajorCategory } from "@/types/majors";
-import { FilterView } from "@/app/(main)/majors/client";
-
-const CATEGORIES: (MajorCategory | "All")[] = [
-  "All",
-  "Engineering",
-  "Business",
-  "Health Sciences",
-  "Arts & Humanities",
-  "Social Sciences",
-  "Natural Sciences",
-  "Education",
-];
+import type { FilterView } from "@/types/majors";
+import { MAJOR_CATEGORIES } from "@/constants/majors";
 
 interface Props {
   searchQuery: string;
@@ -43,7 +32,7 @@ export default function MajorFilters({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {CATEGORIES.map((cat) => (
+        {MAJOR_CATEGORIES.map((cat) => (
           <Button
             key={cat}
             size="sm"

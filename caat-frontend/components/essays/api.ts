@@ -31,73 +31,6 @@ export async function fetchEssayPrompts() {
   return data as EssayPrompt[];
 }
 
-export async function fetchCurrentDraft(promptId: string) {
-  const { data, error } = await supabase
-    .from("essay_drafts")
-    .select("*")
-    .eq("prompt_id", promptId)
-    .eq("is_current", true)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data as EssayDraft | null;
-}
-
-export async function upsertCurrentDraft(args: {
-  promptId: string;
-  promptSlug: string;
-  content: string;
-  label?: string;
-}) {
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError) throw authError;
-  if (!user) throw new Error("Not signed in");
-
-  // Try to find existing current draft
-  const { data: existing, error: existingError } = await supabase
-    .from("essay_drafts")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("prompt_id", args.promptId)
-    .eq("is_current", true)
-    .maybeSingle();
-
-  if (existingError) throw existingError;
-
-  if (existing?.id) {
-    const { error } = await supabase
-      .from("essay_drafts")
-      .update({
-        content: args.content,
-        label: args.label ?? null,
-        prompt_slug: args.promptSlug,
-      })
-      .eq("id", existing.id);
-
-    if (error) throw error;
-    return existing.id;
-  }
-
-  const { data, error } = await supabase
-    .from("essay_drafts")
-    .insert({
-      user_id: user.id,
-      prompt_id: args.promptId,
-      prompt_slug: args.promptSlug,
-      content: args.content,
-      label: args.label ?? "Draft 1",
-      is_current: true,
-    })
-    .select("id")
-    .single();
-
-  if (error) throw error;
-  if (!data) throw new Error("Failed to create draft");
-  return data.id as string;
-}
-
 /* ---------------------------
    List all drafts for a prompt (for switcher UI)
 ---------------------------- */
@@ -179,6 +112,32 @@ export async function createDraft(args: {
   if (error) throw error;
   if (!data) throw new Error("Failed to create draft");
   return data as EssayDraft;
+}
+
+/* ---------------------------
+   Mark a draft as is_current, unsetting all other drafts for the same prompt
+---------------------------- */
+
+export async function setCurrentDraft(draftId: string, promptId: string): Promise<void> {
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!user) throw new Error("Not signed in");
+
+  // Unset all drafts for this prompt first
+  await supabase
+    .from("essay_drafts")
+    .update({ is_current: false })
+    .eq("user_id", user.id)
+    .eq("prompt_id", promptId);
+
+  // Then mark the selected one
+  const { error } = await supabase
+    .from("essay_drafts")
+    .update({ is_current: true })
+    .eq("id", draftId)
+    .eq("user_id", user.id);
+
+  if (error) throw error;
 }
 
 /* ---------------------------

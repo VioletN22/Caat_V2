@@ -7,6 +7,8 @@ export type MajorCategory =
   | 'Natural Sciences'
   | 'Education';
 
+export type FilterView = MajorCategory | "All" | "Bookmarked";
+
 export interface Major {
   id: string;
   name: string;

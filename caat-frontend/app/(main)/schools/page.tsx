@@ -15,159 +15,213 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Separator } from "@/components/ui/separator";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList } from "@/components/ui/breadcrumb";
-import { ChevronLeft, ChevronRight, Link as LinkIcon } from "lucide-react";import { SidebarTrigger } from "@/components/ui/sidebar";
+import { ChevronLeft, ChevronRight, Link as LinkIcon } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
+import SchoolSearch from "./school-search";
+import CountrySelect from "./country-select";
+import SortSelect from "./sort-select";
+import { BookmarkedSchoolsList } from "./schools-client";
+import SchoolFilterBarClient from "./school-filter-bar-client";
+import SchoolBookmarkButton from "./school-bookmark-button";
 
 export default async function SchoolsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; q?: string; country?: string; sort?: string; filter?: string }>;
 }) {
-  // 1. Resolve Search Params (Next.js 15/16 requires awaiting this)
   const params = await searchParams;
-  const currentPage = Number(params.page) || 1;
-  const itemsPerPage = 24; // 24 is nice because it divides by 2 and 3 (grid layout)
+  const activeFilter = params.filter === "bookmarked" ? "Bookmarked" : "All";
 
-  // 2. Calculate the Range for Supabase
-  // Page 1: 0 to 23
-  // Page 2: 24 to 47
+  // ----- Bookmarked view — client component handles the query -----
+  if (activeFilter === "Bookmarked") {
+    return (
+      <>
+        <PageHeader title="Schools" />
+
+        <div className="p-6">
+          <main className="max-w-5xl mx-auto">
+            <div className="mb-6">
+              <SchoolFilterBarClient activeFilter="Bookmarked" />
+            </div>
+            <BookmarkedSchoolsList />
+          </main>
+        </div>
+      </>
+    );
+  }
+
+  // ----- Normal paginated view -----
+  const currentPage = Number(params.page) || 1;
+  const searchQuery = params.q || "";
+  const selectedCountry = params.country || "";
+  const sortParam = params.sort || "name_asc";
+  const itemsPerPage = 24;
+
   const from = (currentPage - 1) * itemsPerPage;
   const to = from + itemsPerPage - 1;
 
-  // 3. Fetch Data with Filter AND Pagination
-  // We also get 'count' to know when to disable the "Next" button
-  const { data: schools, count, error } = await supabase
+  let query = supabase
     .from("schools")
-    .select("*", { count: "exact" }) // Request the total count of matching rows
-    .eq("country", "United States") // <--- FILTER: Only US Schools
-    .range(from, to); // <--- PAGINATION: Only fetch this slice
+    .select("*", { count: "exact" })
+    .range(from, to);
+
+  if (selectedCountry) {
+    query = query.eq("country", selectedCountry);
+  }
+
+  if (searchQuery) {
+    const orQuery = `name.ilike.${searchQuery}%,name.ilike.% ${searchQuery}%,name.ilike.%(${searchQuery})%`;
+    query = query.or(orQuery);
+  }
+
+  // Apply sort
+  if (sortParam === "name_desc") {
+    query = query.order("name", { ascending: false });
+  } else if (sortParam === "country_asc") {
+    query = query.order("country", { ascending: true }).order("name", { ascending: true });
+  } else {
+    query = query.order("name", { ascending: true });
+  }
+
+  const { data: schools, count, error } = await query;
 
   if (error) {
     return <div className="p-10 text-red-500">Error: {error.message}</div>;
   }
 
-  // Calculate total pages for UI
   const totalPages = count ? Math.ceil(count / itemsPerPage) : 0;
+
+  const createPageUrl = (page: number) => {
+    const urlParams = new URLSearchParams();
+    urlParams.set("page", page.toString());
+    if (searchQuery) urlParams.set("q", searchQuery);
+    if (selectedCountry) urlParams.set("country", selectedCountry);
+    if (sortParam && sortParam !== "name_asc") urlParams.set("sort", sortParam);
+    return `/schools?${urlParams.toString()}`;
+  };
+
+  const countryLabel = selectedCountry || "All Countries";
 
   return (
     <>
-      <header className="flex h-16 shrink-0 items-center gap-2 px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-        <SidebarTrigger className="-ml-1" />
-        <Separator
-              orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
-        />
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem className="hidden md:block">
-              <BreadcrumbLink>Schools</BreadcrumbLink>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </header>
+      <PageHeader title="Schools" />
 
-      <div className="min-h-screen p-8">
-
+      <div className="p-6">
         <main className="max-w-5xl mx-auto">
 
-          {/* Results Info */}
-          <div className="mb-10 flex flex-col gap-2">
+          {/* Filter chips */}
+          <div className="mb-4">
+            <SchoolFilterBarClient activeFilter="All" />
+          </div>
+
+          {/* Search + country + sort */}
+          <div className="flex flex-col md:flex-row gap-3 mb-6 items-start">
+            <div className="flex-1 w-full max-w-md">
+              <SchoolSearch defaultValue={searchQuery} />
+            </div>
+            <CountrySelect defaultValue={selectedCountry} />
+            <SortSelect defaultValue={sortParam} />
+          </div>
+
+          <div className="mb-6">
             <p className="text-zinc-500 dark:text-zinc-400">
-              Showing {schools?.length} results (Page {currentPage} of {totalPages})
+              Showing {count || 0} results in <strong>{countryLabel}</strong>{" "}
+              {totalPages > 0 && `(Page ${currentPage} of ${totalPages})`}
             </p>
           </div>
 
-          {/* Main school cards section */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {schools?.map((school) => (
-              
-              // Each school card
-              <Card
-                key={school.id}
-                className="flex flex-col h-full hover:shadow-lg transition-shadow"
-              >
-                <CardHeader>
-                  <CardTitle className="text-xl line-clamp-2 leading-tight">
-                    {school.name}
-                  </CardTitle>
-                  <CardDescription className="text-base font-medium text-zinc-600 dark:text-zinc-400">
-                    {school.country}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex-grow"/>
+          {schools && schools.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+              {schools.map((school) => (
+                <Card
+                  key={school.id}
+                  className="flex flex-col h-full hover:shadow-lg transition-shadow"
+                >
+                  <CardHeader>
+                    <CardTitle className="text-xl line-clamp-2 leading-tight">
+                      {school.name}
+                    </CardTitle>
+                    <CardDescription className="text-base font-medium text-zinc-600 dark:text-zinc-400">
+                      {school.country}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-grow" />
 
-                {/* Footer buttons */}
-                <CardFooter className="justify-end flex gap-2"> {/* Align icon to the right */}
-                  <Button asChild size="sm" variant="default">
-                    <Link href={`/schools/${school.id}`}>
-                        Bookmark
-                    </Link>
-                  </Button>
+                  <CardFooter className="justify-end flex gap-2">
+                    {/* Inline bookmark button */}
+                    <SchoolBookmarkButton schoolId={school.id} compact />
 
-                  {school.website ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button asChild size="icon" variant="outline">
-                          <a
-                            href={school.website}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <LinkIcon className="h-4 w-4" />
-                            {/* Screen readers still need to know what this is */}
-                            <span className="sr-only">Visit Website</span>
-                          </a>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Visit Website</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    <Button disabled size="icon" variant="secondary">
-                      <LinkIcon className="h-4 w-4 opacity-50" />
+                    <Button asChild size="sm" variant="default">
+                      <Link href={`/schools/${school.id}`}>View Details</Link>
                     </Button>
-                  )}
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
 
-          {/* Pagination Controls */}
-          <div className="flex items-center justify-center gap-4">
-            <Button
-              variant="outline"
-              disabled={currentPage <= 1}
-              asChild={currentPage > 1}
-            >
+                    {school.website ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button asChild size="icon" variant="outline">
+                              <a
+                                href={school.website}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <LinkIcon className="h-4 w-4" />
+                                <span className="sr-only">Visit Website</span>
+                              </a>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Visit Website</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      <Button disabled size="icon" variant="secondary">
+                        <LinkIcon className="h-4 w-4 opacity-50" />
+                      </Button>
+                    )}
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+              <p className="text-lg font-medium">No schools found</p>
+              <p className="text-sm mt-1">Try adjusting your search query or country filter.</p>
+            </div>
+          )}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-4">
               {currentPage > 1 ? (
-                <Link href={`/schools?page=${currentPage - 1}`}>
+                <Button variant="outline" asChild>
+                  <Link href={createPageUrl(currentPage - 1)}>
+                    <ChevronLeft className="mr-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              ) : (
+                <Button variant="outline" disabled>
                   <ChevronLeft className="mr-2 h-4 w-4" />
-                </Link>
-              ) : (
-                <ChevronLeft className="mr-2 h-4 w-4" />
+                </Button>
               )}
-            </Button>
 
-            <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-              Page {currentPage} of {totalPages}
-            </span>
+              <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+                Page {currentPage} of {totalPages}
+              </span>
 
-            <Button
-              variant="outline"
-              disabled={currentPage >= totalPages}
-              asChild={currentPage < totalPages}
-            >
               {currentPage < totalPages ? (
-                <Link href={`/schools?page=${currentPage + 1}`}>
-                  <ChevronRight className="ml-2 h-4 w-4" />
-                </Link>
+                <Button variant="outline" asChild>
+                  <Link href={createPageUrl(currentPage + 1)}>
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
               ) : (
-                <ChevronRight className="ml-2 h-4 w-4" />
+                <Button variant="outline" disabled>
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
               )}
-            </Button>
-          </div>
+            </div>
+          )}
         </main>
       </div>
     </>

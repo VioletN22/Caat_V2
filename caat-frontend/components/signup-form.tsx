@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -9,7 +10,6 @@ import {
   FieldDescription,
   FieldGroup,
   FieldLabel,
-  FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 
@@ -22,20 +22,53 @@ export function SignupForm({
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmationSent, setConfirmationSent] = useState(false)
+  const [password, setPassword] = useState("")
+  const [passwordTouched, setPasswordTouched] = useState(false)
+
+  const passwordTooShort = password.length > 0 && password.length < 8
+  const passwordValid = password.length >= 8
+
+  // Strength criteria
+  const hasMinLength = password.length >= 8
+  const hasUppercase = /[A-Z]/.test(password)
+  const hasNumber = /[0-9]/.test(password)
+  const hasSpecial = /[^A-Za-z0-9]/.test(password)
+  const strengthScore = [hasMinLength, hasUppercase, hasNumber, hasSpecial].filter(Boolean).length
+  const strengthLabel =
+    password.length === 0 ? null
+    : strengthScore <= 1 ? "Weak"
+    : strengthScore === 2 ? "Fair"
+    : strengthScore === 3 ? "Good"
+    : "Strong"
+  const strengthColor =
+    strengthScore <= 1 ? "bg-destructive"
+    : strengthScore === 2 ? "bg-amber-500"
+    : strengthScore === 3 ? "bg-blue-500"
+    : "bg-green-500"
+
+  const handlePasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value)
+    setPasswordTouched(true)
+  }, [])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoading(true)
     setError(null)
 
-    // 3. Capture form data
     const formData = new FormData(event.currentTarget)
     const name = formData.get("name") as string
     const email = formData.get("email") as string
     const password = formData.get("password") as string
     const confirmPassword = formData.get("confirm-password") as string
 
-    // 4. Basic Validation
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long")
+      setLoading(false)
+      return
+    }
+
     if (password !== confirmPassword) {
       setError("Passwords do not match")
       setLoading(false)
@@ -43,36 +76,53 @@ export function SignupForm({
     }
 
     try {
-      // 5. Submit to Supabase
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            full_name: name, // Saves "Full Name" to user metadata
+            full_name: name,
           },
         },
       })
 
       if (signUpError) throw signUpError
 
-      // 6. Handle Success
-      // If email confirmation is enabled in Supabase, you might want to show a message instead.
-      // Otherwise, redirect to dashboard or login.
-      router.push("/dashboard") 
-      
-    } catch (err: any) {
-      setError(err.message || "Something went wrong")
+      if (data.session) {
+        router.push("/dashboard")
+        router.refresh()
+      } else {
+        setConfirmationSent(true)
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Something went wrong"
+      setError(message)
     } finally {
       setLoading(false)
     }
   }
 
+  if (confirmationSent) {
+    return (
+      <div className={cn("flex flex-col gap-6 items-center text-center", className)}>
+        <div className="flex flex-col items-center gap-2">
+          <h1 className="text-2xl font-bold">Check your email</h1>
+          <p className="text-muted-foreground text-sm text-balance max-w-sm">
+            We&apos;ve sent a confirmation link to your email address.
+            Please click it to activate your account, then come back and log in.
+          </p>
+        </div>
+        <Button variant="outline" asChild>
+          <Link href="/login">Go to Login</Link>
+        </Button>
+      </div>
+    )
+  }
 
   return (
-    <form 
-      onSubmit={handleSubmit} // <--- Attach the handler
-      className={cn("flex flex-col gap-6", className)} 
+    <form
+      onSubmit={handleSubmit}
+      className={cn("flex flex-col gap-6", className)}
       {...props}
     >
       <FieldGroup>
@@ -82,8 +132,7 @@ export function SignupForm({
             Fill in the form below to create your account
           </p>
         </div>
-        
-        {/* Error Message Display */}
+
         {error && (
           <div className="bg-red-50 text-red-600 text-sm p-3 rounded-md border border-red-200">
             {error}
@@ -104,10 +153,49 @@ export function SignupForm({
         </Field>
         <Field>
           <FieldLabel htmlFor="password">Password</FieldLabel>
-          <Input name="password" id="password" type="password" required />
-          <FieldDescription>
-            Must be at least 8 characters long.
-          </FieldDescription>
+          <Input
+            name="password"
+            id="password"
+            type="password"
+            required
+            minLength={8}
+            value={password}
+            onChange={handlePasswordChange}
+            className={passwordTouched && passwordTooShort ? "border-destructive focus-visible:ring-destructive" : ""}
+          />
+          {passwordTouched && password.length > 0 && (
+            <div className="space-y-1.5 mt-1">
+              {/* Strength bar */}
+              <div className="flex gap-1">
+                {[1, 2, 3, 4].map((level) => (
+                  <div
+                    key={level}
+                    className={`h-1 flex-1 rounded-full transition-colors ${
+                      strengthScore >= level ? strengthColor : "bg-muted"
+                    }`}
+                  />
+                ))}
+              </div>
+              <p className={`text-xs ${
+                strengthScore <= 1 ? "text-destructive"
+                : strengthScore === 2 ? "text-amber-500"
+                : strengthScore === 3 ? "text-blue-500"
+                : "text-green-600"
+              }`}>
+                {strengthLabel}
+              </p>
+              {/* Criteria hints */}
+              <ul className="text-xs text-muted-foreground space-y-0.5">
+                {!hasMinLength && <li>• At least 8 characters</li>}
+                {!hasUppercase && <li>• One uppercase letter</li>}
+                {!hasNumber && <li>• One number</li>}
+                {!hasSpecial && <li>• One special character</li>}
+              </ul>
+            </div>
+          )}
+          {(!passwordTouched || password.length === 0) && (
+            <FieldDescription>Must be at least 8 characters long.</FieldDescription>
+          )}
         </Field>
         <Field>
           <FieldLabel htmlFor="confirm-password">Confirm Password</FieldLabel>
@@ -121,7 +209,10 @@ export function SignupForm({
         </Field>
         <Field>
           <FieldDescription className="px-6 text-center">
-            Already have an account? <a href="/login">Log in</a>
+            Already have an account?{" "}
+            <Link href="/login" className="underline underline-offset-4">
+              Log in
+            </Link>
           </FieldDescription>
         </Field>
       </FieldGroup>

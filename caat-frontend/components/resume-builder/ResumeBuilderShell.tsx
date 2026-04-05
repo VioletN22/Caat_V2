@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { format } from "date-fns";
 import {
   DndContext,
@@ -8,6 +9,7 @@ import {
   closestCenter,
   useSensor,
   useSensors,
+  type DragEndEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -26,14 +28,17 @@ import {
   loadResumeById,
   createResume,
   deleteResume,
+  deleteSection as deleteSectionFromDb,
 } from "./api";
 
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Printer } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
+import { toast } from "sonner";
 
 import DocumentStructurePanel from "./DocumentStructurePanel";
 import SectionEditorPanel from "./SectionEditorPanel";
-import ResumePreviewPanel from "./ResumePreviewPanel";
+import ResumePreviewPanel, { ResumePage } from "./ResumePreviewPanel";
+import type { PageModel } from "./ResumePreviewPanel";
 
 export default function ResumeBuilderShell() {
   const [sections, setSections] = useState<ResumeSection[]>([]);
@@ -52,10 +57,18 @@ export default function ResumeBuilderShell() {
   // Which section should be immediately renamed (newly added)
   const [renamingSectionId, setRenamingSectionId] = useState<string | null>(null);
 
+  // Computed page layout from the preview panel — used by the print container
+  const [printPages, setPrintPages] = useState<PageModel[]>([]);
+  const [printPersonal, setPrintPersonal] = useState<Record<string, unknown>>({});
+
   // Resume title edit (inline, same as section rename)
   const [editingResumeTitle, setEditingResumeTitle] = useState(false);
   const [draftResumeTitle, setDraftResumeTitle] = useState("");
   const [deleteResumeDialogOpen, setDeleteResumeDialogOpen] = useState(false);
+
+  // Mobile tab navigation
+  type MobileTab = "structure" | "editor" | "preview";
+  const [mobileTab, setMobileTab] = useState<MobileTab>("editor");
 
   const activeSection = useMemo(() => {
     if (sections.length === 0) return undefined;
@@ -128,8 +141,9 @@ export default function ResumeBuilderShell() {
         setActiveSectionId(loadedSections[0]?.id ?? "");
       } catch (err) {
         console.error(err);
+        toast.error("Could not load your resume. Working offline with default sections.");
 
-        // If anything fails, fall back to local defaults so UI still works
+        // Fall back to local defaults so the UI still works
         const defaults = getDefaultSections();
         if (cancelled) return;
 
@@ -149,7 +163,7 @@ export default function ResumeBuilderShell() {
   // --------------------------------------------------
   // Drag & drop ordering
   // --------------------------------------------------
-  function onDragEnd(event: any) {
+  function onDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
@@ -206,6 +220,11 @@ export default function ResumeBuilderShell() {
 
       return next;
     });
+
+    deleteSectionFromDb(id).catch((err) => {
+      console.error("Failed to delete section from database:", err);
+      toast.error("Section removed locally but could not be deleted from the server.");
+    });
   }
 
   // --------------------------------------------------
@@ -235,6 +254,7 @@ export default function ResumeBuilderShell() {
       setLastSavedAt(new Date());
     } catch (err) {
       console.error(err);
+      toast.error("Failed to save resume. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -312,6 +332,7 @@ export default function ResumeBuilderShell() {
       setResumeList(list.map((r) => ({ id: r.id, title: r.title ?? "Untitled" })));
     } catch (err) {
       console.error(err);
+      toast.error("Could not switch resume. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -350,6 +371,7 @@ export default function ResumeBuilderShell() {
       setResumeList(list.map((r) => ({ id: r.id, title: r.title ?? "Untitled" })));
     } catch (err) {
       console.error(err);
+      toast.error("Could not create a new resume. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -412,17 +434,37 @@ export default function ResumeBuilderShell() {
       }
     } catch (err) {
       console.error(err);
+      toast.error("Could not delete resume. Please try again.");
     }
   }
 
+  // --------------------------------------------------
+  // Print / PDF
+  // --------------------------------------------------
+  async function handlePrint() {
+    // Save latest state before printing so the PDF reflects persisted content
+    await onSave();
+
+    const previousTitle = document.title;
+    document.title = resumeTitle;
+
+    window.print();
+
+    // Restore after print dialog closes (onafterprint fires when dialog is dismissed)
+    const restore = () => {
+      document.title = previousTitle;
+      window.removeEventListener("afterprint", restore);
+    };
+    window.addEventListener("afterprint", restore);
+    // Fallback timeout in case afterprint doesn't fire
+    setTimeout(restore, 5000);
+  }
+
   return (
-    <div className="h-[calc(100vh-64px)] w-full">
+    <div className="flex flex-col h-[calc(100vh-64px)] w-full">
       {/* Top bar */}
       <div className="flex items-center justify-between border-b bg-background px-4 py-3">
         <div className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded bg-blue-600 text-white grid place-items-center text-sm font-bold shrink-0">
-            CA
-          </div>
           {editingResumeTitle ? (
             <input
               value={draftResumeTitle}
@@ -492,7 +534,14 @@ export default function ResumeBuilderShell() {
             </span>
           ) : null}
 
-          <button className="rounded-md border px-3 py-1.5 text-sm">Print / PDF</button>
+          <button
+            onClick={handlePrint}
+            disabled={isLoading || isSaving}
+            className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-60"
+          >
+            <Printer className="h-3.5 w-3.5" />
+            Print / PDF
+          </button>
 
           <button
             onClick={onSave}
@@ -504,33 +553,85 @@ export default function ResumeBuilderShell() {
         </div>
       </div>
 
-      {/* 3-panel body */}
-      <div className="grid h-full grid-cols-[360px_1fr_520px]">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-          <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-            <DocumentStructurePanel
-              sections={sections}
-              activeSectionId={activeSectionId}
-              onSelect={setActiveSectionId}
-              onAdd={addSection}
-              onRename={(id, label) => updateSection(id, { label })}
-              onDelete={deleteSection}
-              renamingSectionId={renamingSectionId}
-              onFinishRenaming={() => setRenamingSectionId(null)}
-            />
-          </SortableContext>
-        </DndContext>
-
-        <SectionEditorPanel
-          section={activeSection}
-          onChange={(patch) => {
-            if (!activeSection) return;
-            updateSection(activeSection.id, patch);
-          }}
-        />
-
-        <ResumePreviewPanel sections={sections} />
+      {/* Mobile tab bar */}
+      <div className="flex border-b md:hidden">
+        {(["structure", "editor", "preview"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setMobileTab(tab)}
+            className={`flex-1 py-2 text-sm capitalize font-medium ${
+              mobileTab === tab
+                ? "border-b-2 border-blue-600 text-blue-600"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {tab === "structure" ? "Sections" : tab === "editor" ? "Edit" : "Preview"}
+          </button>
+        ))}
       </div>
+
+      {/* 3-panel body — desktop grid / mobile single-panel */}
+      <div className="flex-1 min-h-0 md:grid md:grid-cols-[360px_1fr_520px] flex flex-col overflow-hidden">
+        <div className={`${mobileTab === "structure" ? "flex" : "hidden"} flex-col md:flex`}>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+              <DocumentStructurePanel
+                sections={sections}
+                activeSectionId={activeSectionId}
+                onSelect={(id) => {
+                  setActiveSectionId(id);
+                  setMobileTab("editor");
+                }}
+                onAdd={addSection}
+                onRename={(id, label) => updateSection(id, { label })}
+                onDelete={deleteSection}
+                renamingSectionId={renamingSectionId}
+                onFinishRenaming={() => setRenamingSectionId(null)}
+              />
+            </SortableContext>
+          </DndContext>
+        </div>
+
+        <div className={`${mobileTab === "editor" ? "flex" : "hidden"} flex-col md:flex overflow-auto`}>
+          <SectionEditorPanel
+            section={activeSection}
+            onChange={(patch) => {
+              if (!activeSection) return;
+              updateSection(activeSection.id, patch);
+            }}
+          />
+        </div>
+
+        <div className={`${mobileTab === "preview" ? "flex" : "hidden"} flex-col md:flex`}>
+          <ResumePreviewPanel
+            sections={sections}
+            onPagesComputed={(pages, personal) => {
+              setPrintPages(pages);
+              setPrintPersonal(personal);
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Print container — portalled to document.body so @media print CSS
+          can hide the app root and show only this. Uses the identical
+          ResumePage component as the preview so output matches exactly. */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <div data-print-resume aria-hidden="true">
+            {printPages.map((page) => (
+              <div key={page.pageIndex} className="resume-print-page">
+                <ResumePage
+                  page={page}
+                  totalPages={printPages.length}
+                  personal={printPersonal}
+                  showFooter={false}
+                />
+              </div>
+            ))}
+          </div>,
+          document.body
+        )}
 
       <Dialog.Root open={deleteResumeDialogOpen} onOpenChange={setDeleteResumeDialogOpen}>
         <Dialog.Portal>
