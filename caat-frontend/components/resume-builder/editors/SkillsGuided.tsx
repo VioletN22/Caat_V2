@@ -29,38 +29,38 @@ export function skillsToHtml(categories: SkillCategory[]): string {
     .join("");
 }
 
+export type SkillsValue = { categories?: SkillCategory[] };
+
 export default function SkillsGuided({
   value,
   onChange,
 }: {
-  value: Record<string, unknown>;
-  onChange: (next: Record<string, unknown>, html: string) => void;
+  value: SkillsValue;
+  onChange: (next: SkillsValue, html: string) => void;
 }) {
-  const categories: SkillCategory[] = Array.isArray(value.categories)
-    ? (value.categories as SkillCategory[])
-    : [emptyCategory()];
+  const categories: SkillCategory[] = Array.isArray(value.categories) ? value.categories : [emptyCategory()];
 
   function update(index: number, patch: Partial<SkillCategory>) {
     const next = categories.map((c, i) => (i === index ? { ...c, ...patch } : c));
-    const nextValue = { ...value, categories: next };
+    const nextValue: SkillsValue = { ...value, categories: next };
     onChange(nextValue, skillsToHtml(next));
   }
 
   function addCategory() {
     const next = [...categories, emptyCategory()];
-    const nextValue = { ...value, categories: next };
+    const nextValue: SkillsValue = { ...value, categories: next };
     onChange(nextValue, skillsToHtml(next));
   }
 
   function removeCategory(index: number) {
     const next = categories.filter((_, i) => i !== index);
-    const nextValue = { ...value, categories: next };
+    const nextValue: SkillsValue = { ...value, categories: next };
     onChange(nextValue, skillsToHtml(next));
   }
 
   return (
     <div className="space-y-3">
-      <div className="rounded-md border bg-white p-4 space-y-3">
+      <div className="rounded-md border bg-card p-4 space-y-3">
         <div className="grid grid-cols-[160px_1fr_auto] gap-2 text-xs font-medium text-muted-foreground mb-1">
           <span>CATEGORY (optional)</span>
           <span>SKILLS</span>

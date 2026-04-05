@@ -185,6 +185,7 @@ export function ResumePage({
         height: PAGE_HEIGHT_PX,
         padding: PAGE_PADDING_PX,
         boxSizing: "border-box",
+        color: "#000",
       }}
     >
       <div style={{ flex: "1 1 0%", minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
@@ -346,10 +347,9 @@ export default function ResumePreviewPanel({
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const anyDoc = document as any;
-    if (anyDoc.fonts?.ready) {
-      anyDoc.fonts.ready
+    const docFonts = (document as Document & { fonts?: { ready?: Promise<unknown> } }).fonts;
+    if (docFonts?.ready) {
+      docFonts.ready
         .then(() => setFontsReady(true))
         .catch(() => setFontsReady(true));
     } else {
