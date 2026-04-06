@@ -20,9 +20,36 @@ export async function fetchProfile(): Promise<ProfileRow> {
       "id, first_name, last_name, email, birth_date, phone, linkedin, github, avatar_url, nationality, current_location, school_name, curriculum, graduation_year, target_majors, preferred_countries, activities"
     )
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
   if (error) throw new Error(error.message);
+
+  // New user — no profile row yet. Create a blank one and return it.
+  if (!data) {
+    const blank: Omit<ProfileRow, never> = {
+      id: user.id,
+      first_name: null,
+      last_name: null,
+      email: user.email ?? null,
+      birth_date: null,
+      phone: null,
+      linkedin: null,
+      github: null,
+      avatar_url: null,
+      nationality: null,
+      current_location: null,
+      school_name: null,
+      curriculum: null,
+      graduation_year: null,
+      target_majors: null,
+      preferred_countries: null,
+      activities: null,
+    };
+    const { error: insertError } = await supabase.from("profiles").insert(blank);
+    if (insertError) throw new Error(insertError.message);
+    return blank;
+  }
+
   return data as ProfileRow;
 }
 
@@ -55,7 +82,7 @@ export async function fetchActivities(): Promise<string[]> {
     .from("profiles")
     .select("activities")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
   if (error) throw new Error(error.message);
   return (data?.activities as string[] | null) ?? [];
