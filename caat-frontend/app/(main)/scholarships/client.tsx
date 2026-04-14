@@ -236,13 +236,9 @@ export default function ScholarshipsClient({ scholarships }: Props) {
     <div className="p-6">
       <main className="max-w-5xl mx-auto">
 
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight mb-4">
-            Scholarships
-          </h1>
-
+        <div className="mb-6">
           {/* Search bar */}
-          <div className="relative mb-4 max-w-md">
+          <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
               className="pl-9"
