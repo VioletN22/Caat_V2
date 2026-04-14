@@ -20,6 +20,9 @@ export function SignupForm({
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
+  const passwordTooShort = password.length > 0 && password.length < 8
+
+  // Strength criteria
   const hasMinLength = password.length >= 8
   const hasUppercase = /[A-Z]/.test(password)
   const hasNumber = /[0-9]/.test(password)
