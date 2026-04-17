@@ -70,7 +70,7 @@ export function ExtracurricularsCard() {
           ),
         ]);
 
-        setResumes(resumeList);
+        setResumes(resumeList.map((r) => ({ ...r, title: r.title ?? "Untitled" })));
 
         const savedDefault = (profileData as { default_resume_id?: string | null } | null)
           ?.default_resume_id ?? null;
