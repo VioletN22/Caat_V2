@@ -20,6 +20,7 @@ async function validateFileMagicBytes(file: File): Promise<boolean> {
 }
 
 const BUCKET = "user-documents";
+const MAX_DOCUMENTS_PER_USER = 50;
 
 export type DocCategory = "transcripts" | "identity" | "language" | "letters";
 
@@ -64,6 +65,15 @@ export async function uploadDocument(
     error: authError,
   } = await supabase.auth.getUser();
   if (authError || !user) throw new Error("Not authenticated");
+
+  // Enforce per-user document limit (E3)
+  const { count } = await supabase
+    .from("documents")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id);
+  if ((count ?? 0) >= MAX_DOCUMENTS_PER_USER) {
+    throw new Error(`Document limit reached (${MAX_DOCUMENTS_PER_USER} max). Please delete old documents before uploading new ones.`);
+  }
 
   // Validate MIME type against allowlist (E1)
   if (!ALLOWED_MIME_TYPES.has(file.type)) {
@@ -134,7 +144,18 @@ export async function deleteDocument(doc: DocumentRow): Promise<void> {
   } = await supabase.auth.getUser();
   if (authError || !user) throw new Error("Not authenticated");
 
-  await supabase.storage.from(BUCKET).remove([doc.storage_path]);
+  // Re-fetch storage_path from DB scoped to this user — prevents client-supplied
+  // path from targeting another user's storage file (B5).
+  const { data: dbDoc } = await supabase
+    .from("documents")
+    .select("storage_path")
+    .eq("id", doc.id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (dbDoc?.storage_path) {
+    await supabase.storage.from(BUCKET).remove([dbDoc.storage_path]);
+  }
 
   const { error } = await supabase
     .from("documents")
@@ -164,7 +185,18 @@ export async function reuploadDocument(
     throw new Error("File content does not match an allowed file type.");
   }
 
-  const newStoragePath = `${user.id}/${doc.category}/${Date.now()}_${sanitizeFileName(newFile.name)}`;
+  // Re-fetch the existing storage_path from DB scoped to this user — prevents
+  // client-supplied path from removing another user's storage file (B5).
+  const { data: dbDoc } = await supabase
+    .from("documents")
+    .select("storage_path, category")
+    .eq("id", doc.id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!dbDoc) throw new Error("Document not found");
+
+  const newStoragePath = `${user.id}/${dbDoc.category}/${Date.now()}_${sanitizeFileName(newFile.name)}`;
 
   const { error: storageError } = await supabase.storage
     .from(BUCKET)
@@ -192,8 +224,8 @@ export async function reuploadDocument(
     throw new Error(error.message);
   }
 
-  // Remove old file after successful DB update
-  await supabase.storage.from(BUCKET).remove([doc.storage_path]);
+  // Remove old file after successful DB update using DB-verified path
+  await supabase.storage.from(BUCKET).remove([dbDoc.storage_path]);
 
   return data as DocumentRow;
 }

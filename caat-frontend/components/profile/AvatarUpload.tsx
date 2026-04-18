@@ -16,6 +16,24 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const BUCKET = "profile-avatars";
 
+/**
+ * Validates avatar by magic bytes rather than trusting browser-reported MIME type (E4).
+ */
+async function validateAvatarMagicBytes(file: File): Promise<boolean> {
+  const buffer = await file.slice(0, 12).arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  // JPEG: FF D8 FF
+  if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) return true;
+  // PNG: 89 50 4E 47
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) return true;
+  // WebP: RIFF....WEBP (bytes 0-3 = 52 49 46 46, bytes 8-11 = 57 45 42 50)
+  if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+      bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) return true;
+  // GIF: GIF8
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) return true;
+  return false;
+}
+
 interface AvatarUploadProps {
   userId: string;
   avatarUrl: string | null;
@@ -44,6 +62,12 @@ export function AvatarUpload({
     }
     if (file.size > MAX_FILE_SIZE) {
       toast.error("Image must be under 5 MB.");
+      return;
+    }
+
+    const validBytes = await validateAvatarMagicBytes(file);
+    if (!validBytes) {
+      toast.error("File content does not match an allowed image type.");
       return;
     }
 
