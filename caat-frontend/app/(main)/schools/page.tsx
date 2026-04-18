@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/tooltip";
 import { ChevronLeft, ChevronRight, Link as LinkIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { safeHref } from "@/lib/safe-href";
 import SchoolSearch from "./school-search";
 import CountrySelect from "./country-select";
 import SortSelect from "./sort-select";
@@ -92,7 +93,7 @@ export default async function SchoolsPage({
   const { data: schools, count, error } = await query;
 
   if (error) {
-    return <div className="p-10 text-red-500">Error: {error.message}</div>;
+    return <div className="p-10 text-red-500">Unable to load schools. Please try again later.</div>;
   }
 
   const totalPages = count ? Math.ceil(count / itemsPerPage) : 0;
@@ -161,13 +162,13 @@ export default async function SchoolsPage({
                       <Link href={`/schools/${school.id}`}>View Details</Link>
                     </Button>
 
-                    {school.website ? (
+                    {safeHref(school.website) ? (
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button asChild size="icon" variant="outline">
                               <a
-                                href={school.website}
+                                href={safeHref(school.website)!}
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >
