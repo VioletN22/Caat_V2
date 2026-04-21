@@ -38,8 +38,8 @@ export default function TermsPage() {
             <h2 className="text-xl font-bold font-display mb-3 text-black">1. Acceptance of Terms</h2>
             <p>
               By accessing or using CAAT (College Application Assistance Tool) at any of our web
-              addresses or applications ("Service"), you agree to be bound by these Terms of Service
-              ("Terms"). If you do not agree to these Terms, do not use the Service.
+              addresses or applications (&ldquo;Service&rdquo;), you agree to be bound by these Terms of Service
+              (&ldquo;Terms&rdquo;). If you do not agree to these Terms, do not use the Service.
             </p>
             <p className="mt-3">
               We may update these Terms from time to time. Continued use of the Service after any
@@ -83,7 +83,7 @@ export default function TermsPage() {
             <h2 className="text-xl font-bold font-display mb-3 text-black">5. User Content</h2>
             <p>
               You retain full ownership of any content you upload or create within the Service,
-              including essays, documents, and profile information ("User Content"). By uploading
+              including essays, documents, and profile information (&ldquo;User Content&rdquo;). By uploading
               content, you grant CAAT a limited licence to store and display that content solely for
               the purpose of providing the Service to you.
             </p>
@@ -131,7 +131,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-bold font-display mb-3 text-black">9. Disclaimers</h2>
             <p>
-              The Service is provided "as is" and "as available" without warranties of any kind,
+              The Service is provided &ldquo;as is&rdquo; and &ldquo;as available&rdquo; without warranties of any kind,
               express or implied. We do not guarantee that the Service will be uninterrupted,
               error-free, or free of harmful components. We make no guarantees regarding admission
               outcomes or scholarship results.
