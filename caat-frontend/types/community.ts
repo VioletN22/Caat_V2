@@ -33,6 +33,29 @@ export interface PostAuthor {
   avatar_url: string | null;
 }
 
+export interface PrivacySettings {
+  show_graduation_year: boolean;
+  show_school_name: boolean;
+  show_preferred_countries: boolean;
+  show_target_majors: boolean;
+}
+
+export interface CommunityProfileData {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+  graduation_year: number | null;
+  school_name: string | null;
+  preferred_countries: string[];
+  target_majors: string[];
+  follower_count: number;
+  following_count: number;
+  is_following: boolean;
+  is_own_profile: boolean;
+  privacy: PrivacySettings;
+}
+
 export interface CommunityComment {
   id: string;
   post_id: string;

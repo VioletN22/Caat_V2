@@ -51,5 +51,6 @@ export const config = {
     "/scholarships/:path*",
     "/resume-builder/:path*",
     "/communities/:path*",
+    "/communities/profile/:path*",
   ],
 };

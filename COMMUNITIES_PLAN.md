@@ -31,10 +31,10 @@
 - [x] Share post — copy /communities/[postId] to clipboard + single post route
 
 ## Phase 5 — Social graph
-- [ ] Follow/unfollow button — server action on community_follows
-- [ ] Following feed tab — query filters posts to followee IDs only
-- [ ] Community profile page `app/(main)/communities/profile/[userId]/page.tsx`
-- [ ] Privacy controls — toggle which CAAT profile fields show on community profile
+- [x] Follow/unfollow button — useOptimistic toggle, followUserAction / unfollowUserAction
+- [x] Following feed tab — FeedTabs component, fetchPostsAction(followingOnly) filters to followees
+- [x] Community profile page — avatar, name, school, year, countries, majors, stats, posts
+- [x] Privacy controls — PrivacySettingsPanel with checkboxes, updatePrivacySettingsAction
 
 ## Phase 6 — Notifications
 - [ ] Notification insert — server action writes notifications row on like/comment/reply

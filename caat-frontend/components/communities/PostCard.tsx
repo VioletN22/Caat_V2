@@ -2,6 +2,7 @@
 
 import { useOptimistic, useTransition, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
+import Link from "next/link";
 import { Heart, MessageCircle, Bookmark, Share2, CheckCircle, Clock, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -88,7 +89,10 @@ export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved }: 
     <Card className="w-full">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+          <Link
+            href={`/communities/profile/${post.user_id}`}
+            className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity"
+          >
             <Avatar className="size-9 shrink-0">
               <AvatarImage src={post.author?.avatar_url ?? undefined} alt={authorName} />
               <AvatarFallback className="text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
@@ -99,7 +103,7 @@ export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved }: 
               <p className="text-sm font-medium leading-none truncate">{authorName}</p>
               <p className="text-xs text-muted-foreground mt-1">{timestamp}</p>
             </div>
-          </div>
+          </Link>
           <Badge
             variant="outline"
             className={cn("shrink-0 text-[11px]", TOPIC_STYLES[post.topic_tag])}
