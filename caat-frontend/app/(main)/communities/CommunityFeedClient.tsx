@@ -86,6 +86,10 @@ export function CommunityFeedClient({
     if (activeTab === "all") setPosts((prev) => [post, ...prev]);
   }
 
+  function handlePostDeleted(postId: string) {
+    setPosts((prev) => prev.filter((p) => p.id !== postId));
+  }
+
   return (
     <div className="space-y-4">
       <CreatePostForm currentUser={currentUser} onPostCreated={handlePostCreated} />
@@ -119,6 +123,7 @@ export function CommunityFeedClient({
             currentUser={currentUser}
             initialIsLiked={likedIds.has(post.id)}
             initialIsSaved={savedIds.has(post.id)}
+            onPostDeleted={handlePostDeleted}
           />
         ))
       )}

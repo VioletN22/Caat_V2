@@ -3,7 +3,7 @@
 import { useOptimistic, useTransition, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
-import { Heart, MessageCircle, Bookmark, Share2, CheckCircle, Clock, XCircle } from "lucide-react";
+import { Heart, MessageCircle, Bookmark, Share2, CheckCircle, Clock, XCircle, MoreHorizontal, Flag, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,13 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator";
 import { getInitials } from "@/lib/user-utils";
 import { cn } from "@/lib/utils";
-import { toggleLikeAction, toggleSaveAction } from "@/app/(main)/communities/actions";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toggleLikeAction, toggleSaveAction, reportPostAction, deletePostAction } from "@/app/(main)/communities/actions";
 import { CommentsSection } from "./CommentsSection";
 import type { CommunityPost, TopicTag, PostAuthor } from "@/types/community";
 import { TOPIC_LABELS } from "@/types/community";
@@ -37,9 +43,10 @@ interface PostCardProps {
   currentUser: PostAuthor | null;
   initialIsLiked: boolean;
   initialIsSaved: boolean;
+  onPostDeleted?: (postId: string) => void;
 }
 
-export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved }: PostCardProps) {
+export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved, onPostDeleted }: PostCardProps) {
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [commentCount, setCommentCount] = useState(post.comments_count);
   const [, startTransition] = useTransition();
@@ -85,6 +92,25 @@ export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved }: 
     navigator.clipboard.writeText(url).then(() => toast.success("Link copied."));
   }
 
+  function handleReport() {
+    startTransition(async () => {
+      const { error } = await reportPostAction(post.id);
+      if (error) toast.error(error);
+      else toast.success("Post reported. Our team will review it.");
+    });
+  }
+
+  function handleDelete() {
+    startTransition(async () => {
+      const { error } = await deletePostAction(post.id);
+      if (error) { toast.error(error); return; }
+      toast.success("Post deleted.");
+      onPostDeleted?.(post.id);
+    });
+  }
+
+  const isOwnPost = currentUser?.id === post.user_id;
+
   return (
     <Card className="w-full">
       <CardHeader className="pb-3">
@@ -104,12 +130,42 @@ export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved }: 
               <p className="text-xs text-muted-foreground mt-1">{timestamp}</p>
             </div>
           </Link>
-          <Badge
-            variant="outline"
-            className={cn("shrink-0 text-[11px]", TOPIC_STYLES[post.topic_tag])}
-          >
-            {TOPIC_LABELS[post.topic_tag]}
-          </Badge>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Badge
+              variant="outline"
+              className={cn("text-[11px]", TOPIC_STYLES[post.topic_tag])}
+            >
+              {TOPIC_LABELS[post.topic_tag]}
+            </Badge>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground">
+                  <MoreHorizontal className="size-4" />
+                  <span className="sr-only">More options</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {isOwnPost ? (
+                  <DropdownMenuItem
+                    className="text-red-600 focus:text-red-600 gap-2"
+                    onClick={handleDelete}
+                  >
+                    <Trash2 className="size-4" />
+                    Delete post
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    className="gap-2"
+                    onClick={handleReport}
+                  >
+                    <Flag className="size-4" />
+                    Report post
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </CardHeader>
 

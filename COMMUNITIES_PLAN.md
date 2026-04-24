@@ -42,9 +42,10 @@
 - [x] Notification dropdown — list with actor, message, post snippet, timestamp; marks all read on open
 
 ## Phase 7 — Moderation
-- [ ] Report button — post dropdown, server action inserts community_reports row
-- [ ] Auto-hide trigger — Supabase DB function sets is_hidden = true at 3 unique reports
-- [ ] Profanity filter — word-list check in server action before insert
+- [x] Report button — kebab menu on PostCard, reportPostAction upserts to community_reports
+- [x] Delete post — kebab menu (own posts only), deletePostAction + removes from feed instantly
+- [x] Auto-hide trigger — already in DB migration (check_post_reports fires at 3 reports)
+- [x] Profanity filter — word-list check in createPostAction and addCommentAction before insert
 
 ---
 

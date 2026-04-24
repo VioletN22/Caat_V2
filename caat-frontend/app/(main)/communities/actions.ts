@@ -1,6 +1,7 @@
 "use server";
 
 import { createSupabaseServer } from "@/lib/supabase-server";
+import { containsProfanity } from "@/lib/profanity-filter";
 import type { CommunityPost, CommunityComment, NotificationItem, PostAuthor, TopicTag, ResultCard, ScoreCard, PrivacySettings, CommunityProfileData } from "@/types/community";
 
 const VALID_TOPICS: TopicTag[] = [
@@ -28,6 +29,7 @@ export async function createPostAction(input: {
   if (!content) return { post: null, error: "Post cannot be empty" };
   if (content.length > 2000) return { post: null, error: "Post exceeds 2000 characters" };
   if (!VALID_TOPICS.includes(input.topic_tag)) return { post: null, error: "Invalid topic" };
+  if (containsProfanity(content)) return { post: null, error: "Post contains prohibited language" };
 
   const { data: row, error: insertError } = await supabase
     .from("community_posts")
@@ -414,6 +416,7 @@ export async function addCommentAction(
   const text = content.trim();
   if (!text) return { comment: null, error: "Comment cannot be empty" };
   if (text.length > 1000) return { comment: null, error: "Comment too long" };
+  if (containsProfanity(text)) return { comment: null, error: "Comment contains prohibited language" };
 
   const { data: row, error: insertError } = await supabase
     .from("community_comments")
@@ -554,4 +557,37 @@ export async function markNotificationsReadAction(): Promise<void> {
     .update({ is_read: true })
     .eq("user_id", user.id)
     .eq("is_read", false);
+}
+
+// ─── Moderation ───────────────────────────────────────────────────────────────
+
+export async function reportPostAction(
+  postId: string
+): Promise<{ error: string | null }> {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  // UNIQUE (post_id, reporter_id) — silently ignore duplicate reports
+  await supabase
+    .from("community_reports")
+    .upsert({ post_id: postId, reporter_id: user.id });
+
+  return { error: null };
+}
+
+export async function deletePostAction(
+  postId: string
+): Promise<{ error: string | null }> {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  const { error } = await supabase
+    .from("community_posts")
+    .delete()
+    .eq("id", postId)
+    .eq("user_id", user.id);
+
+  return { error: error?.message ?? null };
 }
