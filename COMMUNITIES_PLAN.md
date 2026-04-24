@@ -37,9 +37,9 @@
 - [x] Privacy controls — PrivacySettingsPanel with checkboxes, updatePrivacySettingsAction
 
 ## Phase 6 — Notifications
-- [ ] Notification insert — server action writes notifications row on like/comment/reply
-- [ ] Notification bell — nav component, Realtime subscription on notifications where user_id = me
-- [ ] Notification dropdown — list recent, click navigates to post, marks as read
+- [x] Notification insert — like inserts for post author, comment/reply inserts for post + parent comment author
+- [x] Notification bell — Realtime subscription (INSERT on notifications), live unread badge
+- [x] Notification dropdown — list with actor, message, post snippet, timestamp; marks all read on open
 
 ## Phase 7 — Moderation
 - [ ] Report button — post dropdown, server action inserts community_reports row

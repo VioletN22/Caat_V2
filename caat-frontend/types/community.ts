@@ -33,6 +33,17 @@ export interface PostAuthor {
   avatar_url: string | null;
 }
 
+export interface NotificationItem {
+  id: string;
+  type: "like" | "comment" | "reply";
+  actor_name: string;
+  actor_avatar: string | null;
+  post_id: string;
+  post_snippet: string;
+  is_read: boolean;
+  created_at: string;
+}
+
 export interface PrivacySettings {
   show_graduation_year: boolean;
   show_school_name: boolean;

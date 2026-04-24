@@ -1,7 +1,7 @@
 "use server";
 
 import { createSupabaseServer } from "@/lib/supabase-server";
-import type { CommunityPost, CommunityComment, PostAuthor, TopicTag, ResultCard, ScoreCard, PrivacySettings, CommunityProfileData } from "@/types/community";
+import type { CommunityPost, CommunityComment, NotificationItem, PostAuthor, TopicTag, ResultCard, ScoreCard, PrivacySettings, CommunityProfileData } from "@/types/community";
 
 const VALID_TOPICS: TopicTag[] = [
   "APPLICATION_RESULTS",
@@ -304,6 +304,22 @@ export async function toggleLikeAction(
   await supabase
     .from("community_likes")
     .insert({ post_id: postId, user_id: user.id });
+
+  // Notify post author (not if self-like)
+  const { data: post } = await supabase
+    .from("community_posts")
+    .select("user_id")
+    .eq("id", postId)
+    .single();
+  if (post && post.user_id !== user.id) {
+    await supabase.from("notifications").insert({
+      user_id: post.user_id,
+      actor_id: user.id,
+      type: "like",
+      post_id: postId,
+    });
+  }
+
   return { liked: true, error: null };
 }
 
@@ -418,6 +434,45 @@ export async function addCommentAction(
     .eq("id", user.id)
     .single();
 
+  // Notify post author if not the commenter
+  const { data: post } = await supabase
+    .from("community_posts")
+    .select("user_id")
+    .eq("id", postId)
+    .single();
+
+  if (post && post.user_id !== user.id) {
+    await supabase.from("notifications").insert({
+      user_id: post.user_id,
+      actor_id: user.id,
+      type: parentCommentId ? "reply" : "comment",
+      post_id: postId,
+      comment_id: row.id,
+    });
+  }
+
+  // For replies: also notify the parent comment author if different from post author and self
+  if (parentCommentId) {
+    const { data: parentComment } = await supabase
+      .from("community_comments")
+      .select("user_id")
+      .eq("id", parentCommentId)
+      .single();
+    if (
+      parentComment &&
+      parentComment.user_id !== user.id &&
+      parentComment.user_id !== post?.user_id
+    ) {
+      await supabase.from("notifications").insert({
+        user_id: parentComment.user_id,
+        actor_id: user.id,
+        type: "reply",
+        post_id: postId,
+        comment_id: row.id,
+      });
+    }
+  }
+
   const comment: CommunityComment = {
     ...row,
     author: profile ?? null,
@@ -425,4 +480,78 @@ export async function addCommentAction(
   };
 
   return { comment, error: null };
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export async function fetchNotificationsAction(): Promise<{
+  notifications: NotificationItem[];
+  unreadCount: number;
+}> {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { notifications: [], unreadCount: 0 };
+
+  const { data: rows } = await supabase
+    .from("notifications")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (!rows?.length) return { notifications: [], unreadCount: 0 };
+
+  const actorIds = [...new Set(rows.map((r) => r.actor_id))];
+  const postIds  = [...new Set(rows.map((r) => r.post_id))];
+
+  const [profilesResult, postsResult] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, first_name, last_name, avatar_url")
+      .in("id", actorIds),
+    supabase
+      .from("community_posts")
+      .select("id, content")
+      .in("id", postIds),
+  ]);
+
+  const actorMap = new Map(
+    (profilesResult.data ?? []).map((p) => [
+      p.id,
+      {
+        name: [p.first_name, p.last_name].filter(Boolean).join(" ") || "Someone",
+        avatar: p.avatar_url as string | null,
+      },
+    ])
+  );
+  const postMap = new Map(
+    (postsResult.data ?? []).map((p) => [p.id, (p.content as string).slice(0, 60)])
+  );
+
+  const notifications: NotificationItem[] = rows.map((row) => ({
+    id: row.id,
+    type: row.type as NotificationItem["type"],
+    actor_name: actorMap.get(row.actor_id)?.name ?? "Someone",
+    actor_avatar: actorMap.get(row.actor_id)?.avatar ?? null,
+    post_id: row.post_id,
+    post_snippet: postMap.get(row.post_id) ?? "",
+    is_read: row.is_read,
+    created_at: row.created_at,
+  }));
+
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
+
+  return { notifications, unreadCount };
+}
+
+export async function markNotificationsReadAction(): Promise<void> {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  await supabase
+    .from("notifications")
+    .update({ is_read: true })
+    .eq("user_id", user.id)
+    .eq("is_read", false);
 }
