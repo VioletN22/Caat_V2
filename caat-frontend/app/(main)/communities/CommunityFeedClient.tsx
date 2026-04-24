@@ -1,16 +1,17 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useInView } from "react-intersection-observer";
-import { useEffect } from "react";
 import { PostCard } from "@/components/communities/PostCard";
+import { CreatePostForm } from "@/components/communities/CreatePostForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchPostsAction } from "./actions";
-import type { CommunityPost } from "@/types/community";
+import type { CommunityPost, PostAuthor } from "@/types/community";
 
 interface CommunityFeedClientProps {
   initialPosts: CommunityPost[];
   initialCursor: string | null;
+  currentUser: PostAuthor | null;
 }
 
 function PostSkeleton() {
@@ -30,7 +31,11 @@ function PostSkeleton() {
   );
 }
 
-export function CommunityFeedClient({ initialPosts, initialCursor }: CommunityFeedClientProps) {
+export function CommunityFeedClient({
+  initialPosts,
+  initialCursor,
+  currentUser,
+}: CommunityFeedClientProps) {
   const [posts, setPosts] = useState<CommunityPost[]>(initialPosts);
   const [cursor, setCursor] = useState<string | null>(initialCursor);
   const [isPending, startTransition] = useTransition();
@@ -47,20 +52,22 @@ export function CommunityFeedClient({ initialPosts, initialCursor }: CommunityFe
     });
   }, [inView, cursor, isPending]);
 
-  if (posts.length === 0 && !isPending) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-        <p className="text-lg font-medium">No posts yet</p>
-        <p className="text-sm mt-1">Be the first to share your experience.</p>
-      </div>
-    );
+  function handlePostCreated(post: CommunityPost) {
+    setPosts((prev) => [post, ...prev]);
   }
 
   return (
     <div className="space-y-4">
-      {posts.map((post) => (
-        <PostCard key={post.id} post={post} />
-      ))}
+      <CreatePostForm currentUser={currentUser} onPostCreated={handlePostCreated} />
+
+      {posts.length === 0 && !isPending ? (
+        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+          <p className="text-lg font-medium">No posts yet</p>
+          <p className="text-sm mt-1">Be the first to share your experience.</p>
+        </div>
+      ) : (
+        posts.map((post) => <PostCard key={post.id} post={post} />)
+      )}
 
       {/* Infinite scroll sentinel */}
       {cursor && (

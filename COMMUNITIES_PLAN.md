@@ -18,10 +18,10 @@
 - [x] Feed client wrapper — receives initial posts, intersection observer triggers load more, appends pages
 
 ## Phase 3 — Post creation
-- [ ] `CreatePostForm` — TipTap editor (plain text, 2000 char limit), topic tag dropdown, server action
-- [ ] `ResultCard` component — Accepted / Waitlisted / Rejected + university name, attaches to post
-- [ ] `ScoreCard` component — SAT / ACT / IB + score, attaches to post
-- [ ] Attach CAAT resume link to post — dropdown from user's saved resumes
+- [x] `CreatePostForm` — plain text textarea (2000 char limit), topic tag dropdown, server action
+- [x] `ResultCard` inputs — Accepted / Waitlisted / Rejected + university name + program, inline toggle
+- [x] `ScoreCard` inputs — exam select + score input, inline toggle
+- [ ] Attach CAAT resume link to post — dropdown from user's saved resumes (deferred to Phase 5)
 
 ## Phase 4 — Engagement
 - [ ] Like button — React Query optimistic mutation, upsert/delete community_likes, Realtime count sync

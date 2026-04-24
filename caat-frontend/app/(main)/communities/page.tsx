@@ -6,6 +6,9 @@ import { CommunityFeedClient } from "./CommunityFeedClient";
 export default async function CommunitiesPage() {
   const supabase = await createSupabaseServer();
 
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Fetch initial 20 posts
   const { data: rows, error } = await supabase
     .from("community_posts")
     .select("*, likes:community_likes(count), comments:community_comments(count)")
@@ -24,13 +27,15 @@ export default async function CommunitiesPage() {
     );
   }
 
-  // Fetch author profiles
-  const userIds = [...new Set((rows ?? []).map((r) => r.user_id))];
-  const { data: profiles } = userIds.length
+  // Fetch all author profiles for this batch + current user's profile in one query
+  const postUserIds = [...new Set((rows ?? []).map((r) => r.user_id))];
+  const allUserIds = user ? [...new Set([...postUserIds, user.id])] : postUserIds;
+
+  const { data: profiles } = allUserIds.length
     ? await supabase
         .from("profiles")
         .select("id, first_name, last_name, avatar_url")
-        .in("id", userIds)
+        .in("id", allUserIds)
     : { data: [] };
 
   const profileMap = new Map<string, PostAuthor>(
@@ -47,6 +52,8 @@ export default async function CommunitiesPage() {
   const initialCursor =
     posts.length === 20 ? posts[posts.length - 1].created_at : null;
 
+  const currentUser = user ? (profileMap.get(user.id) ?? null) : null;
+
   return (
     <>
       <PageHeader title="Communities" />
@@ -55,6 +62,7 @@ export default async function CommunitiesPage() {
           <CommunityFeedClient
             initialPosts={posts}
             initialCursor={initialCursor}
+            currentUser={currentUser}
           />
         </main>
       </div>
