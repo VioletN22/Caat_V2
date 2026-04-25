@@ -684,6 +684,31 @@ export async function deletePostAction(postId: string): Promise<{ error: string 
   return { error: error?.message ?? null };
 }
 
+// ─── Topic Stats (for sidebar) ───────────────────────────────────────────────
+
+export async function fetchTopicStatsAction(): Promise<{ tag: TopicTag; count: number }[]> {
+  const supabase = await createSupabaseServer();
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data } = await supabase
+    .from("community_posts")
+    .select("topic_tag")
+    .eq("is_hidden", false)
+    .gte("created_at", sevenDaysAgo);
+
+  if (!data?.length) return [];
+
+  const counts = new Map<TopicTag, number>();
+  for (const row of data) {
+    const tag = row.topic_tag as TopicTag;
+    counts.set(tag, (counts.get(tag) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([tag, count]) => ({ tag, count }));
+}
+
 // ─── Comment Likes ────────────────────────────────────────────────────────────
 
 export async function toggleCommentLikeAction(commentId: string): Promise<{ liked: boolean; error: string | null }> {

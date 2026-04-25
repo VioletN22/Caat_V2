@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { createSupabaseServer } from "@/lib/supabase-server";
 import { fetchPostsAction } from "./actions";
 import { CommunityFeedClient } from "./CommunityFeedClient";
+import { CommunitySidebar } from "@/components/communities/CommunitySidebar";
 import type { PostAuthor } from "@/types/community";
 
 export default async function CommunitiesPage() {
@@ -31,15 +32,23 @@ export default async function CommunitiesPage() {
     <>
       <PageHeader title="Communities" />
       <div className="p-6">
-        <main className="max-w-2xl mx-auto">
-          <CommunityFeedClient
-            initialPosts={posts}
-            initialCursor={nextCursor}
-            currentUser={currentUser}
-            initialLikedIds={likedIds}
-            initialSavedIds={savedIds}
-          />
-        </main>
+        <div className="max-w-5xl mx-auto flex gap-6 items-start">
+          {/* Feed */}
+          <main className="flex-1 min-w-0">
+            <CommunityFeedClient
+              initialPosts={posts}
+              initialCursor={nextCursor}
+              currentUser={currentUser}
+              initialLikedIds={likedIds}
+              initialSavedIds={savedIds}
+            />
+          </main>
+
+          {/* Sidebar */}
+          <aside className="w-72 shrink-0 sticky top-6 hidden lg:block">
+            <CommunitySidebar currentUser={currentUser} />
+          </aside>
+        </div>
       </div>
     </>
   );
