@@ -172,7 +172,8 @@ export async function createPostAction(input: {
   if (authError || !user) return { post: null, error: "Not signed in" };
 
   const content = input.content.trim();
-  if (!content) return { post: null, error: "Post cannot be empty" };
+  const hasAttachment = !!(input.resume_id || input.score_card || input.result_card || input.poll_options?.length);
+  if (!content && !hasAttachment) return { post: null, error: "Add some text, a score, result, resume, or poll before posting" };
   if (content.length > 2000) return { post: null, error: "Post exceeds 2000 characters" };
   if (!VALID_TOPICS.includes(input.topic_tag)) return { post: null, error: "Invalid topic" };
   if (containsProfanity(content)) return { post: null, error: "Post contains prohibited language" };

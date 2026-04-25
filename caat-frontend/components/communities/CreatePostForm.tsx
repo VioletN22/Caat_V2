@@ -100,7 +100,8 @@ export function CreatePostForm({ currentUser, onPostCreated }: CreatePostFormPro
   }
 
   function handleSubmit() {
-    if (!content.trim()) return toast.error("Write something before posting.");
+    const hasAttachment = showScore || showResult || (showResume && selectedResumeId) || showPoll;
+    if (!content.trim() && !hasAttachment) return toast.error("Add some text, a score, result, resume, or poll.");
     if (!topicTag) return toast.error("Select a topic for your post.");
     if (showResult && (!resultOutcome || !resultUniversity.trim())) return toast.error("Fill in the result card or remove it.");
     if (showScore && (!scoreExam || !scoreValue.trim())) return toast.error("Fill in the score card or remove it.");
@@ -381,7 +382,7 @@ export function CreatePostForm({ currentUser, onPostCreated }: CreatePostFormPro
 
       <CardFooter className="pt-3 gap-2 justify-end border-t">
         <Button variant="ghost" size="sm" onClick={reset} disabled={isPending}>Cancel</Button>
-        <Button size="sm" onClick={handleSubmit} disabled={isPending || isOverLimit || !content.trim() || !topicTag}>
+        <Button size="sm" onClick={handleSubmit} disabled={isPending || isOverLimit || (!content.trim() && !showScore && !showResult && !(showResume && selectedResumeId) && !showPoll) || !topicTag}>
           {isPending ? "Posting…" : "Post"}
         </Button>
       </CardFooter>
