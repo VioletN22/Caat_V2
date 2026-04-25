@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { Bell, Heart, MessageCircle, CornerDownRight, UserPlus } from "lucide-react";
+import { Bell, Heart, MessageCircle, CornerDownRight, UserPlus, DoorOpen } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator,
@@ -15,7 +15,8 @@ const TYPE_CONFIG: Record<NotificationItem["type"], { icon: React.ElementType; l
   like:    { icon: Heart,           label: "liked your post" },
   comment: { icon: MessageCircle,   label: "commented on your post" },
   reply:   { icon: CornerDownRight, label: "replied to your comment" },
-  follow:  { icon: UserPlus,        label: "started following you" },
+  follow:       { icon: UserPlus,        label: "started following you" },
+  join_request: { icon: DoorOpen,        label: "requested to join your community" },
 };
 
 export default async function NotificationsPage() {

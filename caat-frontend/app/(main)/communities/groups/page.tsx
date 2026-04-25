@@ -62,7 +62,7 @@ export default async function GroupsDiscoverPage() {
                         <p className="text-xs text-muted-foreground font-mono">c/{group.slug}</p>
                       </div>
                     </Link>
-                    <GroupJoinButton groupId={group.id} initialIsMember={group.is_member} isOwner={group.is_owner} />
+                    <GroupJoinButton groupId={group.id} initialIsMember={group.is_member} isOwner={group.is_owner} isPrivate={group.is_private} initialHasRequested={group.has_requested} />
                   </div>
 
                   {group.description && (

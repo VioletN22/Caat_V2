@@ -1,14 +1,16 @@
 import Link from "next/link";
-import { Users, TrendingUp } from "lucide-react";
+import { Users, TrendingUp, Hash, Plus, Lock, Globe } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import { FollowButton } from "./FollowButton";
 import { getInitials } from "@/lib/user-utils";
 import { createSupabaseServer } from "@/lib/supabase-server";
 import {
   fetchRecommendedUsersAction,
   fetchTopicStatsAction,
+  fetchMyGroupsAction,
 } from "@/app/(main)/communities/actions";
 import { TOPIC_LABELS } from "@/types/community";
 import type { PostAuthor, TopicTag } from "@/types/community";
@@ -30,7 +32,7 @@ interface CommunitySidebarProps {
 export async function CommunitySidebar({ currentUser }: CommunitySidebarProps) {
   const supabase = await createSupabaseServer();
 
-  const [topicStats, recommendedUsers, followerResult, followingResult, postCountResult] =
+  const [topicStats, recommendedUsers, followerResult, followingResult, postCountResult, myGroupsResult] =
     await Promise.all([
       fetchTopicStatsAction(),
       fetchRecommendedUsersAction().then((r) => r.users),
@@ -43,12 +45,14 @@ export async function CommunitySidebar({ currentUser }: CommunitySidebarProps) {
       currentUser
         ? supabase.from("community_posts").select("id", { count: "exact", head: true }).eq("user_id", currentUser.id).eq("is_hidden", false)
         : Promise.resolve({ count: 0 }),
+      fetchMyGroupsAction(),
     ]);
 
   const followerCount  = (followerResult as { count: number | null }).count ?? 0;
   const followingCount = (followingResult as { count: number | null }).count ?? 0;
   const postCount      = (postCountResult as { count: number | null }).count ?? 0;
   const weeklyTotal    = topicStats.reduce((sum, t) => sum + t.count, 0);
+  const myGroups       = myGroupsResult.groups;
   const displayName    = currentUser
     ? [currentUser.first_name, currentUser.last_name].filter(Boolean).join(" ") || "Anonymous"
     : null;
@@ -91,6 +95,67 @@ export async function CommunitySidebar({ currentUser }: CommunitySidebarProps) {
           </div>
         </div>
       )}
+
+      {/* My Communities */}
+      <div className="rounded-xl border p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Hash className="size-3.5 text-muted-foreground" />
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">My Communities</p>
+          </div>
+          <Link href="/communities/groups">
+            <Button variant="ghost" size="icon" className="size-5 text-muted-foreground hover:text-foreground">
+              <Plus className="size-3.5" />
+            </Button>
+          </Link>
+        </div>
+
+        {myGroups.length === 0 ? (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">You haven&apos;t joined any communities yet.</p>
+            <Link
+              href="/communities/groups"
+              className="text-xs font-medium text-foreground underline-offset-4 hover:underline"
+            >
+              Browse communities →
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {myGroups.slice(0, 6).map((group) => (
+              <Link
+                key={group.id}
+                href={`/communities/c/${group.slug}`}
+                className="flex items-center gap-2 rounded-md px-1.5 py-1 text-sm hover:bg-muted/50 transition-colors group/item"
+              >
+                <div className="size-6 rounded-full bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-600 dark:text-zinc-300 shrink-0">
+                  {group.name.slice(0, 2).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="truncate text-xs font-medium group-hover/item:text-foreground">{group.name}</p>
+                </div>
+                {group.is_private && <Lock className="size-2.5 text-muted-foreground/60 shrink-0" />}
+              </Link>
+            ))}
+            {myGroups.length > 6 && (
+              <Link
+                href="/communities/groups"
+                className="block px-1.5 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                +{myGroups.length - 6} more
+              </Link>
+            )}
+            <Separator className="my-1" />
+            <Link
+              href="/communities/groups"
+              className="flex items-center gap-1.5 px-1.5 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Globe className="size-3" />
+              Browse all communities
+            </Link>
+          </div>
+        )}
+      </div>
 
       {/* Who to follow */}
       {recommendedUsers.length > 0 && (

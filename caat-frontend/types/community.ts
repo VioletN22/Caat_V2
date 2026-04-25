@@ -41,7 +41,7 @@ export interface PostAuthor {
 
 export interface NotificationItem {
   id: string;
-  type: "like" | "comment" | "reply" | "follow";
+  type: "like" | "comment" | "reply" | "follow" | "join_request";
   actor_name: string;
   actor_avatar: string | null;
   post_id: string | null;
@@ -99,6 +99,7 @@ export interface CommunityGroup {
   post_count: number;
   is_member: boolean;
   is_owner: boolean;
+  has_requested?: boolean;
   created_at: string;
 }
 

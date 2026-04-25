@@ -925,13 +925,15 @@ export async function fetchGroupAction(slug: string): Promise<{ group: Community
   if (!row) return { group: null, error: "Community not found" };
 
   const groupId = row.id as string;
-  const [memberCountRes, postCountRes, myMemberRes] = await Promise.all([
+  const [memberCountRes, postCountRes, myMemberRes, requestRes] = await Promise.all([
     supabase.from("community_group_members").select("user_id", { count: "exact", head: true }).eq("group_id", groupId),
     supabase.from("community_posts").select("id", { count: "exact", head: true }).eq("group_id", groupId).eq("is_hidden", false),
     user ? supabase.from("community_group_members").select("role").eq("group_id", groupId).eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
+    user ? supabase.from("community_group_requests").select("status").eq("group_id", groupId).eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
 
   const myRole = (myMemberRes.data as { role: string } | null)?.role ?? null;
+  const requestStatus = (requestRes.data as { status: string } | null)?.status ?? null;
 
   return {
     group: {
@@ -946,9 +948,44 @@ export async function fetchGroupAction(slug: string): Promise<{ group: Community
       post_count: postCountRes.count ?? 0,
       is_member: !!myRole,
       is_owner: myRole === "owner",
+      has_requested: requestStatus === "pending",
     },
     error: null,
   };
+}
+
+export async function requestJoinGroupAction(groupId: string): Promise<{ error: string | null }> {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  // Check if already a member
+  const { data: existing } = await supabase
+    .from("community_group_members")
+    .select("role")
+    .eq("group_id", groupId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (existing) return { error: null };
+
+  // Upsert request
+  await supabase.from("community_group_requests").upsert({ group_id: groupId, user_id: user.id, status: "pending" });
+
+  // Notify group owner
+  const { data: groupRow } = await supabase.from("community_groups").select("creator_id, name").eq("id", groupId).maybeSingle();
+  if (groupRow?.creator_id && groupRow.creator_id !== user.id) {
+    const { data: profile } = await supabase.from("profiles").select("first_name, last_name").eq("id", user.id).maybeSingle();
+    const requesterName = profile ? [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "Someone" : "Someone";
+    await supabase.from("notifications").insert({
+      user_id: groupRow.creator_id,
+      actor_id: user.id,
+      type: "join_request",
+      post_id: null,
+      message: `${requesterName} requested to join ${groupRow.name as string}`,
+    });
+  }
+
+  return { error: null };
 }
 
 export async function joinGroupAction(groupId: string): Promise<{ error: string | null }> {
