@@ -59,7 +59,7 @@ export default async function SinglePostPage({ params }: Props) {
 
   return (
     <>
-      <PageHeader title="Communities" />
+      <PageHeader title="Community Campus" />
       <div className="p-6">
         <main className="max-w-2xl mx-auto">
           <PostCard

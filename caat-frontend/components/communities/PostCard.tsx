@@ -317,10 +317,13 @@ export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved, on
 
         {/* Score card */}
         {post.score_card && (
-          <div className="inline-flex items-center gap-2 rounded-md border px-3 py-2 bg-muted/40">
-            <span className="text-xs font-medium text-muted-foreground">{post.score_card.exam}</span>
-            <Separator orientation="vertical" className="h-3" />
-            <span className="text-sm font-semibold">{post.score_card.score}</span>
+          <div className="rounded-xl border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-purple-100/60 dark:from-purple-950/40 dark:to-purple-900/20 p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-purple-500 dark:text-purple-400 mb-1">
+              {post.score_card.exam} Score
+            </p>
+            <p className="text-5xl font-bold text-purple-700 dark:text-purple-300 leading-none">
+              {post.score_card.score}
+            </p>
           </div>
         )}
 

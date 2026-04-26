@@ -1,9 +1,10 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createSupabaseServer } from "@/lib/supabase-server";
 import { containsProfanity } from "@/lib/profanity-filter";
 import type {
-  CommunityPost, CommunityComment, NotificationItem, PostAuthor,
+  CommunityPost, CommunityComment, CommunityGroup, NotificationItem, PostAuthor,
   TopicTag, ResultCard, ScoreCard, PollOption, PrivacySettings, CommunityProfileData,
 } from "@/types/community";
 
@@ -82,6 +83,7 @@ async function enrichPosts(
       user_id: row.user_id as string,
       content: row.content as string,
       topic_tag: row.topic_tag as TopicTag,
+      group_id: (row.group_id as string | null) ?? null,
       university_id: (row.university_id as number | null) ?? null,
       school_name: row.university_id ? (schoolNameMap.get(row.university_id as number) ?? null) : null,
       major_id: (row.major_id as string | null) ?? null,
@@ -166,13 +168,15 @@ export async function createPostAction(input: {
   is_anonymous?: boolean;
   university_id?: number | null;
   poll_options?: PollOption[] | null;
+  group_id?: string | null;
 }): Promise<{ post: CommunityPost | null; error: string | null }> {
   const supabase = await createSupabaseServer();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) return { post: null, error: "Not signed in" };
 
   const content = input.content.trim();
-  if (!content) return { post: null, error: "Post cannot be empty" };
+  const hasAttachment = !!(input.resume_id || input.score_card || input.result_card || input.poll_options?.length);
+  if (!content && !hasAttachment) return { post: null, error: "Add some text, a score, result, resume, or poll before posting" };
   if (content.length > 2000) return { post: null, error: "Post exceeds 2000 characters" };
   if (!VALID_TOPICS.includes(input.topic_tag)) return { post: null, error: "Invalid topic" };
   if (containsProfanity(content)) return { post: null, error: "Post contains prohibited language" };
@@ -199,6 +203,7 @@ export async function createPostAction(input: {
       is_anonymous: input.is_anonymous ?? false,
       university_id: input.university_id ?? null,
       poll_options: input.poll_options ?? null,
+      group_id: input.group_id ?? null,
     })
     .select("*, likes:community_likes(count), comments:community_comments(count)")
     .single();
@@ -274,6 +279,7 @@ export async function fetchPostsAction(
     .from("community_posts")
     .select("*, likes:community_likes(count), comments:community_comments(count)")
     .eq("is_hidden", false)
+    .is("group_id", null)
     .order("created_at", { ascending: false })
     .limit(20);
 
@@ -684,6 +690,31 @@ export async function deletePostAction(postId: string): Promise<{ error: string 
   return { error: error?.message ?? null };
 }
 
+// ─── Topic Stats (for sidebar) ───────────────────────────────────────────────
+
+export async function fetchTopicStatsAction(): Promise<{ tag: TopicTag; count: number }[]> {
+  const supabase = await createSupabaseServer();
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data } = await supabase
+    .from("community_posts")
+    .select("topic_tag")
+    .eq("is_hidden", false)
+    .gte("created_at", sevenDaysAgo);
+
+  if (!data?.length) return [];
+
+  const counts = new Map<TopicTag, number>();
+  for (const row of data) {
+    const tag = row.topic_tag as TopicTag;
+    counts.set(tag, (counts.get(tag) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([tag, count]) => ({ tag, count }));
+}
+
 // ─── Comment Likes ────────────────────────────────────────────────────────────
 
 export async function toggleCommentLikeAction(commentId: string): Promise<{ liked: boolean; error: string | null }> {
@@ -805,6 +836,238 @@ export async function fetchRecommendedUsersAction(): Promise<{ users: PostAuthor
 }
 
 // ─── Pin Post ─────────────────────────────────────────────────────────────────
+
+// ─── Community Groups ─────────────────────────────────────────────────────────
+
+function slugify(name: string): string {
+  return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50);
+}
+
+export async function createGroupAction(input: {
+  name: string;
+  description?: string;
+  is_private: boolean;
+}): Promise<{ group: CommunityGroup | null; error: string | null }> {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { group: null, error: "Not signed in" };
+
+  const name = input.name.trim();
+  if (!name || name.length < 3) return { group: null, error: "Name must be at least 3 characters" };
+  if (name.length > 50) return { group: null, error: "Name too long" };
+
+  const slug = slugify(name);
+  if (slug.length < 3) return { group: null, error: "Name produces an invalid slug" };
+
+  const { data: existing } = await supabase.from("community_groups").select("id").eq("slug", slug).maybeSingle();
+  if (existing) return { group: null, error: "A community with that name already exists" };
+
+  const { data: row, error: insertError } = await supabase
+    .from("community_groups")
+    .insert({ name, slug, description: input.description?.trim() || null, creator_id: user.id, is_private: input.is_private })
+    .select("*").single();
+
+  if (insertError || !row) return { group: null, error: "Failed to create community" };
+
+  // Creator auto-joins as owner
+  await supabase.from("community_group_members").insert({ group_id: row.id, user_id: user.id, role: "owner" });
+
+  revalidatePath("/communities/groups");
+  revalidatePath("/communities");
+
+  return {
+    group: { ...(row as CommunityGroup), member_count: 1, post_count: 0, is_member: true, is_owner: true },
+    error: null,
+  };
+}
+
+export async function fetchGroupsAction(query?: string): Promise<{ groups: CommunityGroup[] }> {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let q = supabase.from("community_groups").select("*").eq("is_private", false).order("created_at", { ascending: false }).limit(50);
+  if (query?.trim()) q = q.ilike("name", `%${query.trim()}%`);
+
+  const { data: rows } = await q;
+  if (!rows?.length) return { groups: [] };
+
+  const groupIds = rows.map((r) => r.id as string);
+  const [memberCountsRes, postCountsRes, myMembershipsRes] = await Promise.all([
+    supabase.from("community_group_members").select("group_id").in("group_id", groupIds),
+    supabase.from("community_posts").select("group_id").eq("is_hidden", false).in("group_id", groupIds),
+    user ? supabase.from("community_group_members").select("group_id, role").eq("user_id", user.id).in("group_id", groupIds) : Promise.resolve({ data: [] }),
+  ]);
+
+  const memberMap = new Map<string, number>();
+  for (const r of (memberCountsRes.data ?? []) as { group_id: string }[]) memberMap.set(r.group_id, (memberMap.get(r.group_id) ?? 0) + 1);
+  const postMap = new Map<string, number>();
+  for (const r of (postCountsRes.data ?? []) as { group_id: string }[]) postMap.set(r.group_id, (postMap.get(r.group_id) ?? 0) + 1);
+  const myMemberMap = new Map(((myMembershipsRes.data ?? []) as { group_id: string; role: string }[]).map((r) => [r.group_id, r.role]));
+
+  return {
+    groups: rows.map((r) => ({
+      id: r.id as string, slug: r.slug as string, name: r.name as string,
+      description: (r.description as string | null) ?? null,
+      creator_id: (r.creator_id as string | null) ?? null,
+      is_private: r.is_private as boolean,
+      icon_url: (r.icon_url as string | null) ?? null,
+      banner_url: (r.banner_url as string | null) ?? null,
+      created_at: r.created_at as string,
+      member_count: memberMap.get(r.id as string) ?? 0,
+      post_count: postMap.get(r.id as string) ?? 0,
+      is_member: myMemberMap.has(r.id as string),
+      is_owner: myMemberMap.get(r.id as string) === "owner",
+    })),
+  };
+}
+
+export async function fetchGroupAction(slug: string): Promise<{ group: CommunityGroup | null; error: string | null }> {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { data: row } = await supabase.from("community_groups").select("*").eq("slug", slug).maybeSingle();
+  if (!row) return { group: null, error: "Community not found" };
+
+  const groupId = row.id as string;
+  const [memberCountRes, postCountRes, myMemberRes, requestRes] = await Promise.all([
+    supabase.from("community_group_members").select("user_id", { count: "exact", head: true }).eq("group_id", groupId),
+    supabase.from("community_posts").select("id", { count: "exact", head: true }).eq("group_id", groupId).eq("is_hidden", false),
+    user ? supabase.from("community_group_members").select("role").eq("group_id", groupId).eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
+    user ? supabase.from("community_group_requests").select("status").eq("group_id", groupId).eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
+  ]);
+
+  const myRole = (myMemberRes.data as { role: string } | null)?.role ?? null;
+  const requestStatus = (requestRes.data as { status: string } | null)?.status ?? null;
+
+  return {
+    group: {
+      id: groupId, slug: row.slug as string, name: row.name as string,
+      description: (row.description as string | null) ?? null,
+      creator_id: (row.creator_id as string | null) ?? null,
+      is_private: row.is_private as boolean,
+      icon_url: (row.icon_url as string | null) ?? null,
+      banner_url: (row.banner_url as string | null) ?? null,
+      created_at: row.created_at as string,
+      member_count: memberCountRes.count ?? 0,
+      post_count: postCountRes.count ?? 0,
+      is_member: !!myRole,
+      is_owner: myRole === "owner",
+      has_requested: requestStatus === "pending",
+    },
+    error: null,
+  };
+}
+
+export async function requestJoinGroupAction(groupId: string): Promise<{ error: string | null }> {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  // Check if already a member
+  const { data: existing } = await supabase
+    .from("community_group_members")
+    .select("role")
+    .eq("group_id", groupId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (existing) return { error: null };
+
+  // Upsert request
+  await supabase.from("community_group_requests").upsert({ group_id: groupId, user_id: user.id, status: "pending" });
+
+  // Notify group owner
+  const { data: groupRow } = await supabase.from("community_groups").select("creator_id, name").eq("id", groupId).maybeSingle();
+  if (groupRow?.creator_id && groupRow.creator_id !== user.id) {
+    const { data: profile } = await supabase.from("profiles").select("first_name, last_name").eq("id", user.id).maybeSingle();
+    const requesterName = profile ? [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "Someone" : "Someone";
+    await supabase.from("notifications").insert({
+      user_id: groupRow.creator_id,
+      actor_id: user.id,
+      type: "join_request",
+      post_id: null,
+      message: `${requesterName} requested to join ${groupRow.name as string}`,
+    });
+  }
+
+  return { error: null };
+}
+
+export async function joinGroupAction(groupId: string): Promise<{ error: string | null }> {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+  await supabase.from("community_group_members").upsert({ group_id: groupId, user_id: user.id, role: "member" });
+  revalidatePath("/communities");
+  revalidatePath("/communities/groups");
+  return { error: null };
+}
+
+export async function leaveGroupAction(groupId: string): Promise<{ error: string | null }> {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+  await supabase.from("community_group_members").delete().eq("group_id", groupId).eq("user_id", user.id);
+  revalidatePath("/communities");
+  revalidatePath("/communities/groups");
+  return { error: null };
+}
+
+export async function fetchGroupPostsAction(
+  groupId: string,
+  cursor?: string
+): Promise<{ posts: CommunityPost[]; nextCursor: string | null }> {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let query = supabase
+    .from("community_posts")
+    .select("*, likes:community_likes(count), comments:community_comments(count)")
+    .eq("group_id", groupId)
+    .eq("is_hidden", false)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (cursor) query = query.lt("created_at", cursor);
+
+  const { data: rows, error } = await query;
+  if (error || !rows) return { posts: [], nextCursor: null };
+
+  const posts = await enrichPosts(supabase, rows as Record<string, unknown>[], user?.id);
+  return { posts, nextCursor: rows.length === 20 ? rows[rows.length - 1].created_at as string : null };
+}
+
+export async function fetchMyGroupsAction(): Promise<{ groups: CommunityGroup[] }> {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { groups: [] };
+
+  const { data: memberships } = await supabase
+    .from("community_group_members")
+    .select("group_id, role")
+    .eq("user_id", user.id);
+
+  if (!memberships?.length) return { groups: [] };
+  const groupIds = memberships.map((m) => m.group_id as string);
+  const roleMap = new Map(memberships.map((m) => [m.group_id as string, m.role as string]));
+
+  const { data: rows } = await supabase.from("community_groups").select("*").in("id", groupIds).order("name");
+  if (!rows?.length) return { groups: [] };
+
+  return {
+    groups: rows.map((r) => ({
+      id: r.id as string, slug: r.slug as string, name: r.name as string,
+      description: (r.description as string | null) ?? null,
+      creator_id: (r.creator_id as string | null) ?? null,
+      is_private: r.is_private as boolean,
+      icon_url: (r.icon_url as string | null) ?? null,
+      banner_url: (r.banner_url as string | null) ?? null,
+      created_at: r.created_at as string,
+      member_count: 0, post_count: 0,
+      is_member: true,
+      is_owner: roleMap.get(r.id as string) === "owner",
+    })),
+  };
+}
 
 export async function pinPostAction(postId: string | null): Promise<{ error: string | null }> {
   const supabase = await createSupabaseServer();

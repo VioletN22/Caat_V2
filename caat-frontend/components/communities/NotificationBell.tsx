@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import React from "react";
-import { Bell, Heart, MessageCircle, CornerDownRight, UserPlus } from "lucide-react";
+import { Bell, Heart, MessageCircle, CornerDownRight, UserPlus, DoorOpen } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +23,8 @@ const TYPE_CONFIG: Record<NotificationItem["type"], { icon: React.ElementType; l
   like:    { icon: Heart,           label: "liked your post" },
   comment: { icon: MessageCircle,   label: "commented on your post" },
   reply:   { icon: CornerDownRight, label: "replied to your comment" },
-  follow:  { icon: UserPlus,        label: "started following you" },
+  follow:       { icon: UserPlus,        label: "started following you" },
+  join_request: { icon: DoorOpen,        label: "requested to join your community" },
 };
 
 export function NotificationBell() {

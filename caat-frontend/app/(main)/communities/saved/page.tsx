@@ -41,7 +41,7 @@ export default async function SavedPostsPage() {
         <Breadcrumb className="flex-1">
           <BreadcrumbList>
             <BreadcrumbItem className="hidden md:block">
-              <BreadcrumbLink href="/communities">Communities</BreadcrumbLink>
+              <BreadcrumbLink href="/communities">Community Campus</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator className="hidden md:block" />
             <BreadcrumbItem>
