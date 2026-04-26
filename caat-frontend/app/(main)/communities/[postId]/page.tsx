@@ -46,13 +46,19 @@ export default async function SinglePostPage({ params }: Props) {
     ? await supabase.from("resumes").select("title").eq("id", resumeId).single()
     : { data: null };
 
+  // B1 — anonymise user_id and null the author when the viewer is not the
+  // post owner. Owner still sees their real id so they can edit/delete.
+  const isAnon = (row.is_anonymous as boolean | null) ?? false;
+  const isOwnPost = !!user && user.id === row.user_id;
+  const exposedUserId = isAnon && !isOwnPost ? `anon:${row.id}` : (row.user_id as string);
   const post: CommunityPost = {
     ...row,
+    user_id: exposedUserId,
     resume_id: resumeId,
     resume_title: (resumeRow as { title: string } | null)?.title ?? null,
     likes_count: (row.likes as { count: number }[])[0]?.count ?? 0,
     comments_count: (row.comments as { count: number }[])[0]?.count ?? 0,
-    author: profileMap.get(row.user_id) ?? null,
+    author: isAnon ? null : (profileMap.get(row.user_id) ?? null),
   };
 
   const currentUser = user ? (profileMap.get(user.id) ?? null) : null;

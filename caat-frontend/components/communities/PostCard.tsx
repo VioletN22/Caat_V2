@@ -257,10 +257,12 @@ export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved, on
                       <Flag className="size-4" />
                       Report post
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="text-red-600 focus:text-red-600 gap-2" onClick={handleBlock}>
-                      <ShieldOff className="size-4" />
-                      Block user
-                    </DropdownMenuItem>
+                    {!post.is_anonymous && (
+                      <DropdownMenuItem className="text-red-600 focus:text-red-600 gap-2" onClick={handleBlock}>
+                        <ShieldOff className="size-4" />
+                        Block user
+                      </DropdownMenuItem>
+                    )}
                   </>
                 )}
               </DropdownMenuContent>
