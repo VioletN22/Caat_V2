@@ -104,7 +104,7 @@ export default async function CommunityProfilePage({ params }: Props) {
         <Breadcrumb className="flex-1">
           <BreadcrumbList>
             <BreadcrumbItem className="hidden md:block">
-              <BreadcrumbLink href="/communities">Communities</BreadcrumbLink>
+              <BreadcrumbLink href="/communities">Community Campus</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator className="hidden md:block" />
             <BreadcrumbItem>

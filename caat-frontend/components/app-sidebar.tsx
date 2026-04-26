@@ -48,7 +48,7 @@ const tools = [
 ]
 
 const community = [
-  { title: "Communities", icon: Users, url: "/communities" },
+  { title: "Community Campus", icon: Users, url: "/communities" },
   { title: "Saved Posts",  icon: Bookmark, url: "/communities/saved" },
 ]
 

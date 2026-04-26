@@ -21,11 +21,11 @@ export default async function GroupsDiscoverPage() {
         <Breadcrumb className="flex-1">
           <BreadcrumbList>
             <BreadcrumbItem className="hidden md:block">
-              <BreadcrumbLink href="/communities">Communities</BreadcrumbLink>
+              <BreadcrumbLink href="/communities">Community Campus</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator className="hidden md:block" />
             <BreadcrumbItem>
-              <BreadcrumbLink>Groups</BreadcrumbLink>
+              <BreadcrumbLink>Communities</BreadcrumbLink>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -36,7 +36,7 @@ export default async function GroupsDiscoverPage() {
         <main className="max-w-3xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-lg font-semibold">Discover Communities</h1>
+              <h1 className="text-lg font-semibold">Communities</h1>
               <p className="text-sm text-muted-foreground mt-0.5">{groups.length} public communit{groups.length !== 1 ? "ies" : "y"}</p>
             </div>
             <CreateGroupModal />

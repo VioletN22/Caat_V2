@@ -39,7 +39,7 @@ export default async function GroupPage({ params }: Props) {
           <Breadcrumb className="flex-1">
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="/communities">Communities</BreadcrumbLink>
+                <BreadcrumbLink href="/communities">Community Campus</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem><BreadcrumbLink>c/{group.slug}</BreadcrumbLink></BreadcrumbItem>
@@ -106,7 +106,7 @@ export default async function GroupPage({ params }: Props) {
         <Breadcrumb className="flex-1">
           <BreadcrumbList>
             <BreadcrumbItem className="hidden md:block">
-              <BreadcrumbLink href="/communities">Communities</BreadcrumbLink>
+              <BreadcrumbLink href="/communities">Community Campus</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator className="hidden md:block" />
             <BreadcrumbItem>
@@ -138,7 +138,7 @@ export default async function GroupPage({ params }: Props) {
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 shrink-0"
                 >
                   <ArrowLeft className="size-3" />
-                  <span className="hidden sm:inline">Main feed</span>
+                  <span className="hidden sm:inline">Community Campus</span>
                 </Link>
               </div>
             </div>

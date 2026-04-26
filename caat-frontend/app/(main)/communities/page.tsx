@@ -30,7 +30,7 @@ export default async function CommunitiesPage() {
 
   return (
     <>
-      <PageHeader title="Communities" />
+      <PageHeader title="Community Campus" />
       <div className="p-6">
         <div className="max-w-5xl mx-auto flex gap-6 items-start">
           {/* Feed */}
