@@ -1061,7 +1061,7 @@ export async function createGroupAction(input: {
 
   const { data: row, error: insertError } = await supabase
     .from("community_groups")
-    .insert({ name, slug, description: data.description ?? null, creator_id: user.id, is_private: data.is_private })
+    .insert({ name, slug, description: data.description || null, creator_id: user.id, is_private: data.is_private })
     .select("*").single();
 
   if (insertError || !row) return { group: null, error: "Failed to create community" };
