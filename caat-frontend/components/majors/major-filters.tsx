@@ -38,6 +38,7 @@ export default function MajorFilters({
             size="sm"
             variant={selectedFilter === cat ? "default" : "outline"}
             onClick={() => onFilterChange(cat)}
+            className={selectedFilter === cat ? "bg-[#9a1a27] text-white hover:bg-[#7d141f] border-[#9a1a27]" : ""}
           >
             {cat}
           </Button>
@@ -47,7 +48,7 @@ export default function MajorFilters({
           size="sm"
           variant={selectedFilter === "Bookmarked" ? "default" : "outline"}
           onClick={() => onFilterChange("Bookmarked")}
-          className="gap-1.5"
+          className={`gap-1.5 ${selectedFilter === "Bookmarked" ? "bg-[#9a1a27] text-white hover:bg-[#7d141f] border-[#9a1a27]" : ""}`}
         >
           <Bookmark
             className={`h-3.5 w-3.5 ${selectedFilter === "Bookmarked" ? "fill-current" : ""}`}
@@ -57,7 +58,7 @@ export default function MajorFilters({
             <span
               className={`text-xs rounded-full px-1.5 py-0.5 font-medium ${
                 selectedFilter === "Bookmarked"
-                  ? "bg-primary-foreground/20 text-primary-foreground"
+                  ? "bg-white/20 text-white"
                   : "bg-secondary text-secondary-foreground"
               }`}
             >

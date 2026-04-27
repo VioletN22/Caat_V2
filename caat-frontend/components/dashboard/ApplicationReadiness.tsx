@@ -273,7 +273,10 @@ export function ApplicationReadiness() {
         aria-label={stepsOpen ? "Hide steps" : "Show steps"}
       >
         <div className="flex-1">
-          <Progress value={percentage} className="h-2" />
+          <Progress
+            value={percentage}
+            className="h-2 bg-[#9a1a27]/20 [&>[data-slot=progress-indicator]]:bg-[#9a1a27]"
+          />
         </div>
         <ChevronDown
           className={cn(

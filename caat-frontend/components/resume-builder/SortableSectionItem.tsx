@@ -52,7 +52,7 @@ export default function SortableSectionItem({
       ref={setNodeRef}
       style={style}
       className={`flex items-center gap-2 rounded-md border bg-card px-2 py-2 ${
-        active ? "border-blue-500 ring-2 ring-blue-100/20" : "border-transparent hover:border-muted"
+        active ? "border-gray-300 ring-2 ring-gray-200 dark:border-gray-400 dark:ring-gray-400/20" : "border-transparent hover:border-muted"
       }`}
     >
       {/* Drag handle stuck to left */}

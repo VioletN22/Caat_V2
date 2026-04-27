@@ -386,7 +386,7 @@ export default function EssaysShell() {
                                 className={cn(
                                   "flex min-w-0 flex-1 items-center gap-2 rounded px-1.5 py-1.5 text-left text-sm transition-colors",
                                   activeDraft?.id === draft.id
-                                    ? "bg-primary/10 text-primary"
+                                    ? "bg-[#9a1a27]/10 text-[#9a1a27]"
                                     : "hover:bg-muted/60"
                                 )}
                               >
@@ -457,6 +457,7 @@ export default function EssaysShell() {
               size="sm"
               disabled={saving || !isAuthenticated || draftsLoading || !activeDraft}
               onClick={handleSave}
+              className="bg-[#9a1a27] hover:bg-[#7d141f] text-white"
             >
               <Save className="h-4 w-4" />
               {saving ? "Saving…" : "Save"}
@@ -532,7 +533,10 @@ export default function EssaysShell() {
         {/* Left: essay prompts + my essays */}
         <Card className="h-fit rounded-xl">
           <CardHeader>
-            <CardTitle className="text-lg">Essay prompts</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <FileText className="h-4 w-4 text-[#9a1a27]" />
+              Essay prompts
+            </CardTitle>
             <CardDescription>
               Choose a prompt to view tips and write your response.
             </CardDescription>
@@ -549,7 +553,7 @@ export default function EssaysShell() {
                   className={cn(
                     "flex w-full items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
                     selectedPromptId === prompt.id
-                      ? "border-primary bg-primary/10 text-primary"
+                      ? "border-[#9a1a27] bg-[#9a1a27] text-white"
                       : "border-transparent hover:bg-muted/50"
                   )}
                 >
@@ -577,7 +581,7 @@ export default function EssaysShell() {
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-6 w-6"
+                    className="h-6 w-6 text-[#9a1a27] hover:text-[#7d141f] hover:bg-[#9a1a27]/10"
                     onClick={() => { setCreatingCustomPrompt(true); setNewCustomTitle(""); }}
                     aria-label="Add custom essay"
                   >
@@ -600,7 +604,7 @@ export default function EssaysShell() {
                     />
                     <Button
                       size="icon"
-                      className="h-8 w-8 shrink-0"
+                      className="h-8 w-8 shrink-0 bg-[#9a1a27] hover:bg-[#7d141f] text-white"
                       disabled={savingCustomPrompt || !newCustomTitle.trim()}
                       onClick={handleCreateCustomPrompt}
                       aria-label="Confirm"
@@ -645,7 +649,7 @@ export default function EssaysShell() {
                           className={cn(
                             "flex min-w-0 flex-1 items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
                             selectedPromptId === cp.id
-                              ? "border-primary bg-primary/10 text-primary"
+                              ? "border-[#9a1a27] bg-[#9a1a27] text-white"
                               : "border-transparent hover:bg-muted/50"
                           )}
                         >
@@ -734,7 +738,7 @@ export default function EssaysShell() {
                         size="sm"
                         className="flex items-center gap-2 text-muted-foreground"
                       >
-                        <Lightbulb className="h-4 w-4" />
+                        <Lightbulb className="h-4 w-4 text-[#9a1a27]" />
                         Tips & guidance
                         <ChevronDown className="h-4 w-4" />
                       </Button>

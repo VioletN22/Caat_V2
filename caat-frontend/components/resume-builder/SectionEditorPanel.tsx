@@ -77,7 +77,7 @@ export default function SectionEditorPanel({
             <button
               onClick={() => setMode("guided")}
               className={`rounded px-3 py-1 ${
-                section.mode === "guided" ? "bg-blue-600 text-white" : "hover:bg-muted"
+                section.mode === "guided" ? "bg-red-600 text-white" : "hover:bg-muted"
               }`}
             >
               Guided
@@ -85,7 +85,7 @@ export default function SectionEditorPanel({
             <button
               onClick={() => setMode("free")}
               className={`rounded px-3 py-1 ${
-                section.mode === "free" ? "bg-blue-600 text-white" : "hover:bg-muted"
+                section.mode === "free" ? "bg-red-600 text-white" : "hover:bg-muted"
               }`}
             >
               Free Text

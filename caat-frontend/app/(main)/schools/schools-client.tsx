@@ -53,7 +53,7 @@ export function SchoolFilterBar({
         onClick={() => setFilter("All")}
         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition-colors border
           ${activeFilter === "All"
-            ? "bg-foreground text-background border-foreground"
+            ? "bg-[#9a1a27] text-white border-[#9a1a27]"
             : "bg-background text-muted-foreground border-border hover:bg-muted"
           }`}
       >
@@ -63,7 +63,7 @@ export function SchoolFilterBar({
         onClick={() => setFilter("Bookmarked")}
         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition-colors border
           ${activeFilter === "Bookmarked"
-            ? "bg-foreground text-background border-foreground"
+            ? "bg-[#9a1a27] text-white border-[#9a1a27]"
             : "bg-background text-muted-foreground border-border hover:bg-muted"
           }`}
       >
@@ -71,7 +71,7 @@ export function SchoolFilterBar({
         Bookmarked
         {bookmarkedCount > 0 && (
           <span className={`ml-0.5 rounded-full px-1.5 py-0 text-xs font-semibold
-            ${activeFilter === "Bookmarked" ? "bg-background/20" : "bg-muted-foreground/20"}`}>
+            ${activeFilter === "Bookmarked" ? "bg-white/20" : "bg-muted-foreground/20"}`}>
             {bookmarkedCount}
           </span>
         )}

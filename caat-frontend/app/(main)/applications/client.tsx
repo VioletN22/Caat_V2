@@ -225,7 +225,7 @@ export default function ApplicationsClient() {
         <Button
           size="sm"
           onClick={() => setShowSearch(!showSearch)}
-          className="gap-1.5"
+          className="gap-1.5 bg-[#9a1a27] text-white hover:bg-[#7d141f] border-[#9a1a27]"
         >
           <Plus className="h-4 w-4" />
           Add School
@@ -296,7 +296,7 @@ export default function ApplicationsClient() {
             onClick={() => setFilter(f.key)}
             className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium transition-colors border ${
               filter === f.key
-                ? "bg-foreground text-background border-foreground"
+                ? "bg-[#9a1a27] text-white border-[#9a1a27]"
                 : "bg-background text-muted-foreground border-border hover:bg-muted"
             }`}
           >
