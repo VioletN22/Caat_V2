@@ -71,8 +71,8 @@ export const widgetRegistry: WidgetDefinition[] = [
     icon: BookOpen,
     component: BookmarkedMajorsWidget,
     defaultW: 2,
-    defaultH: 3,
-    // 2 rows still works (inner list scrolls), but 3 looks comfortable by default.
+    defaultH: 4,
+    // Inner list scrolls down to minH=2; default of 4 fits ~4 rows comfortably.
     minW: 1,
     minH: 2,
   },
@@ -83,7 +83,7 @@ export const widgetRegistry: WidgetDefinition[] = [
     icon: School,
     component: BookmarkedSchoolsWidget,
     defaultW: 2,
-    defaultH: 3,
+    defaultH: 4,
     minW: 1,
     minH: 2,
   },
