@@ -38,7 +38,7 @@ export function ProfileCard({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-          {icon}
+          <span className="text-[#9a1a27]">{icon}</span>
           {title}
         </CardTitle>
         {!hideEditButton && (
@@ -49,7 +49,7 @@ export function ProfileCard({
                   size="sm"
                   onClick={onSave}
                   disabled={isSaving}
-                  className="h-7 text-xs px-2.5"
+                  className="h-7 text-xs px-2.5 bg-[#9a1a27] hover:bg-[#7d141f] text-white"
                 >
                   {isSaving ? (
                     <Loader2 className="h-3 w-3 animate-spin" />

@@ -315,7 +315,7 @@ export default function ProfilePage() {
               </div>
               <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-foreground rounded-full transition-all duration-500"
+                  className="h-full bg-[#9a1a27] rounded-full transition-all duration-500"
                   style={{ width: `${completionPercent}%` }}
                 />
               </div>
