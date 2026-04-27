@@ -469,7 +469,7 @@ function ScholarshipFormDialog({
                   Cancel
                 </Button>
               </Dialog.Close>
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" disabled={saving} className="bg-[#9a1a27] hover:bg-[#7d1520] text-white">
                 {saving
                   ? "Saving…"
                   : isEdit
@@ -626,7 +626,7 @@ function UserScholarshipCard({
         {safeHref(scholarship.external_url) ? (
           <Button
             asChild
-            className="w-full bg-black text-white hover:bg-white hover:text-black border border-black font-code tracking-[0.1em] uppercase text-[11px] transition-colors duration-100"
+            className="w-full bg-[#9a1a27] hover:bg-[#7d1520] text-white font-code tracking-[0.1em] uppercase text-[11px] transition-colors duration-100"
           >
             <a
               href={safeHref(scholarship.external_url)!}
@@ -639,7 +639,7 @@ function UserScholarshipCard({
           </Button>
         ) : (
           <Button
-            className="w-full bg-transparent text-black border border-black hover:bg-black hover:text-white font-code tracking-[0.1em] uppercase text-[11px] transition-colors duration-100"
+            className="w-full bg-transparent text-[#9a1a27] border border-[#9a1a27] hover:bg-[#9a1a27] hover:text-white font-code tracking-[0.1em] uppercase text-[11px] transition-colors duration-100"
             onClick={() => onEdit(scholarship)}
           >
             <Pencil className="h-3.5 w-3.5 mr-1.5" />
@@ -697,14 +697,14 @@ export default function MyScholarshipsPanel() {
       {/* Panel header */}
       <div className="flex items-center justify-between pb-6 border-b border-[#E5E5E5]">
         <div>
-          <h2 className="text-xl font-bold font-display">My Scholarships</h2>
-          <p className="text-sm text-[#525252] font-serif mt-1">
+          <h2 className="text-xl font-bold">My Scholarships</h2>
+          <p className="text-sm text-muted-foreground mt-1">
             Track scholarships you&apos;ve found outside this platform.
           </p>
         </div>
         <Button
           onClick={openAdd}
-          className="gap-2 bg-black text-white hover:bg-white hover:text-black border border-black font-code tracking-[0.1em] uppercase text-[11px] transition-colors duration-100"
+          className="gap-2 bg-[#9a1a27] hover:bg-[#7d1520] text-white font-code tracking-[0.1em] uppercase text-[11px] transition-colors duration-100"
         >
           <Plus className="h-4 w-4" strokeWidth={1.5} />
           Add Scholarship
@@ -724,16 +724,16 @@ export default function MyScholarshipsPanel() {
         <div className="flex flex-col items-center justify-center py-24 text-center gap-6 border border-[#E5E5E5]">
           <BookOpen className="h-8 w-8 text-[#525252]" strokeWidth={1.5} />
           <div>
-            <p className="text-base font-bold font-display">
+            <p className="text-base font-bold">
               No scholarships added yet
             </p>
-            <p className="text-sm text-[#525252] font-serif mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Found a scholarship elsewhere? Add it here to keep track.
             </p>
           </div>
           <Button
             onClick={openAdd}
-            className="gap-2 bg-transparent text-black border border-black hover:bg-black hover:text-white font-code tracking-[0.1em] uppercase text-[11px] transition-colors duration-100"
+            className="gap-2 bg-transparent text-[#9a1a27] border border-[#9a1a27] hover:bg-[#9a1a27] hover:text-white font-code tracking-[0.1em] uppercase text-[11px] transition-colors duration-100"
           >
             <Plus className="h-4 w-4" strokeWidth={1.5} />
             Add your first scholarship

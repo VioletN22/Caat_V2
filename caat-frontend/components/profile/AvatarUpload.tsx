@@ -179,7 +179,7 @@ export function AvatarUpload({
           <div className="relative group cursor-pointer">
             <Avatar className="size-20 text-xl">
               {avatarUrl && <AvatarImage src={avatarUrl} alt="Profile avatar" />}
-              <AvatarFallback className="text-lg font-semibold">
+              <AvatarFallback className="text-lg font-semibold bg-[#9a1a27] text-white">
                 {fallbackInitials}
               </AvatarFallback>
             </Avatar>

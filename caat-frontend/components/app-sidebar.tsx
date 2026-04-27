@@ -141,7 +141,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
-                      className="gap-3 px-4 py-2.5 rounded-none text-[#525252] hover:text-black hover:bg-[#F5F5F5] data-[active=true]:bg-black data-[active=true]:text-white data-[active=true]:font-medium transition-colors duration-100"
+                      className="gap-3 px-4 py-2.5 rounded-none text-[#525252] hover:text-black hover:bg-[#F5F5F5] data-[active=true]:bg-[#9a1a27] data-[active=true]:text-white data-[active=true]:hover:bg-[#9a1a27] data-[active=true]:hover:text-white data-[active=true]:font-medium transition-colors duration-100"
                     >
                       <Link href={item.url}>
                         <item.icon className="size-4 shrink-0" strokeWidth={1.5} />
@@ -168,7 +168,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
-                      className="gap-3 px-4 py-2.5 rounded-none text-[#525252] hover:text-black hover:bg-[#F5F5F5] data-[active=true]:bg-black data-[active=true]:text-white data-[active=true]:font-medium transition-colors duration-100"
+                      className="gap-3 px-4 py-2.5 rounded-none text-[#525252] hover:text-black hover:bg-[#F5F5F5] data-[active=true]:bg-[#9a1a27] data-[active=true]:text-white data-[active=true]:hover:bg-[#9a1a27] data-[active=true]:hover:text-white data-[active=true]:font-medium transition-colors duration-100"
                     >
                       <Link href={item.url}>
                         <item.icon className="size-4 shrink-0" strokeWidth={1.5} />

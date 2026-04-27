@@ -50,7 +50,11 @@ function WidgetStoreItem({
       <Button
         size="sm"
         variant={isAdded ? "secondary" : "default"}
-        className="shrink-0 h-7 px-2.5 text-xs"
+        className={
+          isAdded
+            ? "shrink-0 h-7 px-2.5 text-xs"
+            : "shrink-0 h-7 px-2.5 text-xs bg-[#9a1a27] text-white hover:bg-[#7d141f]"
+        }
         onClick={onAdd}
         disabled={isAdded || isLoading}
       >

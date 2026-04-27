@@ -14,7 +14,7 @@ export default async function ScholarshipsPage() {
 
   if (error) {
     return (
-      <div className="p-10 text-red-500">
+      <div className="p-10 text-[#9a1a27]">
         Unable to load scholarships. Please try again later.
       </div>
     );

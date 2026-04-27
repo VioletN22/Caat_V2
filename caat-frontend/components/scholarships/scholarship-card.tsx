@@ -40,7 +40,7 @@ export default function ScholarshipCard({
       <CardHeader className="pb-3 gap-2">
         {/* University name + bookmark */}
         <div className="flex items-start justify-between gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400 leading-tight">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground leading-tight">
             {scholarship.university}
           </span>
           <Button
@@ -99,7 +99,7 @@ export default function ScholarshipCard({
       <CardFooter className="pt-0">
         <Button
           asChild
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700"
+          className="w-full bg-[#9a1a27] hover:bg-[#7d1520] text-white"
         >
           <Link href={`/scholarships/${scholarship.id}`}>View Details</Link>
         </Button>

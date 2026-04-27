@@ -440,7 +440,7 @@ export function CreatePostForm({ currentUser, onPostCreated, groupId }: CreatePo
 
         <CardFooter className="pt-3 gap-2 justify-end border-t">
           <Button variant="ghost" size="sm" onClick={handleTryClose} disabled={isPending}>Cancel</Button>
-          <Button size="sm" onClick={handleSubmit} disabled={isPending || isOverLimit || (!content.trim() && !showScore && !showResult && !(showResume && selectedResumeId) && !showPoll) || !topicTag}>
+          <Button size="sm" onClick={handleSubmit} disabled={isPending || isOverLimit || (!content.trim() && !showScore && !showResult && !(showResume && selectedResumeId) && !showPoll) || !topicTag} className="bg-[#9a1a27] hover:bg-[#7d1520] text-white disabled:opacity-50">
             {isPending ? "Posting…" : "Post"}
           </Button>
         </CardFooter>

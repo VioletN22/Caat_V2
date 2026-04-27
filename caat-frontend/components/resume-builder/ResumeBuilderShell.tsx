@@ -582,7 +582,7 @@ export default function ResumeBuilderShell() {
           <button
             onClick={onSave}
             disabled={isLoading || isSaving}
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-60"
+            className="rounded-md bg-[#9a1a27] hover:bg-[#7d1520] px-3 py-1.5 text-sm text-white disabled:opacity-60"
           >
             {isSaving ? "Saving..." : "Save"}
           </button>

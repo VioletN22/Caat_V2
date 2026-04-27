@@ -259,9 +259,9 @@ export default function ScholarshipsClient({ scholarships }: Props) {
         <div className="flex items-center border border-black mb-6 w-fit">
           <button
             onClick={() => switchView("browse")}
-            className={`px-5 py-2 text-xs tracking-[0.1em] uppercase font-code transition-colors duration-100 focus-visible:outline focus-visible:outline-[2px] focus-visible:outline-black focus-visible:outline-offset-[-2px] ${
+            className={`px-5 py-2 text-xs tracking-[0.1em] uppercase font-code transition-colors duration-100 focus-visible:outline focus-visible:outline-[2px] focus-visible:outline-[#9a1a27] focus-visible:outline-offset-[-2px] ${
               view === "browse"
-                ? "bg-black text-white"
+                ? "bg-[#9a1a27] text-white"
                 : "text-[#525252] hover:text-black"
             }`}
           >
@@ -269,9 +269,9 @@ export default function ScholarshipsClient({ scholarships }: Props) {
           </button>
           <button
             onClick={() => switchView("mine")}
-            className={`flex items-center gap-1.5 px-5 py-2 text-xs tracking-[0.1em] uppercase font-code border-l border-black transition-colors duration-100 focus-visible:outline focus-visible:outline-[2px] focus-visible:outline-black focus-visible:outline-offset-[-2px] ${
+            className={`flex items-center gap-1.5 px-5 py-2 text-xs tracking-[0.1em] uppercase font-code border-l border-black transition-colors duration-100 focus-visible:outline focus-visible:outline-[2px] focus-visible:outline-[#9a1a27] focus-visible:outline-offset-[-2px] ${
               view === "mine"
-                ? "bg-black text-white"
+                ? "bg-[#9a1a27] text-white"
                 : "text-[#525252] hover:text-black"
             }`}
           >
