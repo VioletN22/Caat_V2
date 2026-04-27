@@ -111,7 +111,7 @@ export async function CommunitySidebar({ currentUser }: CommunitySidebarProps) {
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">You haven&apos;t joined any communities yet.</p>
             <Link href="/communities/groups">
-              <Button size="sm" className="w-full gap-1.5">
+              <Button size="sm" className="w-full gap-1.5 bg-[#9a1a27] hover:bg-[#7d1520] text-white">
                 <Globe className="size-3.5" />
                 Browse communities
               </Button>
@@ -144,7 +144,7 @@ export async function CommunitySidebar({ currentUser }: CommunitySidebarProps) {
             )}
             <Separator className="my-2" />
             <Link href="/communities/groups">
-              <Button size="sm" variant="outline" className="w-full gap-1.5">
+              <Button size="sm" variant="outline" className="w-full gap-1.5 border-[#9a1a27] text-[#9a1a27] hover:bg-[#9a1a27]/10">
                 <Globe className="size-3.5" />
                 Browse all communities
               </Button>

@@ -25,7 +25,7 @@ export function FeedTabs({ activeTab, onTabChange }: FeedTabsProps) {
           className={cn(
             "px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px",
             activeTab === tab.id
-              ? "border-foreground text-foreground"
+              ? "border-[#9a1a27] text-[#9a1a27]"
               : "border-transparent text-muted-foreground hover:text-foreground"
           )}
         >

@@ -139,7 +139,7 @@ function FileIcon({ fileName, status }: { fileName: string; status: string }) {
       <ImageIcon
         className={cn(
           "h-5 w-5 shrink-0",
-          isError ? "text-red-500" : "text-blue-500"
+          isError ? "text-[#9a1a27]" : "text-blue-500"
         )}
       />
     );
@@ -149,7 +149,7 @@ function FileIcon({ fileName, status }: { fileName: string; status: string }) {
       <FileText
         className={cn(
           "h-5 w-5 shrink-0",
-          isError ? "text-red-500" : "text-blue-500"
+          isError ? "text-[#9a1a27]" : "text-blue-500"
         )}
       />
     );
@@ -158,7 +158,7 @@ function FileIcon({ fileName, status }: { fileName: string; status: string }) {
     <FileArchive
       className={cn(
         "h-5 w-5 shrink-0",
-        isError ? "text-red-500" : "text-muted-foreground"
+        isError ? "text-[#9a1a27]" : "text-muted-foreground"
       )}
     />
   );
@@ -178,7 +178,7 @@ const STATUS_OPTIONS = [
   {
     value: "resubmit",
     label: "Resubmit",
-    icon: <AlertTriangle className="h-3.5 w-3.5 text-red-500" />,
+    icon: <AlertTriangle className="h-3.5 w-3.5 text-[#9a1a27]" />,
   },
 ] as const;
 
@@ -208,7 +208,7 @@ function StatusBadge({
     );
   } else {
     badge = (
-      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-red-500">
+      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9a1a27]">
         <AlertTriangle className="h-4 w-4" />
         Resubmit
       </span>
@@ -284,7 +284,7 @@ function DeleteModal({
           <Button
             onClick={onConfirm}
             disabled={isDeleting}
-            className="bg-red-600 hover:bg-red-700 text-white"
+            className="bg-[#9a1a27] hover:bg-[#7d1520] text-white"
           >
             {isDeleting && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
             Delete
@@ -568,7 +568,7 @@ export default function DocumentVaultClient() {
         </div>
         <Button
           onClick={openUploadSheet}
-          className="gap-2 bg-blue-600 hover:bg-blue-700 text-white shrink-0"
+          className="gap-2 bg-[#9a1a27] hover:bg-[#7d1520] text-white shrink-0"
         >
           <Upload className="h-4 w-4" />
           Upload New
@@ -596,8 +596,8 @@ export default function DocumentVaultClient() {
         <StatCard
           label="Action Required"
           count={actionReq}
-          icon={<AlertTriangle className="h-5 w-5 text-red-500" />}
-          barColor="bg-red-500"
+          icon={<AlertTriangle className="h-5 w-5 text-[#9a1a27]" />}
+          barColor="bg-[#9a1a27]"
           total={total}
         />
       </div>
@@ -716,7 +716,7 @@ export default function DocumentVaultClient() {
                   <Button
                     size="sm"
                     onClick={() => openReuploadSheet(doc)}
-                    className="bg-rose-100 text-rose-600 hover:bg-rose-200 border-rose-200 shadow-none text-xs font-semibold h-7"
+                    className="bg-[#9a1a27]/10 text-[#9a1a27] hover:bg-[#9a1a27]/20 border-[#9a1a27]/30 shadow-none text-xs font-semibold h-7"
                     variant="outline"
                   >
                     Fix Now
@@ -748,7 +748,7 @@ export default function DocumentVaultClient() {
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        className="gap-2 text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/20"
+                        className="gap-2 text-[#9a1a27] focus:text-[#9a1a27] focus:bg-[#9a1a27]/10"
                         onClick={() => setDeleteTarget(doc)}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -817,10 +817,10 @@ export default function DocumentVaultClient() {
       {/* Bottom info cards                                                   */}
       {/* ------------------------------------------------------------------ */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="rounded-xl border bg-blue-50 dark:bg-blue-950/20 p-5">
+        <div className="rounded-xl border bg-card p-5">
           <div className="flex items-center gap-2 mb-3">
-            <Info className="h-5 w-5 text-blue-600 shrink-0" />
-            <h3 className="font-semibold text-blue-700 dark:text-blue-400">
+            <Info className="h-5 w-5 text-muted-foreground shrink-0" />
+            <h3 className="font-semibold">
               Upload Guidelines
             </h3>
           </div>
@@ -832,9 +832,9 @@ export default function DocumentVaultClient() {
             ].map((item) => (
               <li
                 key={item}
-                className="flex items-start gap-2 text-sm text-blue-800 dark:text-blue-300"
+                className="flex items-start gap-2 text-sm text-muted-foreground"
               >
-                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-600 shrink-0" />
+                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-muted-foreground/50 shrink-0" />
                 {item}
               </li>
             ))}
@@ -852,7 +852,7 @@ export default function DocumentVaultClient() {
           </p>
           <a
             href="mailto:support@caat.app?subject=Document%20Upload%20Help"
-            className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline underline-offset-4"
+            className="inline-flex items-center gap-1 text-sm font-medium text-[#9a1a27] hover:underline underline-offset-4"
           >
             Contact Support Team
             <ArrowRight className="h-3.5 w-3.5" />
