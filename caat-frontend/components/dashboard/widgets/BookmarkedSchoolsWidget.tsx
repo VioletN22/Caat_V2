@@ -88,8 +88,8 @@ export function BookmarkedSchoolsWidget() {
   }
 
   return (
-    <div className="flex flex-col gap-3 h-full min-h-0">
-      <div className="flex flex-wrap gap-1.5 flex-1 min-h-0 overflow-y-auto pr-1 content-start">
+    <div className="flex flex-col gap-1.5 h-full min-h-0">
+      <div className="flex flex-wrap gap-1 flex-1 min-h-0 overflow-y-auto pr-1 content-start">
         {schools.map((school) => (
           <Link key={school.id} href={`/schools/${school.id}`}>
             <Badge

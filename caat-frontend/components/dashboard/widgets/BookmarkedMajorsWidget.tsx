@@ -84,13 +84,13 @@ export function BookmarkedMajorsWidget() {
   }
 
   return (
-    <div className="flex flex-col gap-2 h-full min-h-0">
-      <ul className="flex flex-col gap-1.5 flex-1 min-h-0 overflow-y-auto pr-1">
+    <div className="flex flex-col gap-1.5 h-full min-h-0">
+      <ul className="flex flex-col gap-0.5 flex-1 min-h-0 overflow-y-auto pr-1">
         {majors.map((major) => (
           <li key={major.id}>
             <Link
               href={`/majors/${major.id}`}
-              className="flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-muted/50 group transition-colors"
+              className="flex items-center justify-between rounded-md px-2 py-1 hover:bg-muted/50 group transition-colors"
             >
               <span className="text-sm font-medium truncate">{major.name}</span>
               <div className="flex items-center gap-1.5 shrink-0">

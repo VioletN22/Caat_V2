@@ -71,11 +71,11 @@ export const widgetRegistry: WidgetDefinition[] = [
     icon: BookOpen,
     component: BookmarkedMajorsWidget,
     defaultW: 2,
-    defaultH: 4,
-    // Below 3 rows the list is too cramped — the inner list still scrolls
-    // but two rows + footer leaves no breathing room.
+    defaultH: 2,
+    // 2 rows = enough for the "View all" link + at least one item; the inner
+    // list scrolls when content exceeds the available height.
     minW: 1,
-    minH: 3,
+    minH: 2,
   },
   {
     id: "bookmarked-schools",
@@ -84,9 +84,9 @@ export const widgetRegistry: WidgetDefinition[] = [
     icon: School,
     component: BookmarkedSchoolsWidget,
     defaultW: 2,
-    defaultH: 4,
+    defaultH: 2,
     minW: 1,
-    minH: 3,
+    minH: 2,
   },
   {
     id: "upcoming-deadlines",
