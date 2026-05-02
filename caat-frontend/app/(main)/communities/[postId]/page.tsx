@@ -22,14 +22,14 @@ export default async function SinglePostPage({ params }: Props) {
 
   if (error || !row) notFound();
 
-  const userIds = [row.user_id, ...(user ? [user.id] : [])];
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, first_name, last_name, avatar_url")
-    .in("id", [...new Set(userIds)]);
+  const userIds = [...new Set([row.user_id as string, ...(user ? [user.id] : [])])];
+  // Same RLS reason as enrichPosts — profiles is owner-read-only, so a
+  // direct .from("profiles").in("id", ...) returns nothing for the post
+  // author when the viewer isn't them. See communities_v8 migration.
+  const { data: profiles } = await supabase.rpc("get_public_profiles", { user_ids: userIds });
 
   const profileMap = new Map<string, PostAuthor>(
-    (profiles ?? []).map((p) => [p.id, p])
+    ((profiles ?? []) as PostAuthor[]).map((p) => [p.id, p])
   );
 
   const [likedResult, savedResult] = await Promise.all([

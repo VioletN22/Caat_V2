@@ -116,7 +116,12 @@ async function enrichPosts(
   const postIds = rows.map((r) => r.id as string);
 
   const [profilesRes, resumesRes, schoolsRes, pollVotesRes, userVotesRes, savesRes] = await Promise.all([
-    supabase.from("profiles").select("id, first_name, last_name, avatar_url, is_verified").in("id", userIds),
+    // Profiles RLS restricts SELECT to the row owner, so a direct
+    // .from("profiles") read returns nothing for posts authored by anyone
+    // other than the viewer — which made every other user's post fall back
+    // to the null-author branch in PostCard and render as "Anonymous". The
+    // RPC is SECURITY DEFINER and exposes only the public-display columns.
+    supabase.rpc("get_public_profiles", { user_ids: userIds }),
     resumeIds.length
       ? supabase.from("resumes").select("id, title").in("id", resumeIds)
       : Promise.resolve({ data: [] as { id: string; title: string }[] }),
@@ -583,7 +588,10 @@ export async function fetchCommunityProfileAction(
   const { data: { user } } = await supabase.auth.getUser();
 
   const [profileResult, settingsResult, followerResult, followingResult, isFollowingResult] = await Promise.all([
-    supabase.from("profiles").select("id, first_name, last_name, avatar_url, graduation_year, school_name, preferred_countries, target_majors").eq("id", targetUserId).single(),
+    // Same RLS reason as enrichPosts — see communities_v8 migration. The
+    // RPC bypasses RLS for this minimal whitelist of columns; the privacy
+    // gating below still controls which of those the client actually shows.
+    supabase.rpc("get_community_profile_extended", { target_id: targetUserId }),
     supabase.from("community_profile_settings").select("*").eq("user_id", targetUserId).maybeSingle(),
     supabase.from("community_follows").select("follower_id", { count: "exact", head: true }).eq("followee_id", targetUserId),
     supabase.from("community_follows").select("followee_id", { count: "exact", head: true }).eq("follower_id", targetUserId),
@@ -592,8 +600,18 @@ export async function fetchCommunityProfileAction(
       : Promise.resolve({ data: null }),
   ]);
 
-  if (!profileResult.data) return { profile: null, error: "User not found" };
-  const p = profileResult.data;
+  const profileRows = (profileResult.data ?? []) as {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+    avatar_url: string | null;
+    graduation_year: number | null;
+    school_name: string | null;
+    preferred_countries: string[] | null;
+    target_majors: string[] | null;
+  }[];
+  if (!profileRows.length) return { profile: null, error: "User not found" };
+  const p = profileRows[0];
   const s = settingsResult.data ?? { show_graduation_year: true, show_school_name: true, show_preferred_countries: false, show_target_majors: false };
 
   return {
@@ -704,7 +722,7 @@ export async function fetchCommentsAction(postId: string): Promise<{ comments: C
 
   const [profilesRes, likesRes, userLikesRes] = await Promise.all([
     userIds.length
-      ? supabase.from("profiles").select("id, first_name, last_name, avatar_url").in("id", userIds)
+      ? supabase.rpc("get_public_profiles", { user_ids: userIds })
       : Promise.resolve({ data: [] }),
     commentIds.length
       ? supabase.from("community_comment_likes").select("comment_id").in("comment_id", commentIds)
@@ -813,7 +831,7 @@ export async function fetchNotificationsAction(limit = 20): Promise<{ notificati
   const postIds  = [...new Set(rows.map((r) => r.post_id as string).filter(Boolean))];
 
   const [profilesResult, postsResult] = await Promise.all([
-    actorIds.length ? supabase.from("profiles").select("id, first_name, last_name, avatar_url").in("id", actorIds) : Promise.resolve({ data: [] }),
+    actorIds.length ? supabase.rpc("get_public_profiles", { user_ids: actorIds }) : Promise.resolve({ data: [] }),
     postIds.length  ? supabase.from("community_posts").select("id, content").in("id", postIds) : Promise.resolve({ data: [] }),
   ]);
 
@@ -956,8 +974,7 @@ export async function fetchFollowersAction(userId: string): Promise<{ users: Pos
 
   if (!rows?.length) return { users: [] };
   const ids = rows.map((r) => r.follower_id as string);
-  const { data: profiles } = await supabase
-    .from("profiles").select("id, first_name, last_name, avatar_url").in("id", ids);
+  const { data: profiles } = await supabase.rpc("get_public_profiles", { user_ids: ids });
   return { users: (profiles ?? []) as PostAuthor[] };
 }
 
@@ -971,8 +988,7 @@ export async function fetchFollowingAction(userId: string): Promise<{ users: Pos
 
   if (!rows?.length) return { users: [] };
   const ids = rows.map((r) => r.followee_id as string);
-  const { data: profiles } = await supabase
-    .from("profiles").select("id, first_name, last_name, avatar_url").in("id", ids);
+  const { data: profiles } = await supabase.rpc("get_public_profiles", { user_ids: ids });
   return { users: (profiles ?? []) as PostAuthor[] };
 }
 
@@ -1013,8 +1029,7 @@ export async function fetchRecommendedUsersAction(): Promise<{ users: PostAuthor
   const topIds = [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([id]) => id);
   if (!topIds.length) return { users: [] };
 
-  const { data: profiles } = await supabase
-    .from("profiles").select("id, first_name, last_name, avatar_url").in("id", topIds);
+  const { data: profiles } = await supabase.rpc("get_public_profiles", { user_ids: topIds });
   return { users: (profiles ?? []) as PostAuthor[] };
 }
 
@@ -1270,8 +1285,7 @@ export async function fetchPendingJoinRequestsAction(
   if (!rows?.length) return { requests: [], error: null };
 
   const userIds = rows.map((r) => r.user_id as string);
-  const { data: profiles } = await supabase
-    .from("profiles").select("id, first_name, last_name, avatar_url").in("id", userIds);
+  const { data: profiles } = await supabase.rpc("get_public_profiles", { user_ids: userIds });
   const profileMap = new Map<string, PostAuthor>(
     ((profiles ?? []) as PostAuthor[]).map((p) => [p.id, p])
   );

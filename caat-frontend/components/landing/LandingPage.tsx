@@ -1081,6 +1081,82 @@ function SecurityBanner() {
   );
 }
 
+// ─── Early User Review ────────────────────────────────────────────────────────
+
+function EarlyUserReview() {
+  return (
+    <section className="relative py-24 md:py-32 lg:py-40 bg-white">
+      <GridTexture />
+      <div className="relative max-w-6xl mx-auto px-6 lg:px-12">
+        {/* Section header */}
+        <div className="mb-12 md:mb-16">
+          <p className="text-[11px] tracking-[0.18em] uppercase text-[#525252] mb-5 font-code">
+            From an Early User
+          </p>
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05] font-display max-w-3xl">
+            What students are{" "}
+            <span className="italic" style={{ color: "#b81f2f" }}>
+              saying
+            </span>
+            .
+          </h2>
+        </div>
+
+        {/* Quote card with offset shadow */}
+        <div className="relative max-w-3xl mx-auto">
+          {/* Shadow layer */}
+          <div
+            aria-hidden
+            className="absolute border border-[#E5E5E5] bg-[#F5F5F5] inset-0"
+            style={{ transform: "rotate(-1deg) translate(8px, 8px)" }}
+          />
+          {/* Front card */}
+          <figure className="relative bg-white border border-black p-8 md:p-12 pt-16 md:pt-20">
+            {/* Big opening quote mark */}
+            <span
+              aria-hidden
+              className="absolute font-display font-bold leading-none select-none"
+              style={{
+                top: "28px",
+                left: "28px",
+                fontSize: "84px",
+                color: "#b81f2f",
+                lineHeight: 1,
+              }}
+            >
+              &ldquo;
+            </span>
+
+            <blockquote className="font-display text-2xl md:text-3xl lg:text-[2.25rem] leading-tight tracking-tight text-black">
+              Comprehensive features all in one site!
+            </blockquote>
+
+            <hr className="my-7 border-0 border-t border-black" />
+
+            <figcaption className="flex items-center gap-4">
+              {/* Monogram avatar */}
+              <div
+                aria-hidden
+                className="size-12 border border-black bg-white flex items-center justify-center font-display font-bold text-base tracking-[0.05em]"
+              >
+                TN
+              </div>
+              <div className="flex flex-col">
+                <span className="font-display font-bold text-base text-black">
+                  Thet Naung
+                </span>
+                <span className="text-[11px] tracking-[0.12em] uppercase font-code text-[#525252] mt-0.5">
+                  MIT, Class of 2027
+                </span>
+              </div>
+            </figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Final CTA ────────────────────────────────────────────────────────────────
 
 function FinalCTA() {
@@ -1205,6 +1281,8 @@ export default function LandingPage() {
         <ThreeSteps />
         <ThickRule />
         <SecurityBanner />
+        <ThickRule />
+        <EarlyUserReview />
         <ThickRule />
         <FinalCTA />
       </main>
