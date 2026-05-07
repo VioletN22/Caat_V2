@@ -1217,9 +1217,9 @@ function FinalCTA() {
 
 function Footer() {
   const links = [
-    { label: "Privacy Policy", href: "#" },
+    { label: "Privacy Policy", href: "/privacy" },
     { label: "Terms of Service", href: "/terms" },
-    { label: "Contact Us", href: "#" },
+    { label: "Contact Us", href: "/contact" },
     { label: "Help Center", href: "#" },
   ];
 
@@ -1228,8 +1228,34 @@ function Footer() {
       <div className="max-w-6xl mx-auto px-6 lg:px-12">
         <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-10">
           <div>
-            <div className="mb-3">
+            <div className="mb-3 flex items-center gap-3">
               <Image src="/logo.png" alt="CAAT" width={72} height={28} className="object-contain" />
+              <span className="text-xs text-[#525252] font-code lowercase tracking-wide">
+                by
+              </span>
+              <a
+                href="https://purpl.au"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Purpl Solutions"
+                className="inline-flex items-center gap-1.5 opacity-80 transition-opacity duration-150 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-black focus-visible:outline-offset-2"
+              >
+                <Image
+                  src="/brand/purpl-grain.png"
+                  alt=""
+                  aria-hidden="true"
+                  width={18}
+                  height={18}
+                  className="h-4 w-4 shrink-0 object-contain"
+                />
+                <Image
+                  src="/brand/purpl-mark.svg"
+                  alt="purpl"
+                  width={56}
+                  height={20}
+                  className="h-3.5 w-auto object-contain"
+                />
+              </a>
             </div>
             <p className="text-sm text-[#525252] max-w-xs font-serif">
               College Application Assistance Tool. Your path to university,
