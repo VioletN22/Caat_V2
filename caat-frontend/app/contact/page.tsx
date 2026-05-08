@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 export const metadata = {
-  title: "Contact Us — CAAT",
+  title: "Contact Us · CAAT",
   description: "Get in touch with the CAAT team.",
 };
 
@@ -43,7 +43,8 @@ export default function ContactPage() {
             Contact Us
           </h1>
           <p className="text-lg text-[#525252] font-serif max-w-xl">
-            Questions, feedback, partnership ideas, privacy requests — we read every email.
+            Questions, feedback, partnership ideas, privacy requests, we read
+            every email.
           </p>
         </div>
 
@@ -59,13 +60,15 @@ export default function ContactPage() {
               {SUPPORT_EMAIL}
             </a>
             <p className="text-sm text-[#525252] mt-3 font-serif">
-              We aim to reply within two business days. For privacy or data requests, we respond
-              within 30 days as required by the Australian Privacy Principles.
+              We aim to reply within two business days. For privacy or data
+              requests, we respond within 30 days as required by the Australian
+              Privacy Principles.
             </p>
             <div className="mt-6">
               <a
                 href={`mailto:${SUPPORT_EMAIL}`}
-                className="inline-flex items-center gap-2 bg-black text-white px-5 py-2.5 text-sm font-code tracking-wide hover:opacity-90 transition-opacity focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-black focus-visible:outline-offset-2"
+                style={{ backgroundColor: "#b81f2f", color: "#fff" }}
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-code tracking-wide hover:opacity-90 transition-opacity focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-[#b81f2f] focus-visible:outline-offset-2"
               >
                 Send us an email →
               </a>
@@ -74,8 +77,8 @@ export default function ContactPage() {
 
           <div className="text-sm text-[#525252] font-serif space-y-2 pt-4">
             <p>
-              <strong className="text-black">Operated by</strong> Purpl Solutions, a Sydney-based
-              dev studio. CAAT is one of our products.{" "}
+              <strong className="text-black">Operated by</strong> Purpl
+              Solutions, a Sydney-based dev studio. CAAT is one of our products.{" "}
               <a
                 href="https://purpl.au"
                 target="_blank"
@@ -86,8 +89,8 @@ export default function ContactPage() {
               </a>
             </p>
             <p>
-              <strong className="text-black">Help articles</strong> are coming soon. In the
-              meantime, email is the fastest way to reach us.
+              <strong className="text-black">Help articles</strong> are coming
+              soon. In the meantime, email is the fastest way to reach us.
             </p>
           </div>
         </section>
