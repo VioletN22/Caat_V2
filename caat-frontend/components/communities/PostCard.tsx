@@ -40,7 +40,7 @@ const TOPIC_STYLES: Record<TopicTag, string> = {
 const OUTCOME_CONFIG = {
   accepted:   { label: "Accepted",   icon: CheckCircle, color: "text-green-600 dark:text-green-400" },
   waitlisted: { label: "Waitlisted", icon: Clock,       color: "text-amber-600 dark:text-amber-400" },
-  rejected:   { label: "Rejected",   icon: XCircle,     color: "text-red-600 dark:text-red-400" },
+  rejected:   { label: "Rejected",   icon: XCircle,     color: "text-[#b81f2f] dark:text-[#b81f2f]" },
 };
 
 interface PostCardProps {
@@ -246,7 +246,7 @@ export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved, on
                       <BadgeCheck className="size-4" />
                       {isPinned ? "Unpin from profile" : "Pin to profile"}
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="text-red-600 focus:text-red-600 gap-2" onClick={handleDelete}>
+                    <DropdownMenuItem className="text-[#b81f2f] focus:text-[#b81f2f] gap-2" onClick={handleDelete}>
                       <Trash2 className="size-4" />
                       Delete post
                     </DropdownMenuItem>
@@ -258,7 +258,7 @@ export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved, on
                       Report post
                     </DropdownMenuItem>
                     {!post.is_anonymous && (
-                      <DropdownMenuItem className="text-red-600 focus:text-red-600 gap-2" onClick={handleBlock}>
+                      <DropdownMenuItem className="text-[#b81f2f] focus:text-[#b81f2f] gap-2" onClick={handleBlock}>
                         <ShieldOff className="size-4" />
                         Block user
                       </DropdownMenuItem>
@@ -370,7 +370,7 @@ export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved, on
         <div className="flex w-full items-center gap-1">
           <Button
             variant="ghost" size="sm"
-            className={cn("gap-1.5 h-8 px-2", optimistic.isLiked ? "text-red-500 hover:text-red-600" : "text-muted-foreground")}
+            className={cn("gap-1.5 h-8 px-2", optimistic.isLiked ? "text-[#b81f2f] hover:text-[#9a1a27]" : "text-muted-foreground")}
             onClick={handleLike}
           >
             <Heart className={cn("size-4", optimistic.isLiked && "fill-current")} />

@@ -67,9 +67,9 @@ function daysUntil(dateStr: string): number {
 
 function deadlineLabel(dateStr: string) {
   const days = daysUntil(dateStr);
-  if (days < 0) return { text: `${Math.abs(days)}d overdue`, color: "text-red-500" };
-  if (days === 0) return { text: "Today", color: "text-red-500" };
-  if (days <= 7) return { text: `${days}d`, color: "text-red-500" };
+  if (days < 0) return { text: `${Math.abs(days)}d overdue`, color: "text-[#b81f2f]" };
+  if (days === 0) return { text: "Today", color: "text-[#b81f2f]" };
+  if (days <= 7) return { text: `${days}d`, color: "text-[#b81f2f]" };
   if (days <= 30) return { text: `${days}d`, color: "text-amber-500" };
   return { text: `${days}d`, color: "text-green-600 dark:text-green-400" };
 }
