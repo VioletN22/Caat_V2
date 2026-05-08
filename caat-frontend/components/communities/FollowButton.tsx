@@ -32,14 +32,14 @@ export function FollowButton({
     });
   }
 
-  // Use the iconic CAAT red (#b81f2f). The "Follow" state is solid red with
+  // Use the iconic CAAT red (#9a1a27). The "Follow" state is solid red with
   // white text; the "Following" state is an outlined red ghost so it reads
   // as a toggleable, secondary state.
   const baseClasses = "min-w-[90px] transition-colors";
   const followClasses =
-    "bg-[#b81f2f] text-white border border-[#b81f2f] hover:bg-white hover:text-[#b81f2f]";
+    "bg-[#9a1a27] text-white border border-[#9a1a27] hover:bg-white hover:text-[#9a1a27]";
   const followingClasses =
-    "bg-white text-[#b81f2f] border border-[#b81f2f] hover:bg-[#b81f2f] hover:text-white";
+    "bg-white text-[#9a1a27] border border-[#9a1a27] hover:bg-[#9a1a27] hover:text-white";
 
   return (
     <Button

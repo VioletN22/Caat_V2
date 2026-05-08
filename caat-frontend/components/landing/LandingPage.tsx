@@ -111,9 +111,9 @@ function Hero() {
               <span
                 className="block text-[4.5rem] md:text-[6rem] lg:text-[7.5rem] italic"
                 style={{
-                  color: "#b81f2f",
+                  color: "#9a1a27",
                   textDecoration: "underline",
-                  textDecorationColor: "#b81f2f",
+                  textDecorationColor: "#9a1a27",
                   textDecorationThickness: "5px",
                   textUnderlineOffset: "10px",
                 }}
@@ -133,7 +133,7 @@ function Hero() {
             <div className="flex flex-col sm:flex-row gap-4 pt-2">
               <Link
                 href="/signup"
-                className="inline-flex items-center justify-center gap-2 bg-[#b81f2f] text-white text-[11px] tracking-[0.18em] uppercase px-8 py-4 border border-[#b81f2f] hover:bg-white hover:text-[#b81f2f] transition-colors duration-100 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-[#b81f2f] focus-visible:outline-offset-[3px] font-code"
+                className="inline-flex items-center justify-center gap-2 bg-[#9a1a27] text-white text-[11px] tracking-[0.18em] uppercase px-8 py-4 border border-[#9a1a27] hover:bg-white hover:text-[#9a1a27] transition-colors duration-100 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-[#9a1a27] focus-visible:outline-offset-[3px] font-code"
               >
                 Get Started for Free
                 <ArrowRight size={14} strokeWidth={1.5} />
@@ -207,7 +207,7 @@ function Hero() {
                     </div>
                     <div
                       className="text-[10px] font-code font-bold px-2 py-0.5 text-white"
-                      style={{ backgroundColor: "#b81f2f" }}
+                      style={{ backgroundColor: "#9a1a27" }}
                     >
                       40%
                     </div>
@@ -218,7 +218,7 @@ function Hero() {
                   <div className="h-[3px] bg-[#E5E5E5] mb-3">
                     <div
                       className="h-full"
-                      style={{ width: "40%", backgroundColor: "#b81f2f" }}
+                      style={{ width: "40%", backgroundColor: "#9a1a27" }}
                     />
                   </div>
 
@@ -278,9 +278,9 @@ function Hero() {
                         type: "Application",
                         days: "3d",
                         dotClass: "",
-                        dotStyle: { backgroundColor: "#b81f2f" },
+                        dotStyle: { backgroundColor: "#9a1a27" },
                         countdownClass: "",
-                        countdownStyle: { color: "#b81f2f" },
+                        countdownStyle: { color: "#9a1a27" },
                       },
                       {
                         label: "Gates Scholarship",
@@ -401,7 +401,7 @@ function FeaturesGrid() {
           </p>
           <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-none mb-6 font-display">
             Built Around Your{" "}
-            <span className="italic" style={{ color: "#b81f2f" }}>
+            <span className="italic" style={{ color: "#9a1a27" }}>
               Application
             </span>
           </h2>
@@ -455,7 +455,7 @@ function ProductShowcase() {
         <div className="mb-12 md:mb-16">
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05] mb-5 font-display">
             Designed to{" "}
-            <span className="italic" style={{ color: "#b81f2f" }}>
+            <span className="italic" style={{ color: "#9a1a27" }}>
               simplify
             </span>
             <br />
@@ -500,7 +500,7 @@ function ProductShowcase() {
                   <span className="font-serif">Overall Progress</span>
                   <span
                     className="font-code font-bold"
-                    style={{ color: "#b81f2f" }}
+                    style={{ color: "#9a1a27" }}
                   >
                     75%
                   </span>
@@ -508,7 +508,7 @@ function ProductShowcase() {
                 <div className="h-1.5 bg-[#E5E5E5]">
                   <div
                     className="h-full"
-                    style={{ width: "75%", backgroundColor: "#b81f2f" }}
+                    style={{ width: "75%", backgroundColor: "#9a1a27" }}
                   />
                 </div>
               </div>
@@ -617,8 +617,8 @@ function ProductShowcase() {
                     size={14}
                     strokeWidth={1.5}
                     className="flex-shrink-0"
-                    fill={school.bookmarked ? "#b81f2f" : "none"}
-                    stroke={school.bookmarked ? "#b81f2f" : "#525252"}
+                    fill={school.bookmarked ? "#9a1a27" : "none"}
+                    stroke={school.bookmarked ? "#9a1a27" : "#525252"}
                   />
                 </div>
               ))}
@@ -652,7 +652,7 @@ function ProductShowcase() {
                       ? "text-white border-transparent"
                       : "border-[#E5E5E5] text-[#525252]"
                   }`}
-                  style={s.active ? { backgroundColor: "#b81f2f" } : undefined}
+                  style={s.active ? { backgroundColor: "#9a1a27" } : undefined}
                 >
                   {s.label}
                 </span>
@@ -825,7 +825,7 @@ function ProductShowcase() {
 
             <Link
               href="/signup"
-              className="inline-flex items-center gap-2 bg-[#b81f2f] text-white text-[11px] tracking-[0.18em] uppercase px-6 py-3.5 border border-[#b81f2f] hover:bg-white hover:text-[#b81f2f] transition-colors duration-100 font-code focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-[#b81f2f] focus-visible:outline-offset-[3px]"
+              className="inline-flex items-center gap-2 bg-[#9a1a27] text-white text-[11px] tracking-[0.18em] uppercase px-6 py-3.5 border border-[#9a1a27] hover:bg-white hover:text-[#9a1a27] transition-colors duration-100 font-code focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-[#9a1a27] focus-visible:outline-offset-[3px]"
             >
               Build Your Resume
               <ArrowRight size={13} strokeWidth={1.5} />
@@ -946,7 +946,7 @@ function MoreFeatures() {
                   </span>
                   <span
                     className="font-code text-[9px] tracking-wide px-1.5 py-0.5"
-                    style={{ backgroundColor: "#b81f2f", color: "#fff" }}
+                    style={{ backgroundColor: "#9a1a27", color: "#fff" }}
                   >
                     12d
                   </span>
@@ -1009,7 +1009,7 @@ function ThreeSteps() {
             </p>
             <h2 className="text-4xl md:text-5xl lg:text-[3.25rem] font-bold tracking-tight leading-[1.05] mb-6 font-display">
               Everything you need,{" "}
-              <span className="italic" style={{ color: "#b81f2f" }}>
+              <span className="italic" style={{ color: "#9a1a27" }}>
                 step by step
               </span>
             </h2>
@@ -1085,7 +1085,7 @@ function SecurityBanner() {
             </p>
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05] font-display text-white">
               Your Data Stays{" "}
-              <span className="italic" style={{ color: "#b81f2f" }}>
+              <span className="italic" style={{ color: "#9a1a27" }}>
                 Yours
               </span>
             </h2>
@@ -1142,7 +1142,7 @@ function EarlyUserReview() {
           </p>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05] font-display max-w-3xl">
             What students are{" "}
-            <span className="italic" style={{ color: "#b81f2f" }}>
+            <span className="italic" style={{ color: "#9a1a27" }}>
               saying
             </span>
             .
@@ -1167,7 +1167,7 @@ function EarlyUserReview() {
                 top: "28px",
                 left: "28px",
                 fontSize: "84px",
-                color: "#b81f2f",
+                color: "#9a1a27",
                 lineHeight: 1,
               }}
             >
@@ -1227,7 +1227,7 @@ function FinalCTA() {
         <h2 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.02] mb-6 text-white font-display">
           Ready to start
           <br />
-          <span className="italic" style={{ color: "#b81f2f" }}>
+          <span className="italic" style={{ color: "#9a1a27" }}>
             your journey?
           </span>
         </h2>

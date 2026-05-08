@@ -93,7 +93,7 @@ export default async function SchoolsPage({
   const { data: schools, count, error } = await query;
 
   if (error) {
-    return <div className="p-10 text-[#b81f2f]">Unable to load schools. Please try again later.</div>;
+    return <div className="p-10 text-[#9a1a27]">Unable to load schools. Please try again later.</div>;
   }
 
   const totalPages = count ? Math.ceil(count / itemsPerPage) : 0;

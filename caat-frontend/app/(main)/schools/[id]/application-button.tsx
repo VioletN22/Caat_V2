@@ -55,7 +55,7 @@ export default function ApplicationButton({
       <Button asChild variant="outline" size="sm" className="gap-1.5">
         <Link href="/applications">
           <span
-            className={`inline-block h-2 w-2 rounded-full mr-1 ${cfg.className.includes("bg-zinc") ? "bg-zinc-400" : cfg.className.includes("bg-blue") ? "bg-blue-500" : cfg.className.includes("bg-indigo") ? "bg-indigo-500" : cfg.className.includes("bg-amber") ? "bg-amber-500" : cfg.className.includes("bg-green") ? "bg-green-500" : cfg.className.includes("bg-[#b81f2f]") ? "bg-[#b81f2f]" : cfg.className.includes("bg-orange") ? "bg-orange-500" : "bg-zinc-400"}`}
+            className={`inline-block h-2 w-2 rounded-full mr-1 ${cfg.className.includes("bg-zinc") ? "bg-zinc-400" : cfg.className.includes("bg-blue") ? "bg-blue-500" : cfg.className.includes("bg-indigo") ? "bg-indigo-500" : cfg.className.includes("bg-amber") ? "bg-amber-500" : cfg.className.includes("bg-green") ? "bg-green-500" : cfg.className.includes("bg-[#9a1a27]") ? "bg-[#9a1a27]" : cfg.className.includes("bg-orange") ? "bg-orange-500" : "bg-zinc-400"}`}
           />
           {cfg.label}
         </Link>

@@ -55,7 +55,7 @@ export default function Navbar() {
             </Link>
             <Link
               href="/signup"
-              className="bg-[#b81f2f] text-white text-xs tracking-widest uppercase px-6 py-2.5 border border-[#b81f2f] hover:bg-white hover:text-[#b81f2f] transition-colors duration-100 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-[#b81f2f] focus-visible:outline-offset-2 font-code"
+              className="bg-[#9a1a27] text-white text-xs tracking-widest uppercase px-6 py-2.5 border border-[#9a1a27] hover:bg-white hover:text-[#9a1a27] transition-colors duration-100 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-[#9a1a27] focus-visible:outline-offset-2 font-code"
             >
               Sign Up
             </Link>
@@ -101,7 +101,7 @@ export default function Navbar() {
               <Link
                 href="/signup"
                 onClick={() => setOpen(false)}
-                className="bg-[#b81f2f] text-white text-xs tracking-widest uppercase px-6 py-3.5 text-center font-code"
+                className="bg-[#9a1a27] text-white text-xs tracking-widest uppercase px-6 py-3.5 text-center font-code"
               >
                 Sign Up
               </Link>

@@ -67,8 +67,8 @@ export default function ContactPage() {
             <div className="mt-6">
               <a
                 href={`mailto:${SUPPORT_EMAIL}`}
-                style={{ backgroundColor: "#b81f2f", color: "#fff" }}
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-code tracking-wide hover:opacity-90 transition-opacity focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-[#b81f2f] focus-visible:outline-offset-2"
+                style={{ backgroundColor: "#9a1a27", color: "#fff" }}
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-code tracking-wide hover:opacity-90 transition-opacity focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-[#9a1a27] focus-visible:outline-offset-2"
               >
                 Send us an email →
               </a>
