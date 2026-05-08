@@ -84,7 +84,7 @@ export function CommentItem({ comment, currentUser, isReply = false, onReplyAdde
             <button
               className={cn(
                 "flex items-center gap-1 text-[11px] transition-colors",
-                likeOptimistic.isLiked ? "text-red-500 hover:text-red-600" : "text-muted-foreground hover:text-foreground"
+                likeOptimistic.isLiked ? "text-[#9a1a27] hover:text-[#9a1a27]" : "text-muted-foreground hover:text-foreground"
               )}
               onClick={handleLike}
             >

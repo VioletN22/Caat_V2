@@ -59,3 +59,18 @@ Claude files
 caat-frontend/MAJORS_FEATURE_PLAN.md
 
 repomix-output.xml
+
+####################################
+Internal-only docs — never push to origin (public repo)
+# Keep these files locally for your own reference; they will not be tracked.
+####################################
+# Security reports
+SECURITY_AUDIT*.md
+SECURITY_REMEDIATION*.md
+*_AUDIT*.md
+
+# Product / planning docs
+PRD_*.md
+PRD_*.txt
+*_PLAN.md
+*_PRD.md

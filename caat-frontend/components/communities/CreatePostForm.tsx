@@ -24,7 +24,7 @@ const EXAM_OPTIONS = ["SAT", "ACT", "IB", "A-Levels", "ATAR", "AP"] as const;
 const OUTCOME_OPTIONS = [
   { value: "accepted",   label: "Accepted",   icon: CheckCircle, color: "text-green-600" },
   { value: "waitlisted", label: "Waitlisted", icon: Clock,        color: "text-amber-600" },
-  { value: "rejected",   label: "Rejected",   icon: XCircle,      color: "text-red-600" },
+  { value: "rejected",   label: "Rejected",   icon: XCircle,      color: "text-[#9a1a27]" },
 ] as const;
 
 interface CreatePostFormProps {
@@ -244,7 +244,7 @@ export function CreatePostForm({ currentUser, onPostCreated, groupId }: CreatePo
               className="resize-none min-h-[100px]"
               maxLength={2100}
             />
-            <p className={cn("text-xs text-right", isOverLimit ? "text-red-500" : "text-muted-foreground")}>
+            <p className={cn("text-xs text-right", isOverLimit ? "text-[#9a1a27]" : "text-muted-foreground")}>
               {charCount} / 2000
             </p>
           </div>

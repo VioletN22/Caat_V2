@@ -57,7 +57,7 @@ export const STATUS_CONFIG: Record<
   },
   rejected: {
     label: "Rejected",
-    className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+    className: "bg-[#9a1a27]/10 text-[#9a1a27] dark:bg-[#9a1a27]/20 dark:text-[#9a1a27]",
   },
   waitlisted: {
     label: "Waitlisted",

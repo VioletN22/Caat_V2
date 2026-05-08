@@ -22,7 +22,7 @@ function daysUntil(dateStr: string): number {
 }
 
 function dotColor(days: number) {
-  if (days <= 7) return "bg-red-500";
+  if (days <= 7) return "bg-[#9a1a27]";
   if (days <= 30) return "bg-amber-500";
   return "bg-green-500";
 }
@@ -34,7 +34,7 @@ function countdownText(days: number) {
 }
 
 function countdownColor(days: number) {
-  if (days <= 7) return "text-red-500";
+  if (days <= 7) return "text-[#9a1a27]";
   if (days <= 30) return "text-amber-500";
   return "text-green-600 dark:text-green-400";
 }
