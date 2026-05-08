@@ -55,7 +55,7 @@ export default function Navbar() {
             </Link>
             <Link
               href="/signup"
-              className="bg-black text-white text-xs tracking-widest uppercase px-6 py-2.5 border border-black hover:bg-white hover:text-black transition-colors duration-100 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-black focus-visible:outline-offset-2 font-code"
+              className="bg-[#b81f2f] text-white text-xs tracking-widest uppercase px-6 py-2.5 border border-[#b81f2f] hover:bg-white hover:text-[#b81f2f] transition-colors duration-100 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-[#b81f2f] focus-visible:outline-offset-2 font-code"
             >
               Sign Up
             </Link>
@@ -67,7 +67,11 @@ export default function Navbar() {
             aria-label={open ? "Close menu" : "Open menu"}
             className="md:hidden p-2 -mr-2 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-black focus-visible:outline-offset-2"
           >
-            {open ? <X size={20} strokeWidth={1.5} /> : <Menu size={20} strokeWidth={1.5} />}
+            {open ? (
+              <X size={20} strokeWidth={1.5} />
+            ) : (
+              <Menu size={20} strokeWidth={1.5} />
+            )}
           </button>
         </div>
       </div>
@@ -97,7 +101,7 @@ export default function Navbar() {
               <Link
                 href="/signup"
                 onClick={() => setOpen(false)}
-                className="bg-black text-white text-xs tracking-widest uppercase px-6 py-3.5 text-center font-code"
+                className="bg-[#b81f2f] text-white text-xs tracking-widest uppercase px-6 py-3.5 text-center font-code"
               >
                 Sign Up
               </Link>

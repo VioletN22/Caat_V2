@@ -133,7 +133,7 @@ function Hero() {
             <div className="flex flex-col sm:flex-row gap-4 pt-2">
               <Link
                 href="/signup"
-                className="inline-flex items-center justify-center gap-2 bg-black text-white text-[11px] tracking-[0.18em] uppercase px-8 py-4 border border-black hover:bg-white hover:text-black transition-colors duration-100 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-black focus-visible:outline-offset-[3px] font-code"
+                className="inline-flex items-center justify-center gap-2 bg-[#b81f2f] text-white text-[11px] tracking-[0.18em] uppercase px-8 py-4 border border-[#b81f2f] hover:bg-white hover:text-[#b81f2f] transition-colors duration-100 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-[#b81f2f] focus-visible:outline-offset-[3px] font-code"
               >
                 Get Started for Free
                 <ArrowRight size={14} strokeWidth={1.5} />
@@ -160,7 +160,10 @@ function Hero() {
             {/* Shadow layer (offset duplicate) */}
             <div
               className="absolute border border-[#E5E5E5] bg-[#F5F5F5] w-full max-w-[400px]"
-              style={{ transform: "rotate(-1deg) translate(10px, 10px)", height: "460px" }}
+              style={{
+                transform: "rotate(-1deg) translate(10px, 10px)",
+                height: "460px",
+              }}
               aria-hidden
             />
             {/* Main mockup */}
@@ -325,7 +328,6 @@ function Hero() {
             </div>
           </div>
         </div>
-
       </div>
     </section>
   );
@@ -386,7 +388,10 @@ function FeaturesGrid() {
   ];
 
   return (
-    <section id="features" className="relative py-24 md:py-32 lg:py-40 bg-white">
+    <section
+      id="features"
+      className="relative py-24 md:py-32 lg:py-40 bg-white"
+    >
       <LinesTexture />
       <div className="relative max-w-6xl mx-auto px-6 lg:px-12">
         {/* Section header */}
@@ -520,9 +525,7 @@ function ProductShowcase() {
                 <div key={item.label} className="flex items-center gap-3">
                   <div
                     className={`w-4 h-4 border flex items-center justify-center flex-shrink-0 ${
-                      item.done
-                        ? "bg-black border-black"
-                        : "border-[#525252]"
+                      item.done ? "bg-black border-black" : "border-[#525252]"
                     }`}
                   >
                     {item.done && (
@@ -541,10 +544,7 @@ function ProductShowcase() {
             </div>
 
             {/* Divider — full-bleed hairline rule between sub-features */}
-            <div
-              className="-mx-8 lg:-mx-10 h-px bg-black my-10"
-              aria-hidden
-            />
+            <div className="-mx-8 lg:-mx-10 h-px bg-black my-10" aria-hidden />
 
             {/* School Search — mirrors /schools page */}
             <p className="text-[10px] tracking-[0.18em] uppercase text-[#525252] mb-5 font-code">
@@ -554,7 +554,11 @@ function ProductShowcase() {
             {/* Search input + country filter row */}
             <div className="flex gap-2 mb-4">
               <div className="flex-1 border border-black flex items-center gap-2 px-3 py-2.5">
-                <Search size={13} strokeWidth={1.5} className="text-[#525252] flex-shrink-0" />
+                <Search
+                  size={13}
+                  strokeWidth={1.5}
+                  className="text-[#525252] flex-shrink-0"
+                />
                 <span className="text-xs font-serif">Stanford</span>
                 <span
                   className="ml-auto w-px h-3 bg-black inline-block"
@@ -581,9 +585,21 @@ function ProductShowcase() {
             {/* Result rows */}
             <div className="border border-black divide-y divide-black">
               {[
-                { name: "Stanford University", country: "United States", bookmarked: true },
-                { name: "Stanford Online High School", country: "United States", bookmarked: false },
-                { name: "Stanford Graduate School", country: "United States", bookmarked: false },
+                {
+                  name: "Stanford University",
+                  country: "United States",
+                  bookmarked: true,
+                },
+                {
+                  name: "Stanford Online High School",
+                  country: "United States",
+                  bookmarked: false,
+                },
+                {
+                  name: "Stanford Graduate School",
+                  country: "United States",
+                  bookmarked: false,
+                },
               ].map((school) => (
                 <div
                   key={school.name}
@@ -616,9 +632,9 @@ function ProductShowcase() {
             </p>
 
             <p className="text-lg mb-8 leading-relaxed font-serif text-[#525252]">
-              Guided sections walk you through every detail. The live A4
-              preview updates as you type — print-ready, the way admissions
-              offices expect.
+              Guided sections walk you through every detail. The live A4 preview
+              updates as you type — print-ready, the way admissions offices
+              expect.
             </p>
 
             {/* Section nav — mirrors DocumentStructurePanel */}
@@ -636,9 +652,7 @@ function ProductShowcase() {
                       ? "text-white border-transparent"
                       : "border-[#E5E5E5] text-[#525252]"
                   }`}
-                  style={
-                    s.active ? { backgroundColor: "#b81f2f" } : undefined
-                  }
+                  style={s.active ? { backgroundColor: "#b81f2f" } : undefined}
                 >
                   {s.label}
                 </span>
@@ -716,7 +730,10 @@ function ProductShowcase() {
                       borderTop: "2px solid #000",
                     }}
                   />
-                  <div className="font-serif" style={{ fontSize: "8.5px", lineHeight: 1.45 }}>
+                  <div
+                    className="font-serif"
+                    style={{ fontSize: "8.5px", lineHeight: 1.45 }}
+                  >
                     <div className="font-bold">Boston Latin School</div>
                     <div style={{ color: "#666" }}>
                       GPA 3.98 / 4.00 · Class of 2026
@@ -746,12 +763,25 @@ function ProductShowcase() {
                       borderTop: "2px solid #000",
                     }}
                   />
-                  <div className="font-serif" style={{ fontSize: "8.5px", lineHeight: 1.45 }}>
+                  <div
+                    className="font-serif"
+                    style={{ fontSize: "8.5px", lineHeight: 1.45 }}
+                  >
                     <div className="flex justify-between items-baseline">
-                      <span className="font-bold">Research Intern, MIT Media Lab</span>
-                      <span style={{ color: "#666", fontSize: "7.5px" }}>2025</span>
+                      <span className="font-bold">
+                        Research Intern, MIT Media Lab
+                      </span>
+                      <span style={{ color: "#666", fontSize: "7.5px" }}>
+                        2025
+                      </span>
                     </div>
-                    <ul style={{ margin: "2px 0 0 12px", padding: 0, color: "#666" }}>
+                    <ul
+                      style={{
+                        margin: "2px 0 0 12px",
+                        padding: 0,
+                        color: "#666",
+                      }}
+                    >
                       <li style={{ marginBottom: 1 }}>
                         Built ML pipeline analyzing 50k+ student records
                       </li>
@@ -781,7 +811,11 @@ function ProductShowcase() {
                   />
                   <div
                     className="font-serif"
-                    style={{ fontSize: "8.5px", color: "#666", lineHeight: 1.45 }}
+                    style={{
+                      fontSize: "8.5px",
+                      color: "#666",
+                      lineHeight: 1.45,
+                    }}
                   >
                     Python, TypeScript, React · Debate, Robotics, Piano
                   </div>
@@ -791,7 +825,7 @@ function ProductShowcase() {
 
             <Link
               href="/signup"
-              className="inline-flex items-center gap-2 bg-black text-white text-[11px] tracking-[0.18em] uppercase px-6 py-3.5 border border-black hover:bg-white hover:text-black transition-colors duration-100 font-code focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-black focus-visible:outline-offset-[3px]"
+              className="inline-flex items-center gap-2 bg-[#b81f2f] text-white text-[11px] tracking-[0.18em] uppercase px-6 py-3.5 border border-[#b81f2f] hover:bg-white hover:text-[#b81f2f] transition-colors duration-100 font-code focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-[#b81f2f] focus-visible:outline-offset-[3px]"
             >
               Build Your Resume
               <ArrowRight size={13} strokeWidth={1.5} />
@@ -854,8 +888,7 @@ function MoreFeatures() {
               href="/signup"
               className="text-sm font-medium hover:underline tracking-wide inline-flex items-center gap-1.5 mb-10 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-black focus-visible:outline-offset-2"
             >
-              Find Scholarships{" "}
-              <ArrowRight size={13} strokeWidth={1.5} />
+              Find Scholarships <ArrowRight size={13} strokeWidth={1.5} />
             </Link>
 
             {/* Scholarship match cards stack */}
@@ -876,7 +909,9 @@ function MoreFeatures() {
                   <div className="font-bold font-display text-sm text-[#BFBFBF]">
                     Coca-Cola Scholars
                   </div>
-                  <div className="font-code text-[10px] text-[#BFBFBF]">$20k</div>
+                  <div className="font-code text-[10px] text-[#BFBFBF]">
+                    $20k
+                  </div>
                 </div>
                 <div className="text-[#BFBFBF] font-code text-[10px] mt-1">
                   Closes Oct 31
@@ -979,7 +1014,8 @@ function ThreeSteps() {
               </span>
             </h2>
             <p className="text-lg text-[#525252] leading-relaxed font-serif mb-8">
-              CAAT walks you through every stage of applying to college, from your first school search to hitting submit.
+              CAAT walks you through every stage of applying to college, from
+              your first school search to hitting submit.
             </p>
             <div className="h-[4px] w-12 bg-black" aria-hidden />
           </div>
@@ -990,7 +1026,9 @@ function ThreeSteps() {
               <div
                 key={step.number}
                 className={`flex gap-6 ${
-                  i < steps.length - 1 ? "pb-8 mb-8 border-b border-[#E5E5E5]" : ""
+                  i < steps.length - 1
+                    ? "pb-8 mb-8 border-b border-[#E5E5E5]"
+                    : ""
                 }`}
               >
                 {/* Number + connector */}
@@ -1033,7 +1071,10 @@ function ThreeSteps() {
 
 function SecurityBanner() {
   return (
-    <section className="relative py-24 md:py-32 lg:py-40 text-white" style={{ backgroundColor: "#1a1a1a" }}>
+    <section
+      className="relative py-24 md:py-32 lg:py-40 text-white"
+      style={{ backgroundColor: "#1a1a1a" }}
+    >
       <WhiteVerticalTexture />
       <div className="relative max-w-6xl mx-auto px-6 lg:px-12">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
@@ -1060,8 +1101,14 @@ function SecurityBanner() {
 
             <div className="flex flex-wrap gap-3">
               {[
-                { icon: <Shield size={13} strokeWidth={1.5} />, label: "SOC2 Compliant" },
-                { icon: <Lock size={13} strokeWidth={1.5} />, label: "AES-256 Encryption" },
+                {
+                  icon: <Shield size={13} strokeWidth={1.5} />,
+                  label: "SOC2 Compliant",
+                },
+                {
+                  icon: <Lock size={13} strokeWidth={1.5} />,
+                  label: "AES-256 Encryption",
+                },
               ].map((badge) => (
                 <div
                   key={badge.label}
@@ -1228,9 +1275,15 @@ function Footer() {
       <div className="max-w-6xl mx-auto px-6 lg:px-12">
         <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-10">
           <div>
-            <div className="mb-3 flex items-center gap-3">
-              <Image src="/logo.png" alt="CAAT" width={72} height={28} className="object-contain" />
-              <span className="text-xs text-[#525252] font-code lowercase tracking-wide">
+            <div className="mb-3 flex items-center gap-4">
+              <Image
+                src="/logo.png"
+                alt="CAAT"
+                width={72}
+                height={28}
+                className="object-contain"
+              />
+              <span className="text-base text-[#525252] font-serif lowercase">
                 by
               </span>
               <a
@@ -1238,22 +1291,22 @@ function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Purpl Solutions"
-                className="inline-flex items-center gap-1.5 opacity-80 transition-opacity duration-150 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-black focus-visible:outline-offset-2"
+                className="inline-flex items-center gap-2 opacity-80 transition-opacity duration-150 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-black focus-visible:outline-offset-2"
               >
                 <Image
                   src="/brand/purpl-grain.png"
                   alt=""
                   aria-hidden="true"
-                  width={18}
-                  height={18}
-                  className="h-4 w-4 shrink-0 object-contain"
+                  width={28}
+                  height={28}
+                  className="h-7 w-7 shrink-0 object-contain"
                 />
                 <Image
                   src="/brand/purpl-mark.svg"
                   alt="purpl"
-                  width={56}
-                  height={20}
-                  className="h-3.5 w-auto object-contain"
+                  width={88}
+                  height={32}
+                  className="h-6 w-auto object-contain"
                 />
               </a>
             </div>
