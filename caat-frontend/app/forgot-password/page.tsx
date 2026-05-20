@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
 import { supabase } from "@/src/lib/supabaseClient";
 import { preflightAuthAction } from "@/app/auth-actions";
-import { TurnstileWidget, captchaEnabled } from "@/components/TurnstileWidget";
+import { TurnstileWidget, captchaEnabled, type TurnstileInstance } from "@/components/TurnstileWidget";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -14,6 +14,14 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaRef = useRef<TurnstileInstance>(null);
+
+  // Turnstile tokens are single-use; any failed attempt has already burned
+  // the token at siteverify. Reset the widget so the next submit gets a fresh one.
+  const resetCaptcha = () => {
+    captchaRef.current?.reset();
+    setCaptchaToken(null);
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,6 +36,7 @@ export default function ForgotPasswordPage() {
       });
       if (!preflight.ok) {
         setError(preflight.error);
+        resetCaptcha();
         setLoading(false);
         return;
       }
@@ -40,6 +49,7 @@ export default function ForgotPasswordPage() {
       setSubmitted(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong");
+      resetCaptcha();
     } finally {
       setLoading(false);
     }
@@ -123,7 +133,7 @@ export default function ForgotPasswordPage() {
                 />
               </div>
 
-              <TurnstileWidget onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+              <TurnstileWidget ref={captchaRef} onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
 
               <button
                 type="submit"
