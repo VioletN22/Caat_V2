@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useCallback, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff, ArrowRight, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/src/lib/supabaseClient"
 import { preflightAuthAction } from "@/app/auth-actions"
-import { TurnstileWidget, captchaEnabled } from "@/components/TurnstileWidget"
+import { TurnstileWidget, captchaEnabled, type TurnstileInstance } from "@/components/TurnstileWidget"
 
 export function SignupForm({
   className,
@@ -22,6 +22,14 @@ export function SignupForm({
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const captchaRef = useRef<TurnstileInstance>(null)
+
+  // Turnstile tokens are single-use; any failed attempt has already burned
+  // the token at siteverify. Reset the widget so the next submit gets a fresh one.
+  const resetCaptcha = () => {
+    captchaRef.current?.reset()
+    setCaptchaToken(null)
+  }
 
   // Strength criteria
   const hasMinLength = password.length >= 8
@@ -66,6 +74,7 @@ export function SignupForm({
       })
       if (!preflight.ok) {
         setError(preflight.error)
+        resetCaptcha()
         setLoading(false)
         return
       }
@@ -86,6 +95,7 @@ export function SignupForm({
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong")
+      resetCaptcha()
     } finally {
       setLoading(false)
     }
@@ -245,7 +255,7 @@ export function SignupForm({
         </div>
       </div>
 
-      <TurnstileWidget onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+      <TurnstileWidget ref={captchaRef} onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
 
       {/* Submit */}
       <button
