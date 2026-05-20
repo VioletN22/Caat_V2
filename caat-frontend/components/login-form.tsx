@@ -1,13 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff, ArrowRight } from "lucide-react"
 import { supabase } from "@/src/lib/supabaseClient"
 import { cn } from "@/lib/utils"
 import { preflightAuthAction } from "@/app/auth-actions"
-import { TurnstileWidget, captchaEnabled } from "@/components/TurnstileWidget"
+import { TurnstileWidget, captchaEnabled, type TurnstileInstance } from "@/components/TurnstileWidget"
 
 export function LoginForm({
   className,
@@ -19,6 +19,14 @@ export function LoginForm({
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const captchaRef = useRef<TurnstileInstance>(null)
+
+  // Turnstile tokens are single-use; any failed attempt has already burned
+  // the token at siteverify. Reset the widget so the next submit gets a fresh one.
+  const resetCaptcha = () => {
+    captchaRef.current?.reset()
+    setCaptchaToken(null)
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -37,6 +45,7 @@ export function LoginForm({
       })
       if (!preflight.ok) {
         setError(preflight.error)
+        resetCaptcha()
         setLoading(false)
         return
       }
@@ -64,6 +73,7 @@ export function LoginForm({
       router.refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Invalid login credentials")
+      resetCaptcha()
     } finally {
       setLoading(false)
     }
@@ -142,7 +152,7 @@ export function LoginForm({
         </Link>
       </div>
 
-      <TurnstileWidget onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+      <TurnstileWidget ref={captchaRef} onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
 
       {/* Submit */}
       <button
