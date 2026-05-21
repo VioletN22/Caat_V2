@@ -128,7 +128,6 @@ export function CalendarWidget() {
   const selectedKey = date ? toDateKey(date) : null;
   const eventsForDay = events.filter((e) => e.event_date === selectedKey);
   const deadlinesForDay = deadlines.filter((d) => d.dateISO === selectedKey);
-  const datesWithEvents = new Set(events.map((e) => e.event_date));
 
   function openAdd() {
     setEditingId(null);
