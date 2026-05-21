@@ -28,16 +28,24 @@ interface Props {
   scholarship: Scholarship;
   isBookmarked: boolean;
   onToggleBookmark: (id: string) => void;
+  /** When set, render a red "★ ..." badge above the university line */
+  matchReason?: string | null;
 }
 
 export default function ScholarshipCard({
   scholarship,
   isBookmarked,
   onToggleBookmark,
+  matchReason,
 }: Props) {
   return (
-    <Card className="flex flex-col h-[420px] overflow-hidden hover:shadow-lg transition-shadow">
+    <Card className={`flex flex-col h-[420px] overflow-hidden hover:shadow-lg transition-shadow ${matchReason ? "border-l-[3px] border-l-[#9a1a27]" : ""}`}>
       <CardHeader className="pb-3 gap-2">
+        {matchReason && (
+          <span className="inline-block self-start bg-[#9a1a27] text-white text-[10px] font-semibold uppercase tracking-wide px-2 py-1 leading-tight">
+            ★ {matchReason}
+          </span>
+        )}
         {/* University name + bookmark */}
         <div className="flex items-start justify-between gap-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground leading-tight">
