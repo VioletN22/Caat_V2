@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Calendar } from "@/components/ui/calendar";
+import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
+import { Calendar, CalendarDayButton } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,6 +12,10 @@ import { Plus, Trash2, MapPin, Wifi, Clock, CalendarDays, Pencil } from "lucide-
 import { supabase } from "@/src/lib/supabaseClient";
 import { toast } from "sonner";
 import { toDateKey, formatTime } from "@/lib/calendar-utils";
+import {
+  fetchUnifiedDeadlines,
+  type UnifiedDeadline,
+} from "@/lib/unified-deadlines";
 
 interface CalendarEvent {
   id: string;
@@ -56,6 +61,7 @@ function eventToForm(ev: CalendarEvent): EventForm {
 export function CalendarWidget() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [deadlines, setDeadlines] = useState<UnifiedDeadline[]>([]);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<EventForm>(EMPTY_FORM);
@@ -78,16 +84,50 @@ export function CalendarWidget() {
 
       if (error) {
         toast.error("Could not load calendar events.");
-        return;
+      } else {
+        setEvents((data ?? []) as CalendarEvent[]);
       }
-      setEvents((data ?? []) as CalendarEvent[]);
+
+      // Pull app + scholarship deadlines for overlay dots.
+      // Events come from calendar_events natively above — exclude them here
+      // to avoid double-rendering.
+      try {
+        const all = await fetchUnifiedDeadlines(supabase, user.id);
+        setDeadlines(all.filter((d) => d.source !== "event"));
+      } catch {
+        // non-critical
+      }
     }
 
     load();
   }, []);
 
+  // Build a per-date map of which deadline sources have an entry.
+  // app + scholarship from `deadlines`, event from `events`.
+  const dateSources = useMemo(() => {
+    const map = new Map<string, { app: boolean; scholarship: boolean; event: boolean }>();
+    function ensure(key: string) {
+      let entry = map.get(key);
+      if (!entry) {
+        entry = { app: false, scholarship: false, event: false };
+        map.set(key, entry);
+      }
+      return entry;
+    }
+    for (const d of deadlines) {
+      const e = ensure(d.dateISO);
+      if (d.source === "app") e.app = true;
+      if (d.source === "scholarship") e.scholarship = true;
+    }
+    for (const ev of events) {
+      ensure(ev.event_date).event = true;
+    }
+    return map;
+  }, [deadlines, events]);
+
   const selectedKey = date ? toDateKey(date) : null;
   const eventsForDay = events.filter((e) => e.event_date === selectedKey);
+  const deadlinesForDay = deadlines.filter((d) => d.dateISO === selectedKey);
   const datesWithEvents = new Set(events.map((e) => e.event_date));
 
   function openAdd() {
@@ -197,13 +237,45 @@ export function CalendarWidget() {
           selected={date}
           onSelect={setDate}
           className="rounded-md p-0"
-          modifiers={{
-            hasEvent: (d) => datesWithEvents.has(toDateKey(d)),
-          }}
-          modifiersClassNames={{
-            hasEvent: "underline decoration-primary decoration-2",
+          components={{
+            DayButton: (dayButtonProps) => {
+              const dayKey = toDateKey(dayButtonProps.day.date);
+              const src = dateSources.get(dayKey);
+              return (
+                <span className="relative inline-flex w-full h-full">
+                  <CalendarDayButton {...dayButtonProps} />
+                  {src && (src.app || src.scholarship || src.event) && (
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5"
+                    >
+                      {src.app && (
+                        <span className="h-1 w-1 rounded-full bg-blue-600" />
+                      )}
+                      {src.scholarship && (
+                        <span className="h-1 w-1 rounded-full bg-purple-600" />
+                      )}
+                      {src.event && (
+                        <span className="h-1 w-1 rounded-full bg-green-600" />
+                      )}
+                    </span>
+                  )}
+                </span>
+              );
+            },
           }}
         />
+        <div className="flex items-center gap-3 text-[10px] text-muted-foreground px-1">
+          <span className="inline-flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />App
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-purple-600" />Schol
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-green-600" />Event
+          </span>
+        </div>
 
         {!formOpen ? (
           <button
@@ -336,15 +408,30 @@ export function CalendarWidget() {
             : "Select a date"}
         </p>
 
-        {eventsForDay.length === 0 ? (
+        {eventsForDay.length === 0 && deadlinesForDay.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-1.5 py-10 text-center">
             <CalendarDays className="h-8 w-8 text-muted-foreground/30" />
-            <p className="text-xs text-muted-foreground">No events</p>
+            <p className="text-xs text-muted-foreground">Nothing on this date</p>
             <p className="text-xs text-muted-foreground/50">
-              Click &quot;Add event&quot; to get started
+              Click &quot;Add event&quot; to add one
             </p>
           </div>
         ) : (
+          <>
+          {deadlinesForDay.length > 0 && (
+            <ul className="space-y-2 mb-2">
+              {deadlinesForDay.map((d) => (
+                <li key={d.id} className="rounded-lg border bg-card p-3 text-xs">
+                  <Link href={d.href} className="font-medium hover:underline">
+                    {d.title}
+                  </Link>
+                  <div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+                    {d.source === "app" ? "Application deadline" : "Scholarship deadline"}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
           <ul className="space-y-2 overflow-y-auto">
             {eventsForDay.map((ev) => (
               <li
@@ -403,6 +490,7 @@ export function CalendarWidget() {
               </li>
             ))}
           </ul>
+          </>
         )}
       </div>
     </div>
