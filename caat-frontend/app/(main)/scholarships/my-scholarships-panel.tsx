@@ -16,6 +16,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Card,
   CardContent,
   CardFooter,
@@ -326,20 +333,21 @@ function ScholarshipFormDialog({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="s-frequency">Frequency</Label>
-                    <select
-                      id="s-frequency"
-                      value={form.frequency ?? ""}
-                      onChange={(e) =>
-                        set("frequency", e.target.value || null)
-                      }
-                      className="flex h-9 w-full border border-input bg-background px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:border-black"
+                    <Select
+                      value={form.frequency || undefined}
+                      onValueChange={(v) => set("frequency", v || null)}
                     >
-                      {FREQUENCY_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger id="s-frequency" className="h-9 w-full">
+                        <SelectValue placeholder="— Select —" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FREQUENCY_OPTIONS.filter((o) => o.value).map((o) => (
+                          <SelectItem key={o.value} value={o.value}>
+                            {o.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-1.5">

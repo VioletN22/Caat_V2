@@ -4,6 +4,13 @@ import React, { useState } from "react";
 import { GraduationCap } from "lucide-react";
 import { ProfileCard, InfoRow } from "./ProfileCard";
 import { SCHOOL_CURRICULUM_OPTIONS } from "@/types/profile";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface AcademicInfo {
   schoolName: string;
@@ -89,16 +96,19 @@ export function AcademicProfileCard({ data, onSave }: AcademicProfileCardProps) 
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Curriculum
             </label>
-            <select
-              value={draft.curriculum}
-              onChange={(e) => setDraft((d) => ({ ...d, curriculum: e.target.value }))}
-              className="h-8 rounded-md border border-input bg-background px-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            <Select
+              value={draft.curriculum || undefined}
+              onValueChange={(v) => setDraft((d) => ({ ...d, curriculum: v }))}
             >
-              <option value="" disabled>Select curriculum…</option>
-              {SCHOOL_CURRICULUM_OPTIONS.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+              <SelectTrigger size="sm" className="h-8 w-full">
+                <SelectValue placeholder="Select curriculum…" />
+              </SelectTrigger>
+              <SelectContent>
+                {SCHOOL_CURRICULUM_OPTIONS.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex flex-col gap-1 py-1.5">
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">

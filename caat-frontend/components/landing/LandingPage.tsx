@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowRight,
+  Play,
   LayoutGrid,
   Pencil,
   Lock,
@@ -21,6 +22,7 @@ import {
 } from "lucide-react";
 import Navbar from "./Navbar";
 import { FeaturePreviewCarousel } from "./FeaturePreviewCarousel";
+import { DemoPlayer } from "./DemoPlayer";
 
 // ─── Shared texture overlays ─────────────────────────────────────────────────
 
@@ -139,13 +141,13 @@ function Hero() {
                 Get Started for Free
                 <ArrowRight size={14} strokeWidth={1.5} />
               </Link>
-              {/* <button
-                type="button"
+              <a
+                href="#demo"
                 className="inline-flex items-center justify-center gap-2 bg-transparent text-black text-[11px] tracking-[0.18em] uppercase px-8 py-4 border-2 border-black hover:bg-black hover:text-white transition-colors duration-100 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-black focus-visible:outline-offset-[3px] font-code"
               >
                 <Play size={12} strokeWidth={1.5} />
                 Watch Demo
-              </button> */}
+              </a>
             </div>
 
             {/* Early release note */}
@@ -328,6 +330,38 @@ function Hero() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Demo Video ───────────────────────────────────────────────────────────────
+
+function DemoVideo() {
+  return (
+    <section className="relative bg-white py-24 md:py-32 lg:py-40">
+      <GridTexture />
+      {/* #demo anchor sits on the content wrapper with scroll-mt clearing
+          the navbar, so 'watch demo' lands the eyebrow at the top and the
+          heading + full video player are all in view. */}
+      <div id="demo" className="relative max-w-5xl mx-auto px-6 lg:px-12 scroll-mt-[65px]">
+        {/* eyebrow + heading, matching the rest of the page */}
+        <div className="text-center mb-12 md:mb-16">
+          <span className="text-[11px] tracking-[0.22em] uppercase font-code text-[#9a1a27]">
+            See it in action
+          </span>
+          <h2 className="font-display font-bold leading-[0.95] tracking-tight mt-4 text-5xl md:text-6xl lg:text-[4rem]">
+            <span className="text-black">CAAT </span>
+            <span className="italic" style={{ color: "#9a1a27" }}>
+              Demo
+            </span>
+          </h2>
+        </div>
+
+        {/* video player — youtube first (CDN), supabase mp4 fallback if the embed fails */}
+        <div className="relative border-2 border-black bg-black shadow-[12px_12px_0_0_rgba(154,26,39,1)]">
+          <DemoPlayer />
         </div>
       </div>
     </section>
@@ -1258,7 +1292,7 @@ function Footer() {
     { label: "Privacy Policy", href: "/privacy" },
     { label: "Terms of Service", href: "/terms" },
     { label: "Contact Us", href: "/contact" },
-    { label: "Help Center", href: "#" },
+    { label: "Help Center", href: "/help" },
   ];
 
   return (
@@ -1341,6 +1375,8 @@ export default function LandingPage() {
       <Navbar />
       <main>
         <Hero />
+        <ThickRule />
+        <DemoVideo />
         <ThickRule />
         <FeaturesGrid />
         <ThickRule />

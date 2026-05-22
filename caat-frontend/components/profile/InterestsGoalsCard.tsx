@@ -50,14 +50,43 @@ function TagList({
 
 // ── Majors combobox ────────────────────────────────────────────────────────────
 
-function MajorCombobox({
+/** Canonical country options for the preferred-countries combobox. Picking
+ *  one of these stores a clean value that lib/profile-match can compare
+ *  against the scholarships' canonical country (also case/alias-insensitive
+ *  there, so a free-typed value still matches). */
+const COUNTRY_OPTIONS = [
+  "Australia",
+  "United States",
+  "United Kingdom",
+  "Canada",
+  "New Zealand",
+  "Ireland",
+  "Germany",
+  "Netherlands",
+  "France",
+  "Switzerland",
+  "Sweden",
+  "Singapore",
+  "Japan",
+  "South Korea",
+  "Hong Kong",
+];
+
+/** Autosuggest tag input. Picking a suggestion stores its canonical form;
+ *  free-typed values are still accepted (and matched case-insensitively
+ *  downstream). Used for both majors and countries. */
+function ComboTagInput({
   selected,
   options,
   onChange,
+  label,
+  placeholder,
 }: {
   selected: string[];
   options: string[];
   onChange: (items: string[]) => void;
+  label: string;
+  placeholder: string;
 }) {
   const [input, setInput] = useState("");
   const [open, setOpen] = useState(false);
@@ -93,7 +122,7 @@ function MajorCombobox({
   return (
     <div className="flex flex-col gap-2">
       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-        Target Majors
+        {label}
       </p>
       <TagList
         items={selected}
@@ -116,7 +145,7 @@ function MajorCombobox({
               }
               if (e.key === "Escape") setOpen(false);
             }}
-            placeholder="Search or type a major…"
+            placeholder={placeholder}
             className="h-8 text-sm"
           />
           <Button
@@ -150,47 +179,6 @@ function MajorCombobox({
   );
 }
 
-// ── Free-text tag editor (for countries) ──────────────────────────────────────
-
-function TagEditor({
-  label,
-  items,
-  onChange,
-}: {
-  label: string;
-  items: string[];
-  onChange: (items: string[]) => void;
-}) {
-  const [input, setInput] = useState("");
-
-  function add() {
-    const trimmed = input.trim();
-    if (!trimmed || items.includes(trimmed)) return;
-    onChange([...items, trimmed]);
-    setInput("");
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-        {label}
-      </p>
-      <TagList items={items} onRemove={(i) => onChange(items.filter((_, idx) => idx !== i))} />
-      <div className="flex gap-2">
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && add()}
-          placeholder="Type and press Enter"
-          className="h-8 text-sm"
-        />
-        <Button size="sm" variant="outline" onClick={add} className="h-8 shrink-0">
-          Add
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
@@ -232,15 +220,19 @@ export function InterestsGoalsCard({ data, majorOptions, onSave }: InterestsGoal
       <div className="flex flex-col gap-4">
         {isEditing ? (
           <>
-            <MajorCombobox
+            <ComboTagInput
               selected={draft.targetMajors}
               options={majorOptions}
               onChange={(v) => setDraft((d) => ({ ...d, targetMajors: v }))}
+              label="Target Majors"
+              placeholder="Search or type a major…"
             />
-            <TagEditor
-              label="Preferred Countries"
-              items={draft.preferredCountries}
+            <ComboTagInput
+              selected={draft.preferredCountries}
+              options={COUNTRY_OPTIONS}
               onChange={(v) => setDraft((d) => ({ ...d, preferredCountries: v }))}
+              label="Preferred Countries"
+              placeholder="Search or type a country, e.g. Australia"
             />
           </>
         ) : (

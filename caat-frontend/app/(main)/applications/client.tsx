@@ -10,10 +10,18 @@ import {
   ChevronDown,
   ClipboardList,
   Bookmark,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
@@ -24,6 +32,7 @@ import {
   searchSchools,
   fetchUnimportedBookmarkCount,
   importBookmarkedSchools,
+  fetchGlobalReadinessSignals,
 } from "./api";
 import type { ApplicationRow, ApplicationStatus } from "@/types/applications";
 import { STATUS_CONFIG, APPLICATION_STATUSES } from "@/types/applications";
@@ -102,6 +111,13 @@ export default function ApplicationsClient() {
   const [importing, setImporting] = useState(false);
   const [freshIds, setFreshIds] = useState<Set<string>>(new Set());
 
+  // Global readiness signals (any essay draft, any document) shared by every
+  // card's readiness bar in v1; combined per-card with deadline + status.
+  const [globalReady, setGlobalReady] = useState<{ essayDrafted: boolean; keyDocsUploaded: boolean }>({
+    essayDrafted: false,
+    keyDocsUploaded: false,
+  });
+
   useEffect(() => {
     fetchApplications()
       .then(setApps)
@@ -110,6 +126,9 @@ export default function ApplicationsClient() {
     fetchUnimportedBookmarkCount()
       .then(setUnimportedCount)
       .catch(() => setUnimportedCount(0));
+    fetchGlobalReadinessSignals()
+      .then(setGlobalReady)
+      .catch(() => {});
   }, []);
 
   async function handleImportBookmarks() {
@@ -387,6 +406,7 @@ export default function ApplicationsClient() {
               confirmDeleteId={confirmDeleteId}
               setConfirmDeleteId={setConfirmDeleteId}
               isFresh={freshIds.has(app.id)}
+              globalReady={globalReady}
             />
           ))}
         </div>
@@ -408,6 +428,7 @@ function ApplicationCard({
   confirmDeleteId,
   setConfirmDeleteId,
   isFresh = false,
+  globalReady,
 }: {
   app: ApplicationRow;
   onStatusChange: (id: string, status: ApplicationStatus) => void;
@@ -417,6 +438,7 @@ function ApplicationCard({
   confirmDeleteId: string | null;
   setConfirmDeleteId: (id: string | null) => void;
   isFresh?: boolean;
+  globalReady: { essayDrafted: boolean; keyDocsUploaded: boolean };
 }) {
   const [notesOpen, setNotesOpen] = useState(false);
   const [localNotes, setLocalNotes] = useState(app.notes ?? "");
@@ -436,6 +458,21 @@ function ApplicationCard({
   const schoolName = app.schools?.name ?? "Unknown School";
   const schoolCountry = app.schools?.country;
   const dl = app.deadline_at ? deadlineLabel(app.deadline_at) : null;
+
+  // Readiness rollup (same 4 signals as the hub): deadline set, an essay
+  // drafted, a document uploaded, status advanced to submitted-or-later.
+  const SUBMITTED_PLUS = new Set<ApplicationStatus>([
+    "submitted",
+    "decision_pending",
+    "accepted",
+    "rejected",
+    "waitlisted",
+  ]);
+  const readyScore =
+    (app.deadline_at ? 1 : 0) +
+    (globalReady.essayDrafted ? 1 : 0) +
+    (globalReady.keyDocsUploaded ? 1 : 0) +
+    (SUBMITTED_PLUS.has(app.status) ? 1 : 0);
 
   return (
     <div className={`rounded-lg border p-4 space-y-3 ${isFresh ? "bg-[#FFF8E1] border-l-[3px] border-l-[#9a1a27]" : "bg-card"}`}>
@@ -466,20 +503,24 @@ function ApplicationCard({
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
           {/* Status select */}
           <div className="relative">
-            <select
+            <Select
               value={app.status}
-              onChange={(e) =>
-                onStatusChange(app.id, e.target.value as ApplicationStatus)
-              }
-              className={`appearance-none cursor-pointer rounded-full pl-3 pr-7 py-1 text-xs font-medium border-0 focus:ring-1 focus:ring-ring ${STATUS_CONFIG[app.status].className}`}
+              onValueChange={(v) => onStatusChange(app.id, v as ApplicationStatus)}
             >
-              {APPLICATION_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {STATUS_CONFIG[s].label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 opacity-50" />
+              <SelectTrigger
+                size="sm"
+                className={`h-auto w-auto rounded-full px-3 py-1 text-xs font-medium border-0 gap-1 ${STATUS_CONFIG[app.status].className}`}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {APPLICATION_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {STATUS_CONFIG[s].label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Deadline */}
@@ -587,6 +628,24 @@ function ApplicationCard({
           </div>
         </div>
       )}
+
+      {/* Readiness bar + open-hub link */}
+      <div className="flex items-center gap-3 pt-1">
+        <div className="flex-1">
+          <div className="h-1.5 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+            <div className="h-full bg-[#9a1a27]" style={{ width: `${(readyScore / 4) * 100}%` }} />
+          </div>
+        </div>
+        <span className="font-code text-[10px] uppercase tracking-[0.06em] text-muted-foreground whitespace-nowrap">
+          readiness {readyScore}/4
+        </span>
+        <Link
+          href={`/applications/${app.id}`}
+          className="font-code text-[11px] text-[#9a1a27] hover:underline whitespace-nowrap inline-flex items-center gap-1"
+        >
+          open <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
     </div>
   );
 }

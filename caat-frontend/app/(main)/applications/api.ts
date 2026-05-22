@@ -10,6 +10,17 @@ async function getUser() {
   return user;
 }
 
+/** A new application defaults its "applying for" majors from the student's
+ *  profile (target_majors), which they can then trim per school. */
+async function profileMajors(userId: string): Promise<string[]> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("target_majors")
+    .eq("id", userId)
+    .maybeSingle();
+  return ((data?.target_majors as string[] | null) ?? []).filter(Boolean);
+}
+
 export async function fetchApplications(): Promise<ApplicationRow[]> {
   const user = await getUser();
   const { data, error } = await supabase
@@ -39,13 +50,28 @@ export async function addApplication(
   schoolId: number
 ): Promise<ApplicationRow> {
   const user = await getUser();
+  const intended = await profileMajors(user.id);
   const { data, error } = await supabase
     .from("user_school_applications")
-    .insert({ user_id: user.id, school_id: schoolId, status: "researching" })
+    .insert({ user_id: user.id, school_id: schoolId, status: "researching", intended_majors: intended })
     .select("*, schools(id, name, country)")
     .single();
   if (error) throw new Error(error.message);
   return data as unknown as ApplicationRow;
+}
+
+/** Update the per-application "applying for" majors (stored as names). */
+export async function updateApplicationMajors(
+  id: string,
+  majors: string[]
+): Promise<void> {
+  const user = await getUser();
+  const { error } = await supabase
+    .from("user_school_applications")
+    .update({ intended_majors: majors, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("user_id", user.id);
+  if (error) throw new Error(error.message);
 }
 
 export async function updateApplication(
@@ -136,10 +162,12 @@ export async function importBookmarkedSchools(): Promise<{
     return { added: [], skipped: (bookmarkedRes.data ?? []).length };
   }
 
+  const intended = await profileMajors(user.id);
   const rows = toInsert.map((school_id) => ({
     user_id: user.id,
     school_id,
     status: "researching" as const,
+    intended_majors: intended,
   }));
 
   const { data, error } = await supabase
@@ -171,4 +199,25 @@ export async function searchSchools(
     .limit(10);
   if (error) throw new Error(error.message);
   return (data ?? []) as { id: number; name: string; country: string | null }[];
+}
+
+/**
+ * Global readiness signals shared across all applications in v1: whether the
+ * user has any essay draft, and any uploaded document. Combined per-card with
+ * the application's own deadline + status to render the readiness bar.
+ * (Per-school essay/doc tagging in roadmap item 2 will make these per-app.)
+ */
+export async function fetchGlobalReadinessSignals(): Promise<{
+  essayDrafted: boolean;
+  keyDocsUploaded: boolean;
+}> {
+  const user = await getUser();
+  const [draftsRes, docsRes] = await Promise.all([
+    supabase.from("essay_drafts").select("id").eq("user_id", user.id).limit(1),
+    supabase.from("documents").select("id").eq("user_id", user.id).limit(1),
+  ]);
+  return {
+    essayDrafted: (draftsRes.data ?? []).length > 0,
+    keyDocsUploaded: (docsRes.data ?? []).length > 0,
+  };
 }

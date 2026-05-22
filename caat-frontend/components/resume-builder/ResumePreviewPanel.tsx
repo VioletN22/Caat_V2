@@ -697,7 +697,7 @@ export default function ResumePreviewPanel({
               height: PAGE_HEIGHT_PX * displayScale,
               overflow: "hidden",
               boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-              border: "1px solid var(--border)",
+              border: "1px solid #9a1a27",
             }}
           >
             <div

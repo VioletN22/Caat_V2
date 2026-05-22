@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { fetchMySchools, type MySchool } from "@/lib/my-schools";
 import {
   Card,
   CardContent,
@@ -9,6 +11,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -60,6 +68,12 @@ export default function EssaysShell() {
   const [drafts, setDrafts] = useState<EssayDraft[]>([]);
   const [draftsLoading, setDraftsLoading] = useState(false);
   const [activeDraft, setActiveDraft] = useState<EssayDraft | null>(null);
+
+  // School tagging for per-school prompts (null = shared across applications)
+  const searchParams = useSearchParams();
+  const urlSchoolId = searchParams.get("school") ? Number(searchParams.get("school")) : null;
+  const [mySchools, setMySchools] = useState<MySchool[]>([]);
+  const [tagSchoolId, setTagSchoolId] = useState<number | null>(urlSchoolId);
   const [essayContent, setEssayContent] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -105,7 +119,16 @@ export default function EssaysShell() {
   useEffect(() => {
     if (!isAuthenticated) return;
     fetchCustomPrompts().then(setCustomPrompts).catch(() => {});
+    fetchMySchools().then(setMySchools).catch(() => {});
   }, [isAuthenticated]);
+
+  // Keep the school selector in sync with whichever draft is active. A loaded
+  // draft shows its own tag; with no draft we fall back to the URL-armed school
+  // (e.g. arriving from a hub's "Start an essay for X" button).
+  useEffect(() => {
+    setTagSchoolId(activeDraft ? activeDraft.school_id : urlSchoolId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeDraft?.id]);
 
   // When selected prompt changes, load drafts
   useEffect(() => {
@@ -214,6 +237,7 @@ export default function EssaysShell() {
         promptId: selectedPromptId,
         promptSlug,
         label: `Draft ${drafts.length + 1}`,
+        schoolId: selectedPrompt?.scope === "per_school" ? tagSchoolId : null,
       });
       setDrafts((prev) => [newDraft, ...prev]);
       setActiveDraft(newDraft);
@@ -223,7 +247,24 @@ export default function EssaysShell() {
     } finally {
       setCreatingDraft(false);
     }
-  }, [selectedPromptId, selectedPrompt, creatingDraft, isAuthenticated, drafts.length]);
+  }, [selectedPromptId, selectedPrompt, creatingDraft, isAuthenticated, drafts.length, tagSchoolId]);
+
+  // Persist a school tag onto the active draft (or just hold it for the next
+  // new draft if none is active yet).
+  const handleTagSchool = useCallback(
+    async (schoolId: number | null) => {
+      setTagSchoolId(schoolId);
+      if (!activeDraft) return;
+      try {
+        await updateDraft(activeDraft.id, { school_id: schoolId });
+        setDrafts((prev) => prev.map((d) => (d.id === activeDraft.id ? { ...d, school_id: schoolId } : d)));
+        setActiveDraft((prev) => (prev ? { ...prev, school_id: schoolId } : prev));
+      } catch {
+        toast.error("Could not update the school tag.");
+      }
+    },
+    [activeDraft]
+  );
 
   const handleDeleteDraft = useCallback(
     async (draftId: string) => {
@@ -749,6 +790,36 @@ export default function EssaysShell() {
                       </p>
                     </CollapsibleContent>
                   </Collapsible>
+
+                  {selectedPrompt.scope === "per_school" && (
+                    <div className="mt-4 flex flex-col gap-1.5 border-t pt-4">
+                      <label className="text-sm font-medium">This essay is for</label>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="w-full max-w-xs justify-between font-normal">
+                            {mySchools.find((s) => s.id === tagSchoolId)?.name ?? "Not tied to a school yet"}
+                            <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                          <DropdownMenuItem onSelect={() => handleTagSchool(null)}>
+                            Not tied to a school yet
+                            {tagSchoolId == null ? <Check className="h-3.5 w-3.5 ml-auto text-muted-foreground" /> : null}
+                          </DropdownMenuItem>
+                          {mySchools.map((s) => (
+                            <DropdownMenuItem key={s.id} onSelect={() => handleTagSchool(s.id)}>
+                              {s.name}
+                              {tagSchoolId === s.id ? <Check className="h-3.5 w-3.5 ml-auto text-muted-foreground" /> : null}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <p className="text-xs text-muted-foreground">
+                        You write this one fresh for each school. Tag it so it shows up under that
+                        school&apos;s application.
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
               {draftEditorCard}
