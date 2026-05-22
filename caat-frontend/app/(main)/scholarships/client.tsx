@@ -38,6 +38,8 @@ import {
   deriveDisplayTags,
   formatAmountDisplay,
 } from "@/types/scholarships";
+import type { ProfileRow } from "@/types/profile";
+import { matchScholarship, type MatchResult } from "@/lib/profile-match";
 import { supabase } from "@/src/lib/supabaseClient";
 import { useAuth } from "@/src/context/AuthContext";
 import { toast } from "sonner";
@@ -145,9 +147,10 @@ function parseArray(val: string | null): string[] {
 
 interface Props {
   scholarships: ScholarshipRow[];
+  profile: ProfileRow | null;
 }
 
-export default function ScholarshipsClient({ scholarships }: Props) {
+export default function ScholarshipsClient({ scholarships, profile }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
@@ -200,6 +203,16 @@ export default function ScholarshipsClient({ scholarships }: Props) {
     for (const f of fieldsByRow.values()) for (const v of f) set.add(v);
     return FIELD_PATTERNS.map((p) => p.label).filter((l) => set.has(l));
   }, [fieldsByRow]);
+
+  // Pre-compute profile-match per scholarship so sort+badge are O(1).
+  const matchByRow = useMemo(() => {
+    const map = new Map<string, MatchResult>();
+    for (const s of scholarships) {
+      map.set(s.id, matchScholarship(profile, s));
+    }
+    return map;
+  }, [scholarships, profile]);
+
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [showBookmarked, setShowBookmarked] = useState(
     sp.get("bookmarked") === "1",
@@ -412,8 +425,20 @@ export default function ScholarshipsClient({ scholarships }: Props) {
     bookmarkedIds,
   ]);
 
+  // Sort matched items to the top (by descending match score). Within the
+  // matched and unmatched groups, the existing order from `scholarships`
+  // (which is already sorted by is_active/featured/created_at at the DB layer)
+  // is preserved by sort() stability.
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const aScore = matchByRow.get(a.id)?.score ?? 0;
+      const bScore = matchByRow.get(b.id)?.score ?? 0;
+      return bScore - aScore;
+    });
+  }, [filtered, matchByRow]);
+
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
-  const paginated = filtered.slice(
+  const paginated = sorted.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
   );
@@ -814,6 +839,7 @@ export default function ScholarshipsClient({ scholarships }: Props) {
                     scholarship={rowToCard(row)}
                     isBookmarked={bookmarkedIds.has(row.id)}
                     onToggleBookmark={handleToggleBookmark}
+                    matchReason={matchByRow.get(row.id)?.reason ?? null}
                   />
                 ))}
               </div>

@@ -9,6 +9,7 @@ import {
   ExternalLink,
   ChevronDown,
   ClipboardList,
+  Bookmark,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,8 @@ import {
   updateApplication,
   deleteApplication,
   searchSchools,
+  fetchUnimportedBookmarkCount,
+  importBookmarkedSchools,
 } from "./api";
 import type { ApplicationRow, ApplicationStatus } from "@/types/applications";
 import { STATUS_CONFIG, APPLICATION_STATUSES } from "@/types/applications";
@@ -94,12 +97,45 @@ export default function ApplicationsClient() {
   // Delete confirmation
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
+  // Bulk-import bookmarks bridge
+  const [unimportedCount, setUnimportedCount] = useState<number | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [freshIds, setFreshIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     fetchApplications()
       .then(setApps)
       .catch(() => toast.error("Failed to load applications."))
       .finally(() => setLoading(false));
+    fetchUnimportedBookmarkCount()
+      .then(setUnimportedCount)
+      .catch(() => setUnimportedCount(0));
   }, []);
+
+  async function handleImportBookmarks() {
+    if (importing) return;
+    setImporting(true);
+    try {
+      const { added } = await importBookmarkedSchools();
+      if (added.length === 0) {
+        toast.info("All bookmarked schools are already in your applications.");
+      } else {
+        setApps((prev) => [...added, ...prev]);
+        setFreshIds(new Set(added.map((a) => a.id)));
+        const names = added.map((a) => a.schools?.name ?? "Unknown").join(", ");
+        toast.success(
+          `Added ${added.length} school${added.length === 1 ? "" : "s"} as Researching — ${names}`,
+          { duration: 6000 }
+        );
+      }
+      const newCount = await fetchUnimportedBookmarkCount();
+      setUnimportedCount(newCount);
+    } catch {
+      toast.error("Failed to import bookmarks.");
+    } finally {
+      setImporting(false);
+    }
+  }
 
   // Debounced school search
   const handleSearchInput = useCallback((q: string) => {
@@ -222,14 +258,31 @@ export default function ApplicationsClient() {
             {apps.length}
           </Badge>
         </div>
-        <Button
-          size="sm"
-          onClick={() => setShowSearch(!showSearch)}
-          className="gap-1.5 bg-[#9a1a27] text-white hover:bg-[#7d141f] border-[#9a1a27]"
-        >
-          <Plus className="h-4 w-4" />
-          Add School
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {unimportedCount !== null && unimportedCount > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleImportBookmarks}
+              disabled={importing}
+              className="gap-1.5"
+            >
+              <Bookmark className="h-4 w-4" />
+              Import from Bookmarks
+              <span className="ml-1 inline-flex items-center justify-center text-[10px] font-semibold bg-[#9a1a27] text-white px-1.5 rounded-full leading-none py-0.5">
+                {unimportedCount}
+              </span>
+            </Button>
+          )}
+          <Button
+            size="sm"
+            onClick={() => setShowSearch(!showSearch)}
+            className="gap-1.5 bg-[#9a1a27] text-white hover:bg-[#7d141f] border-[#9a1a27]"
+          >
+            <Plus className="h-4 w-4" />
+            Add School
+          </Button>
+        </div>
       </div>
 
       {/* Add school search panel */}
@@ -333,6 +386,7 @@ export default function ApplicationsClient() {
               onDelete={handleDelete}
               confirmDeleteId={confirmDeleteId}
               setConfirmDeleteId={setConfirmDeleteId}
+              isFresh={freshIds.has(app.id)}
             />
           ))}
         </div>
@@ -353,6 +407,7 @@ function ApplicationCard({
   onDelete,
   confirmDeleteId,
   setConfirmDeleteId,
+  isFresh = false,
 }: {
   app: ApplicationRow;
   onStatusChange: (id: string, status: ApplicationStatus) => void;
@@ -361,6 +416,7 @@ function ApplicationCard({
   onDelete: (id: string) => void;
   confirmDeleteId: string | null;
   setConfirmDeleteId: (id: string | null) => void;
+  isFresh?: boolean;
 }) {
   const [notesOpen, setNotesOpen] = useState(false);
   const [localNotes, setLocalNotes] = useState(app.notes ?? "");
@@ -382,7 +438,7 @@ function ApplicationCard({
   const dl = app.deadline_at ? deadlineLabel(app.deadline_at) : null;
 
   return (
-    <div className="rounded-lg border bg-card p-4 space-y-3">
+    <div className={`rounded-lg border p-4 space-y-3 ${isFresh ? "bg-[#FFF8E1] border-l-[3px] border-l-[#9a1a27]" : "bg-card"}`}>
       {/* Top row: school info + status + actions */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3 min-w-0">
@@ -391,6 +447,11 @@ function ApplicationCard({
               href={`/schools/${app.school_id}`}
               className="text-sm font-semibold hover:underline underline-offset-2 flex items-center gap-1.5"
             >
+              {isFresh && (
+                <span className="text-[9px] font-bold uppercase tracking-wide bg-[#9a1a27] text-white px-1.5 py-0.5">
+                  New
+                </span>
+              )}
               {schoolName}
               <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
             </Link>

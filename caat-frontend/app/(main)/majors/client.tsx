@@ -13,6 +13,8 @@ import { supabase } from "@/src/lib/supabaseClient";
 import { useAuth } from "@/src/context/AuthContext";
 import { toast } from "sonner";
 import { MAJOR_CATEGORIES } from "@/constants/majors";
+import type { ProfileRow } from "@/types/profile";
+import { matchMajor, type MatchResult } from "@/lib/profile-match";
 
 const MAX_COMPARE = 3;
 
@@ -25,11 +27,13 @@ const VALID_FILTERS = new Set<string>([
 interface Props {
   majors: Major[];
   initialFilter?: FilterView;
+  profile: ProfileRow | null;
 }
 
 export default function MajorsClient({
   majors,
   initialFilter = "All",
+  profile,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -103,6 +107,21 @@ export default function MajorsClient({
       return matchesCategory && matchesSearch;
     });
   }, [majors, searchQuery, selectedFilter, bookmarkedIds]);
+
+  // Pre-compute match per major, then sort matched ones to the top.
+  const matchByMajor = useMemo(() => {
+    const map = new Map<string, MatchResult>();
+    for (const m of majors) map.set(m.id, matchMajor(profile, m));
+    return map;
+  }, [majors, profile]);
+
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const aScore = matchByMajor.get(a.id)?.score ?? 0;
+      const bScore = matchByMajor.get(b.id)?.score ?? 0;
+      return bScore - aScore;
+    });
+  }, [filtered, matchByMajor]);
 
   const selectedMajors = useMemo(
     () => compareIds.map((id) => majors.find((m) => m.id === id)).filter(Boolean) as Major[],
@@ -183,7 +202,7 @@ export default function MajorsClient({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-24">
-            {filtered.map((major) => (
+            {sorted.map((major) => (
               <MajorCard
                 key={major.id}
                 major={major}
@@ -195,6 +214,7 @@ export default function MajorsClient({
                 }
                 onToggleSelect={handleToggleSelect}
                 onToggleBookmark={handleToggleBookmark}
+                matchReason={matchByMajor.get(major.id)?.reason ?? null}
               />
             ))}
           </div>

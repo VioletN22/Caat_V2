@@ -1,4 +1,5 @@
 import { supabase } from "@/src/lib/supabaseClient";
+import { createSupabaseServer } from "@/lib/supabase-server";
 import Link from "next/link";
 import {
   Card,
@@ -24,6 +25,43 @@ import SortSelect from "./sort-select";
 import { BookmarkedSchoolsList } from "./schools-client";
 import SchoolFilterBarClient from "./school-filter-bar-client";
 import SchoolBookmarkButton from "./school-bookmark-button";
+import type { ProfileRow } from "@/types/profile";
+import { matchSchool, type MatchResult } from "@/lib/profile-match";
+
+async function fetchProfileAndOfferedMajors(): Promise<{
+  profile: ProfileRow | null;
+  offeredMajorsBySchool: Map<number, string[]>;
+}> {
+  const sb = await createSupabaseServer();
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return { profile: null, offeredMajorsBySchool: new Map() };
+
+  const profileRes = await sb
+    .from("profiles")
+    .select("id, first_name, last_name, email, birth_date, phone, linkedin, github, avatar_url, nationality, current_location, school_name, curriculum, graduation_year, target_majors, preferred_countries, activities, default_resume_id")
+    .eq("id", user.id)
+    .maybeSingle();
+  const profile = (profileRes.data as ProfileRow | null) ?? null;
+
+  if (!profile?.target_majors?.length) {
+    return { profile, offeredMajorsBySchool: new Map() };
+  }
+
+  const sjRes = await sb
+    .from("school_majors")
+    .select("school_id, majors(name)");
+  const map = new Map<number, string[]>();
+  for (const row of (sjRes.data ?? []) as unknown as {
+    school_id: number;
+    majors: { name: string } | null;
+  }[]) {
+    if (!row.majors) continue;
+    const list = map.get(row.school_id) ?? [];
+    list.push(row.majors.name);
+    map.set(row.school_id, list);
+  }
+  return { profile, offeredMajorsBySchool: map };
+}
 
 export default async function SchoolsPage({
   searchParams,
@@ -92,11 +130,28 @@ export default async function SchoolsPage({
     query = query.order("name", { ascending: true });
   }
 
-  const { data: schools, count, error } = await query;
+  const [schoolsRes, { profile, offeredMajorsBySchool }] = await Promise.all([
+    query,
+    fetchProfileAndOfferedMajors(),
+  ]);
+  const { data: schools, count, error } = schoolsRes;
 
   if (error) {
     return <div className="p-10 text-[#9a1a27]">Unable to load schools. Please try again later.</div>;
   }
+
+  // Compute match per school and sort matched ones to the top within this page.
+  type SchoolBase = NonNullable<typeof schools>[number];
+  type SchoolWithMatch = SchoolBase & { __match: MatchResult };
+  const schoolsWithMatch: SchoolWithMatch[] = (schools ?? []).map((sch) => ({
+    ...sch,
+    __match: matchSchool(
+      profile,
+      { id: sch.id, name: sch.name, country: sch.country },
+      offeredMajorsBySchool.get(sch.id)
+    ),
+  }));
+  schoolsWithMatch.sort((a, b) => b.__match.score - a.__match.score);
 
   const totalPages = count ? Math.ceil(count / itemsPerPage) : 0;
 
@@ -139,14 +194,19 @@ export default async function SchoolsPage({
             </p>
           </div>
 
-          {schools && schools.length > 0 ? (
+          {schoolsWithMatch.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-              {schools.map((school) => (
+              {schoolsWithMatch.map((school) => (
                 <Card
                   key={school.id}
-                  className="flex flex-col h-full hover:shadow-lg transition-shadow"
+                  className={`flex flex-col h-full hover:shadow-lg transition-shadow ${school.__match.reason ? "border-l-[3px] border-l-[#9a1a27]" : ""}`}
                 >
                   <CardHeader className="gap-2">
+                    {school.__match.reason && (
+                      <span className="inline-block self-start bg-[#9a1a27] text-white text-[10px] font-semibold uppercase tracking-wide px-2 py-1 leading-tight">
+                        ★ {school.__match.reason}
+                      </span>
+                    )}
                     {/* Title row + bookmark (top right, matches scholarship card) */}
                     <div className="flex items-start justify-between gap-2">
                       <CardTitle className="text-xl line-clamp-2 leading-tight">

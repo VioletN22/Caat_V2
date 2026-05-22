@@ -61,6 +61,11 @@ caat-frontend/MAJORS_FEATURE_PLAN.md
 repomix-output.xml
 
 ####################################
+# Superpowers brainstorm session files
+####################################
+.superpowers/
+
+####################################
 Internal-only docs — never push to origin (public repo)
 # Keep these files locally for your own reference; they will not be tracked.
 ####################################
