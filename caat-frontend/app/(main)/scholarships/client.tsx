@@ -43,6 +43,26 @@ import { matchScholarship, type MatchResult } from "@/lib/profile-match";
 import { supabase } from "@/src/lib/supabaseClient";
 import { useAuth } from "@/src/context/AuthContext";
 import { toast } from "sonner";
+import {
+  fetchBookmarkTracking,
+  SCHOLARSHIP_STATUS_LABELS,
+  type BookmarkTracking,
+  type ScholarshipStatus,
+} from "@/lib/scholarship-tracking";
+
+type ScholarshipStatusFilter = "all" | "interested" | "applied" | "outcome";
+const STATUS_FILTERS: { key: ScholarshipStatusFilter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "interested", label: "Interested" },
+  { key: "applied", label: "Applied" },
+  { key: "outcome", label: "Outcome" },
+];
+function matchesStatusFilter(f: ScholarshipStatusFilter, status: ScholarshipStatus | undefined): boolean {
+  if (f === "all") return true;
+  if (!status) return false;
+  if (f === "outcome") return status === "awarded" || status === "not_selected";
+  return status === f;
+}
 
 // Funding criteria — how the scholarship picks recipients / what it covers.
 const FUNDING_MAP: Record<string, (s: ScholarshipRow) => boolean> = {
@@ -214,6 +234,8 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
   }, [scholarships, profile]);
 
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
+  const [tracking, setTracking] = useState<Map<string, BookmarkTracking>>(new Map());
+  const [statusFilter, setStatusFilter] = useState<ScholarshipStatusFilter>("all");
   const [showBookmarked, setShowBookmarked] = useState(
     sp.get("bookmarked") === "1",
   );
@@ -252,6 +274,7 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
 
   useEffect(() => {
     if (!userId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBookmarkedIds(new Set());
       return;
     }
@@ -266,6 +289,8 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
             new Set(data.map((r) => r.scholarship_id as string)),
           );
       });
+
+    fetchBookmarkTracking().then(setTracking).catch(() => {});
   }, [userId]);
 
   async function handleToggleBookmark(id: string) {
@@ -283,6 +308,12 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
       } else {
         next.add(id);
       }
+      return next;
+    });
+    setTracking((prev) => {
+      const next = new Map(prev);
+      if (isBookmarked) next.delete(id);
+      else next.set(id, { status: "interested", school_id: null });
       return next;
     });
 
@@ -358,6 +389,7 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
 
     return scholarships.filter((s) => {
       if (showBookmarked && !bookmarkedIds.has(s.id)) return false;
+      if (statusFilter !== "all" && !matchesStatusFilter(statusFilter, tracking.get(s.id)?.status)) return false;
       if (showOpenOnly && !s.is_active) return false;
 
       if (
@@ -423,6 +455,8 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
     showBookmarked,
     showOpenOnly,
     bookmarkedIds,
+    statusFilter,
+    tracking,
   ]);
 
   // Sort matched items to the top (by descending match score). Within the
@@ -810,6 +844,22 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
                   )}
                 </Button>
 
+                {/* Status filter tabs (item 5) */}
+                <span className="mx-1 h-5 w-px bg-border" aria-hidden />
+                {STATUS_FILTERS.map((f) => (
+                  <Button
+                    key={f.key}
+                    size="sm"
+                    variant={statusFilter === f.key ? "default" : "outline"}
+                    onClick={() => {
+                      setStatusFilter(f.key);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    {f.label}
+                  </Button>
+                ))}
+
                 {/* Clear all */}
                 {hasActiveFilters && (
                   <Button
@@ -840,6 +890,11 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
                     isBookmarked={bookmarkedIds.has(row.id)}
                     onToggleBookmark={handleToggleBookmark}
                     matchReason={matchByRow.get(row.id)?.reason ?? null}
+                    statusLabel={
+                      bookmarkedIds.has(row.id) && tracking.get(row.id)
+                        ? SCHOLARSHIP_STATUS_LABELS[tracking.get(row.id)!.status]
+                        : null
+                    }
                   />
                 ))}
               </div>

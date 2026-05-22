@@ -5,6 +5,13 @@ import { Users, Trash2, Pencil, Plus, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import type { RecommenderRow, RecommenderStatus } from "@/types/profile";
 import {
@@ -286,17 +293,19 @@ function RecommenderForm({
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1">
             Status
           </label>
-          <select
+          <Select
             value={draft.status}
-            onChange={(e) =>
-              onChange({ ...draft, status: e.target.value as RecommenderStatus })
-            }
-            className="h-8 w-full rounded-md border border-input bg-background px-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            onValueChange={(v) => onChange({ ...draft, status: v as RecommenderStatus })}
           >
-            <option value="requested">Requested</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="submitted">Submitted</option>
-          </select>
+            <SelectTrigger size="sm" className="h-8 w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="requested">Requested</SelectItem>
+              <SelectItem value="confirmed">Confirmed</SelectItem>
+              <SelectItem value="submitted">Submitted</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
       <div className="flex items-center gap-2 justify-end pt-1">

@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ApplicationReadiness } from "./ApplicationReadiness";
+import { ApplicationsRollup } from "./ApplicationsRollup";
+import { OnboardingChecklist } from "./OnboardingChecklist";
 import { WidgetGrid } from "./WidgetGrid";
 import { WidgetStoreTrigger } from "./WidgetStore";
 import {
@@ -241,8 +242,11 @@ export function DashboardShell() {
         </p>
       </div>
 
-      {/* Application Readiness */}
-      <ApplicationReadiness />
+      {/* Onboarding nudge (auto-hides when done) */}
+      <OnboardingChecklist />
+
+      {/* Per-application readiness rollup */}
+      <ApplicationsRollup />
 
       {/* Your Dashboard header */}
       <div className="flex items-center justify-between">

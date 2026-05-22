@@ -123,7 +123,37 @@ describe("reasonFor()", () => {
           levelMatches: true,
         })
       )
-    ).toBe("Strong match — your major, country and level");
+    ).toBe("Strong match — your major, country, citizenship and level");
+  });
+
+  it("strong-match label names only the dimensions that matched (no false country)", () => {
+    // Regression: a profile whose preferred country does NOT match the school
+    // but matches on major + citizenship + level used to render
+    // 'your major, country and level', falsely claiming country. The label
+    // must now omit country.
+    expect(
+      reasonFor(
+        dims({
+          matchedMajor: "Computer Science",
+          matchedCountry: null,
+          citizenshipEligible: true,
+          levelMatches: true,
+        })
+      )
+    ).toBe("Strong match — your major, citizenship and level");
+  });
+
+  it("strong-match label uses country+citizenship+level when major is absent", () => {
+    expect(
+      reasonFor(
+        dims({
+          matchedMajor: null,
+          matchedCountry: "Australia",
+          citizenshipEligible: true,
+          levelMatches: true,
+        })
+      )
+    ).toBe("Strong match — your country, citizenship and level");
   });
 });
 
@@ -159,6 +189,22 @@ describe("matchScholarship()", () => {
     const result = matchScholarship(profile, sch);
     expect(result.score).toBe(1);
     expect(result.reason).toBe("In your preferred country (Australia)");
+  });
+
+  it("matches country case-insensitively (regression: 'australia' vs 'Australia')", () => {
+    const profile = makeProfile({ preferred_countries: ["USA", "australia"] });
+    const sch = makeScholarship({ country: "Australia" });
+    const result = matchScholarship(profile, sch);
+    expect(result.score).toBe(1);
+    expect(result.reason).toBe("In your preferred country (Australia)");
+  });
+
+  it("matches country via alias (USA -> United States)", () => {
+    const profile = makeProfile({ preferred_countries: ["USA"] });
+    const sch = makeScholarship({ country: "United States" });
+    const result = matchScholarship(profile, sch);
+    expect(result.score).toBe(1);
+    expect(result.reason).toBe("In your preferred country (United States)");
   });
 
   it("matches major + country", () => {

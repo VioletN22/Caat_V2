@@ -4,6 +4,13 @@ import React, { useState } from "react";
 import { Award, Plus, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ProfileCard } from "./ProfileCard";
 import {
   CURRICULUM_OPTIONS,
@@ -105,25 +112,29 @@ function ScoreEditor({
     <div className="flex flex-col gap-2 p-3 rounded-lg border border-border bg-muted/30">
       {/* Header row */}
       <div className="flex items-center justify-between gap-2">
-        <select
-          value={score.curriculum}
-          onChange={(e) =>
+        <Select
+          value={score.curriculum || undefined}
+          onValueChange={(v) =>
             onChange({
               ...score,
-              curriculum: e.target.value,
+              curriculum: v,
               cumulative_score: null,
               score_scale: null,
               subjects: [],
             })
           }
-          className="h-8 flex-1 rounded-md border border-input bg-background px-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
         >
-          {CURRICULUM_OPTIONS.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger size="sm" className="h-8 flex-1">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {CURRICULUM_OPTIONS.map((c) => (
+              <SelectItem key={c} value={c}>
+                {c}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button
           size="sm"
           variant="ghost"
@@ -136,21 +147,22 @@ function ScoreEditor({
 
       {/* GPA scale selector */}
       {score.curriculum === "GPA" && (
-        <select
-          value={score.score_scale ?? ""}
-          onChange={(e) => onChange({ ...score, score_scale: e.target.value })}
-          className="h-8 rounded-md border border-input bg-background px-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+        <Select
+          value={score.score_scale ?? undefined}
+          onValueChange={(v) => onChange({ ...score, score_scale: v })}
         >
-          <option value="" disabled>
-            Select scale…
-          </option>
-          {GPA_SCALES.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-          <option value="custom">Custom</option>
-        </select>
+          <SelectTrigger size="sm" className="h-8 w-full">
+            <SelectValue placeholder="Select scale…" />
+          </SelectTrigger>
+          <SelectContent>
+            {GPA_SCALES.map((s) => (
+              <SelectItem key={s.value} value={s.value}>
+                {s.label}
+              </SelectItem>
+            ))}
+            <SelectItem value="custom">Custom</SelectItem>
+          </SelectContent>
+        </Select>
       )}
 
       {/* Custom GPA scale input */}
@@ -164,20 +176,21 @@ function ScoreEditor({
 
       {/* English proficiency test selector */}
       {score.curriculum === "English Proficiency" && (
-        <select
-          value={score.score_scale ?? ""}
-          onChange={(e) => onChange({ ...score, score_scale: e.target.value })}
-          className="h-8 rounded-md border border-input bg-background px-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+        <Select
+          value={score.score_scale ?? undefined}
+          onValueChange={(v) => onChange({ ...score, score_scale: v })}
         >
-          <option value="" disabled>
-            Select test…
-          </option>
-          {ENGLISH_PROFICIENCY_TESTS.map((t) => (
-            <option key={t.label} value={t.label}>
-              {t.label} (/ {t.maxScore})
-            </option>
-          ))}
-        </select>
+          <SelectTrigger size="sm" className="h-8 w-full">
+            <SelectValue placeholder="Select test…" />
+          </SelectTrigger>
+          <SelectContent>
+            {ENGLISH_PROFICIENCY_TESTS.map((t) => (
+              <SelectItem key={t.label} value={t.label}>
+                {t.label} (/ {t.maxScore})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       )}
 
       {/* Cumulative score input */}

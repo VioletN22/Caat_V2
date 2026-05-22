@@ -24,7 +24,7 @@ import {
   RefreshCw,
   FileText,
 } from "lucide-react";
-import ScholarshipBookmarkButton from "./bookmark-button";
+import ScholarshipTracking from "./ScholarshipTracking";
 import { ScholarshipRow, deriveDisplayTags, formatAmountDisplay } from "@/types/scholarships";
 import { safeHref } from "@/lib/safe-href";
 import { TAG_COLORS } from "@/constants/scholarships";
@@ -164,7 +164,7 @@ export default async function ScholarshipDetailPage({
 
           {/* Action buttons */}
           <div className="flex items-center gap-2 shrink-0">
-            <ScholarshipBookmarkButton scholarshipId={scholarship.id} />
+            <ScholarshipTracking scholarshipId={scholarship.id} />
             {safeHref(scholarship.external_url) && (
               <Button asChild variant="default" size="sm" className="gap-1.5">
                 <a

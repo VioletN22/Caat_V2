@@ -30,6 +30,8 @@ interface Props {
   onToggleBookmark: (id: string) => void;
   /** When set, render a red "★ ..." badge above the university line */
   matchReason?: string | null;
+  /** Tracking status label (e.g. "Applied") shown when the user tracks this. */
+  statusLabel?: string | null;
 }
 
 export default function ScholarshipCard({
@@ -37,6 +39,7 @@ export default function ScholarshipCard({
   isBookmarked,
   onToggleBookmark,
   matchReason,
+  statusLabel,
 }: Props) {
   return (
     <Card className={`flex flex-col h-[420px] overflow-hidden hover:shadow-lg transition-shadow ${matchReason ? "border-l-[3px] border-l-[#9a1a27]" : ""}`}>
@@ -61,6 +64,12 @@ export default function ScholarshipCard({
             <Bookmark className={`h-3.5 w-3.5 ${isBookmarked ? "fill-current" : ""}`} />
           </Button>
         </div>
+
+        {statusLabel ? (
+          <span className="inline-block self-start text-[10px] font-mono uppercase tracking-wide px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+            {statusLabel}
+          </span>
+        ) : null}
 
         {/* Scholarship title */}
         <h3 className="font-semibold text-[15px] leading-snug">
