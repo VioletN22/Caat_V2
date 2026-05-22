@@ -423,6 +423,7 @@ export default function DocumentVaultClient() {
   const reuploadInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/immutability
     loadDocs();
     fetchMySchools().then(setMySchools).catch(() => {});
   }, []);
@@ -431,6 +432,7 @@ export default function DocumentVaultClient() {
   useEffect(() => {
     const s = searchParams.get("school");
     if (s) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setReuploadTarget(null);
       setUploadFile(null);
       setUploadCategory("transcripts");

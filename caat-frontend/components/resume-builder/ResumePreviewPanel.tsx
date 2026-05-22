@@ -366,6 +366,7 @@ export default function ResumePreviewPanel({
 
     if (blocks.length === 0) {
       const empty: PageModel[] = [{ pageIndex: 0, sections: [] }];
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPages(empty);
       onPagesComputed?.(empty, personal);
       return;

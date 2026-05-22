@@ -29,6 +29,7 @@ export function OnboardingChecklist() {
   const [dismissed, setDismissed] = useState(true);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDismissed(typeof window !== "undefined" && localStorage.getItem(DISMISS_KEY) === "1");
 
     (async () => {

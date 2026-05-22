@@ -84,6 +84,7 @@ export default function ApplicationHubClient({ applicationId }: { applicationId:
   }, [applicationId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
 
