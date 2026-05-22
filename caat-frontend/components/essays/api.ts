@@ -14,6 +14,7 @@ export type EssayPrompt = {
   description: string | null;
   tips: string | null;
   sort_order: number;
+  scope: "shared" | "per_school";
 };
 
 export type EssayDraft = {
@@ -24,6 +25,7 @@ export type EssayDraft = {
   label: string | null;
   content: string;
   is_current: boolean;
+  school_id: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -64,15 +66,16 @@ export async function fetchDraftsForPrompt(promptId: string): Promise<EssayDraft
 
 export async function updateDraft(
   draftId: string,
-  patch: { content?: string; label?: string | null }
+  patch: { content?: string; label?: string | null; school_id?: number | null }
 ): Promise<void> {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError) throw authError;
   if (!user) throw new Error("Not signed in");
 
-  const updates: { content?: string; label?: string | null } = {};
+  const updates: { content?: string; label?: string | null; school_id?: number | null } = {};
   if (patch.content !== undefined) updates.content = patch.content;
   if (patch.label !== undefined) updates.label = patch.label;
+  if (patch.school_id !== undefined) updates.school_id = patch.school_id;
 
   const { error } = await supabase
     .from("essay_drafts")
@@ -91,6 +94,7 @@ export async function createDraft(args: {
   promptId: string;
   promptSlug: string;
   label?: string;
+  schoolId?: number | null;
 }): Promise<EssayDraft> {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError) throw authError;
@@ -112,6 +116,7 @@ export async function createDraft(args: {
       content: "",
       label: args.label ?? "New draft",
       is_current: true,
+      school_id: args.schoolId ?? null,
     })
     .select("*")
     .single();

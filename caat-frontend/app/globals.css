@@ -273,3 +273,10 @@
     visibility: hidden !important;
   }
 }
+
+/* smooth in-page anchor scrolling (e.g. hero "watch demo" -> #demo) */
+html { scroll-behavior: smooth; }
+
+/* strip chrome native video-controls dark gradient on the demo player */
+.demo-video::-webkit-media-controls-panel { background-image: none !important; }
+.demo-video::-webkit-media-controls-enclosure { background-image: none !important; background-color: transparent !important; }

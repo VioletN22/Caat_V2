@@ -319,6 +319,7 @@ export function ResumePreviewMini({ sections }: { sections: ResumeSection[] }) {
             width: PAGE_WIDTH_PX * scale,
             height: PAGE_HEIGHT_PX * scale,
             overflow: "hidden",
+            border: "1px solid #9a1a27",
           }}
         >
           <div

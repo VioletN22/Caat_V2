@@ -78,6 +78,7 @@ export default function MajorsClient({
 
   useEffect(() => {
     if (!userId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBookmarkedIds(new Set());
       return;
     }

@@ -59,7 +59,8 @@ export async function fetchDocuments(): Promise<DocumentRow[]> {
 
 export async function uploadDocument(
   file: File,
-  category: DocCategory
+  category: DocCategory,
+  schoolId?: number | null
 ): Promise<DocumentRow> {
   const {
     data: { user },
@@ -109,6 +110,7 @@ export async function uploadDocument(
       category,
       mime_type: file.type,
       file_size: file.size,
+      school_id: schoolId ?? null,
     })
     .select()
     .single();

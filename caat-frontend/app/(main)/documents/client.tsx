@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
+import { fetchMySchools, type MySchool } from "@/lib/my-schools";
 import {
   Upload,
   CheckCircle2,
@@ -11,6 +13,8 @@ import {
   MoreVertical,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  Check,
   Info,
   HelpCircle,
   ArrowRight,
@@ -406,6 +410,11 @@ export default function DocumentVaultClient() {
   const [reuploadFile, setReuploadFile] = useState<File | null>(null);
   const [isReuploading, setIsReuploading] = useState(false);
 
+  // School tagging (null = shared across all applications)
+  const [uploadSchoolId, setUploadSchoolId] = useState<number | null>(null);
+  const [mySchools, setMySchools] = useState<MySchool[]>([]);
+  const searchParams = useSearchParams();
+
   // Delete modal
   const [deleteTarget, setDeleteTarget] = useState<DocumentRow | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -414,8 +423,23 @@ export default function DocumentVaultClient() {
   const reuploadInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/immutability
     loadDocs();
+    fetchMySchools().then(setMySchools).catch(() => {});
   }, []);
+
+  // Opened from a school's hub ("Attach a document for X") — pre-tag + open.
+  useEffect(() => {
+    const s = searchParams.get("school");
+    if (s) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setReuploadTarget(null);
+      setUploadFile(null);
+      setUploadCategory("transcripts");
+      setUploadSchoolId(Number(s));
+      setSheetOpen(true);
+    }
+  }, [searchParams]);
 
   async function loadDocs() {
     try {
@@ -433,6 +457,7 @@ export default function DocumentVaultClient() {
     setReuploadTarget(null);
     setUploadFile(null);
     setUploadCategory("transcripts");
+    setUploadSchoolId(null);
     setSheetOpen(true);
   }
 
@@ -459,7 +484,7 @@ export default function DocumentVaultClient() {
     }
     try {
       setIsUploading(true);
-      const newDoc = await uploadDocument(uploadFile, uploadCategory);
+      const newDoc = await uploadDocument(uploadFile, uploadCategory, uploadSchoolId);
       setDocs((prev) => [newDoc, ...prev]);
       setSheetOpen(false);
       setUploadFile(null);
@@ -881,19 +906,53 @@ export default function DocumentVaultClient() {
             {!isReupload && (
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium">Category</label>
-                <select
-                  value={uploadCategory}
-                  onChange={(e) =>
-                    setUploadCategory(e.target.value as DocCategory)
-                  }
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                >
-                  {CATEGORY_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between font-normal">
+                      {CATEGORY_OPTIONS.find((o) => o.value === uploadCategory)?.label ?? "Select"}
+                      <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                    {CATEGORY_OPTIONS.map((opt) => (
+                      <DropdownMenuItem key={opt.value} onSelect={() => setUploadCategory(opt.value)}>
+                        {opt.label}
+                        {uploadCategory === opt.value ? <Check className="h-3.5 w-3.5 ml-auto text-muted-foreground" /> : null}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
+
+            {/* School tag (only for new upload) */}
+            {!isReupload && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium">For a specific school</label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between font-normal">
+                      {mySchools.find((s) => s.id === uploadSchoolId)?.name ?? "Shared across all applications"}
+                      <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                    <DropdownMenuItem onSelect={() => setUploadSchoolId(null)}>
+                      Shared across all applications
+                      {uploadSchoolId == null ? <Check className="h-3.5 w-3.5 ml-auto text-muted-foreground" /> : null}
+                    </DropdownMenuItem>
+                    {mySchools.map((s) => (
+                      <DropdownMenuItem key={s.id} onSelect={() => setUploadSchoolId(s.id)}>
+                        {s.name}
+                        {uploadSchoolId === s.id ? <Check className="h-3.5 w-3.5 ml-auto text-muted-foreground" /> : null}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <p className="text-xs text-muted-foreground">
+                  Shared documents (transcript, ID) show on every application. Pick a school for
+                  things only it needs.
+                </p>
               </div>
             )}
 

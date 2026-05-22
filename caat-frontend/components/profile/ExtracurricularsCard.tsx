@@ -1,8 +1,14 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Star, FileText, Plus, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Star, FileText, Plus, X, ChevronLeft, ChevronRight, ChevronDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProfileCard } from "./ProfileCard";
@@ -231,20 +237,28 @@ export function ExtracurricularsCard() {
                   Your Resumes
                 </p>
                 <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <select
-                      value={activeResumeId ?? ""}
-                      onChange={(e) => handleSwitchResume(e.target.value)}
-                      className="h-8 rounded-md border border-input bg-background pl-3 pr-8 text-sm font-medium shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring appearance-none cursor-pointer"
-                    >
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-8 justify-between font-medium gap-1.5 min-w-[160px]">
+                        <span className="truncate">
+                          {activeResume?.title ?? "Select a resume"}
+                          {activeResume?.id === defaultResumeId ? " ★" : ""}
+                        </span>
+                        <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="min-w-[var(--radix-dropdown-menu-trigger-width)]">
                       {resumes.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.title}{r.id === defaultResumeId ? " ★" : ""}
-                        </option>
+                        <DropdownMenuItem key={r.id} onSelect={() => handleSwitchResume(r.id)}>
+                          <span className="truncate">
+                            {r.title}
+                            {r.id === defaultResumeId ? " ★" : ""}
+                          </span>
+                          {r.id === activeResumeId ? <Check className="h-3.5 w-3.5 ml-auto text-muted-foreground" /> : null}
+                        </DropdownMenuItem>
                       ))}
-                    </select>
-                    <ChevronRight className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 rotate-90 text-muted-foreground" />
-                  </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   {activeResume && activeResume.id !== defaultResumeId && (
                     <button
                       type="button"

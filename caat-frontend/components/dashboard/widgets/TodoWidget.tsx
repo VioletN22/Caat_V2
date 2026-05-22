@@ -5,6 +5,13 @@ import { toast } from "sonner";
 import { Plus, Trash2, Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -168,15 +175,16 @@ export function TodoWidget() {
           </div>
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-muted-foreground">Priority:</span>
-            <select
-              value={priority}
-              onChange={(e) => setPriority(Number(e.target.value))}
-              className="h-7 text-xs rounded-md border bg-background px-2 focus:outline-none focus:ring-1 focus:ring-ring"
-            >
-              <option value={1}>High</option>
-              <option value={2}>Medium</option>
-              <option value={3}>Low</option>
-            </select>
+            <Select value={String(priority)} onValueChange={(v) => setPriority(Number(v))}>
+              <SelectTrigger size="sm" className="h-7 w-auto text-xs gap-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">High</SelectItem>
+                <SelectItem value="2">Medium</SelectItem>
+                <SelectItem value="3">Low</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       )}
@@ -228,19 +236,26 @@ export function TodoWidget() {
 
                   {/* Priority picker (visible on hover) */}
                   {!todo.done && (
-                    <select
-                      value={todo.priority}
-                      onChange={(e) => handlePriorityChange(todo.id, Number(e.target.value))}
-                      className={`text-xs bg-transparent border-none outline-none cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity ${
-                        PRIORITY_COLORS[todo.priority] ?? ""
-                      }`}
-                      aria-label="Priority"
-                      title={PRIORITY_LABELS[todo.priority]}
+                    <Select
+                      value={String(todo.priority)}
+                      onValueChange={(v) => handlePriorityChange(todo.id, Number(v))}
                     >
-                      <option value={1}>High</option>
-                      <option value={2}>Med</option>
-                      <option value={3}>Low</option>
-                    </select>
+                      <SelectTrigger
+                        size="sm"
+                        aria-label="Priority"
+                        title={PRIORITY_LABELS[todo.priority]}
+                        className={`h-auto w-auto border-0 bg-transparent px-1 py-0 text-xs shadow-none gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${
+                          PRIORITY_COLORS[todo.priority] ?? ""
+                        }`}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">High</SelectItem>
+                        <SelectItem value="2">Med</SelectItem>
+                        <SelectItem value="3">Low</SelectItem>
+                      </SelectContent>
+                    </Select>
                   )}
 
                   <Button

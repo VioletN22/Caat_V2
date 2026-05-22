@@ -17,6 +17,7 @@ export interface ApplicationRow {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  intended_majors: string[] | null;
   schools: { id: number; name: string; country: string | null } | null;
 }
 

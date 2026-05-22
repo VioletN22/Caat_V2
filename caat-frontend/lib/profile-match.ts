@@ -22,6 +22,13 @@ export interface MatchResult {
   reason: string | null;
 }
 
+/** Join label parts naturally: ["major","country","level"] -> "major, country and level". */
+function joinWithAnd(parts: string[]): string {
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0]!;
+  return parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
+}
+
 export function reasonFor(d: MatchDimensions): string | null {
   const substantiveCount =
     (d.matchedMajor ? 1 : 0) +
@@ -31,7 +38,18 @@ export function reasonFor(d: MatchDimensions): string | null {
   if (substantiveCount === 0) return null;
 
   const totalCount = substantiveCount + (d.levelMatches ? 1 : 0);
-  if (totalCount >= 3) return "Strong match — your major, country and level";
+  if (totalCount >= 3) {
+    // Build the label from the dimensions that ACTUALLY matched, so the badge
+    // never claims one (e.g. country) that did not fire. Previously this was a
+    // fixed "your major, country and level" string, which falsely advertised
+    // country on profiles whose preferred country did not match the school.
+    const parts: string[] = [];
+    if (d.matchedMajor) parts.push("major");
+    if (d.matchedCountry) parts.push("country");
+    if (d.citizenshipEligible) parts.push("citizenship");
+    if (d.levelMatches) parts.push("level");
+    return `Strong match — your ${joinWithAnd(parts)}`;
+  }
 
   if (d.matchedMajor && d.matchedCountry) {
     return `Matches your ${d.matchedMajor} in your preferred country`;
@@ -95,12 +113,41 @@ function findMajorMatch(
   return null;
 }
 
+/** Common country aliases so "USA"/"US"/"United States" etc. all resolve to
+ *  one canonical form before comparison. Keys + values are lowercased. */
+const COUNTRY_ALIASES: Record<string, string> = {
+  usa: "united states",
+  us: "united states",
+  "u.s.": "united states",
+  "u.s.a.": "united states",
+  america: "united states",
+  uk: "united kingdom",
+  "u.k.": "united kingdom",
+  britain: "united kingdom",
+  england: "united kingdom",
+  aus: "australia",
+  oz: "australia",
+  nz: "new zealand",
+};
+
+/** Normalise a country string for comparison: trim, lowercase, de-alias. */
+function normaliseCountry(c: string): string {
+  const base = c.trim().toLowerCase();
+  return COUNTRY_ALIASES[base] ?? base;
+}
+
 function findCountryMatch(
   preferredCountries: string[] | null | undefined,
   country: string | null
 ): string | null {
   if (!preferredCountries?.length || !country) return null;
-  return preferredCountries.includes(country) ? country : null;
+  // Case-insensitive + alias-aware. Users type "australia", "AUS", "USA"
+  // etc; scholarships store a canonical "Australia" / "United States". We
+  // compare normalised forms and return the scholarship's canonical string
+  // for display so the badge always reads cleanly.
+  const target = normaliseCountry(country);
+  const hit = preferredCountries.some((c) => c && normaliseCountry(c) === target);
+  return hit ? country : null;
 }
 
 function levelMatches(
