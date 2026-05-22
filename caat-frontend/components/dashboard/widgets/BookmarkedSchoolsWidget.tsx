@@ -25,6 +25,7 @@ const DISPLAY_LIMIT = 12;
 export function BookmarkedSchoolsWidget() {
   const [schools, setSchools] = useState<BookmarkedSchool[]>([]);
   const [totalCount, setTotalCount] = useState(0);
+  const [trackedIds, setTrackedIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,7 +36,7 @@ export function BookmarkedSchoolsWidget() {
         } = await supabase.auth.getUser();
         if (!user) return;
 
-        const [dataRes, countRes] = await Promise.all([
+        const [dataRes, countRes, trackedRes] = await Promise.all([
           supabase
             .from("user_bookmarked_schools")
             .select("school_id, schools(id, name, country)")
@@ -45,6 +46,10 @@ export function BookmarkedSchoolsWidget() {
           supabase
             .from("user_bookmarked_schools")
             .select("*", { count: "exact", head: true })
+            .eq("user_id", user.id),
+          supabase
+            .from("user_school_applications")
+            .select("school_id")
             .eq("user_id", user.id),
         ]);
 
@@ -56,6 +61,11 @@ export function BookmarkedSchoolsWidget() {
 
         setSchools(items);
         setTotalCount(countRes.count ?? items.length);
+        setTrackedIds(
+          new Set(
+            (trackedRes.data ?? []).map((r) => r.school_id as number)
+          )
+        );
       } catch {
         toast.error("Failed to load bookmarked schools");
       } finally {
@@ -90,19 +100,30 @@ export function BookmarkedSchoolsWidget() {
   return (
     <div className="flex flex-col gap-1.5 h-full min-h-0">
       <div className="flex flex-wrap gap-1 flex-1 min-h-0 overflow-y-auto pr-1 content-start">
-        {schools.map((school) => (
-          <Link key={school.id} href={`/schools/${school.id}`}>
-            <Badge
-              variant="secondary"
-              className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors text-xs"
-            >
-              {school.name}
-              {school.country && (
-                <span className="ml-1 opacity-60">· {school.country}</span>
-              )}
-            </Badge>
-          </Link>
-        ))}
+        {schools.map((school) => {
+          const isTracked = trackedIds.has(school.id);
+          return (
+            <Link key={school.id} href={`/schools/${school.id}`}>
+              <Badge
+                variant="secondary"
+                className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors text-xs"
+              >
+                {school.name}
+                {school.country && (
+                  <span className="ml-1 opacity-60">· {school.country}</span>
+                )}
+                {isTracked && (
+                  <span
+                    className="ml-1.5 text-green-600 dark:text-green-400 font-semibold"
+                    title="Already in your applications"
+                  >
+                    ✓
+                  </span>
+                )}
+              </Badge>
+            </Link>
+          );
+        })}
       </div>
       <Link
         href="/schools"

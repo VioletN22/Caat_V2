@@ -75,6 +75,86 @@ export async function deleteApplication(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Number of bookmarked schools the user does NOT yet have an application for.
+ * Powers the "Import from Bookmarks" button count badge.
+ */
+export async function fetchUnimportedBookmarkCount(): Promise<number> {
+  const user = await getUser();
+
+  const [bookmarkedRes, appsRes] = await Promise.all([
+    supabase
+      .from("user_bookmarked_schools")
+      .select("school_id")
+      .eq("user_id", user.id),
+    supabase
+      .from("user_school_applications")
+      .select("school_id")
+      .eq("user_id", user.id),
+  ]);
+
+  if (bookmarkedRes.error) throw new Error(bookmarkedRes.error.message);
+  if (appsRes.error) throw new Error(appsRes.error.message);
+
+  const existing = new Set((appsRes.data ?? []).map((r) => r.school_id as number));
+  return (bookmarkedRes.data ?? []).filter(
+    (b) => !existing.has(b.school_id as number)
+  ).length;
+}
+
+/**
+ * Bulk-create 'researching'-status applications for every bookmarked school
+ * the user does not already have an application for. Idempotent — schools
+ * already tracked are skipped silently.
+ */
+export async function importBookmarkedSchools(): Promise<{
+  added: ApplicationRow[];
+  skipped: number;
+}> {
+  const user = await getUser();
+
+  const [bookmarkedRes, appsRes] = await Promise.all([
+    supabase
+      .from("user_bookmarked_schools")
+      .select("school_id")
+      .eq("user_id", user.id),
+    supabase
+      .from("user_school_applications")
+      .select("school_id")
+      .eq("user_id", user.id),
+  ]);
+
+  if (bookmarkedRes.error) throw new Error(bookmarkedRes.error.message);
+  if (appsRes.error) throw new Error(appsRes.error.message);
+
+  const existing = new Set((appsRes.data ?? []).map((r) => r.school_id as number));
+  const toInsert = (bookmarkedRes.data ?? [])
+    .map((r) => r.school_id as number)
+    .filter((id) => !existing.has(id));
+
+  if (toInsert.length === 0) {
+    return { added: [], skipped: (bookmarkedRes.data ?? []).length };
+  }
+
+  const rows = toInsert.map((school_id) => ({
+    user_id: user.id,
+    school_id,
+    status: "researching" as const,
+  }));
+
+  const { data, error } = await supabase
+    .from("user_school_applications")
+    .insert(rows)
+    .select("*, schools(id, name, country)");
+
+  if (error) throw new Error(error.message);
+
+  return {
+    added: (data ?? []) as unknown as ApplicationRow[],
+    skipped: (bookmarkedRes.data ?? []).length - (data?.length ?? 0),
+  };
+}
+
 export async function searchSchools(
   query: string
 ): Promise<{ id: number; name: string; country: string | null }[]> {

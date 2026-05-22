@@ -19,6 +19,7 @@ interface Props {
   canSelect: boolean;
   onToggleSelect: (id: string) => void;
   onToggleBookmark: (id: string) => void;
+  matchReason?: string | null;
 }
 
 export default function MajorCard({
@@ -28,6 +29,7 @@ export default function MajorCard({
   canSelect,
   onToggleSelect,
   onToggleBookmark,
+  matchReason,
 }: Props) {
   const categoryColor =
     CATEGORY_COLORS[major.category] ??
@@ -37,9 +39,14 @@ export default function MajorCard({
     <Card
       className={`flex flex-col h-full hover:shadow-lg transition-shadow ${
         isSelected ? "ring-2 ring-primary" : ""
-      }`}
+      } ${matchReason ? "border-l-[3px] border-l-[#9a1a27]" : ""}`}
     >
       <CardHeader className="gap-2">
+        {matchReason && (
+          <span className="inline-block self-start bg-[#9a1a27] text-white text-[10px] font-semibold uppercase tracking-wide px-2 py-1 leading-tight">
+            ★ {matchReason}
+          </span>
+        )}
         {/* Category + bookmark (top right, matches scholarship card) */}
         <div className="flex items-start justify-between gap-2">
           <span
