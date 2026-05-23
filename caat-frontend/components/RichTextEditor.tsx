@@ -23,6 +23,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -58,31 +64,58 @@ const HIGHLIGHTS: { value: string | null; label: string }[] = [
   { value: "#fbcfe8", label: "Pink" },
 ];
 
+// Tooltip body: friendly name + a tiny (~3-word) plain-language hint.
+const Tip = ({ label, hint }: { label: string; hint?: string }) => (
+  <div className="text-center leading-tight">
+    <div className="font-medium">{label}</div>
+    {hint ? <div className="opacity-70">{hint}</div> : null}
+  </div>
+);
+
 const ToolbarButton = ({
   onClick,
   isActive,
   children,
   label,
+  hint,
 }: {
   onClick: () => void;
   isActive: boolean;
   children: React.ReactNode;
   label: string;
+  hint?: string;
 }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    aria-label={label}
-    aria-pressed={isActive}
-    title={label}
-    className={`inline-flex h-8 min-w-8 items-center justify-center px-2 rounded-md transition text-sm font-medium ${
-      isActive ? "bg-[#9a1a27] text-white" : "bg-background text-foreground hover:bg-muted"
-    }`}
-  >
-    {children}
-  </button>
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={label}
+        aria-pressed={isActive}
+        className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition text-sm font-medium ${
+          isActive ? "bg-[#9a1a27] text-white" : "bg-background text-foreground hover:bg-muted"
+        }`}
+      >
+        {children}
+      </button>
+    </TooltipTrigger>
+    <TooltipContent side="bottom"><Tip label={label} hint={hint} /></TooltipContent>
+  </Tooltip>
 );
 
+// Tooltip wrapper for the dropdown / select triggers (text controls).
+const TriggerTip = ({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>{children}</TooltipTrigger>
+    <TooltipContent side="bottom"><Tip label={label} hint={hint} /></TooltipContent>
+  </Tooltip>
+);
+
+// A control group: keeps related controls together so the toolbar wraps as
+// whole groups instead of scattering individual buttons.
+const Group = ({ children }: { children: React.ReactNode }) => (
+  <div className="flex items-center gap-1">{children}</div>
+);
 const Divider = () => <span className="mx-0.5 h-6 w-px bg-border" aria-hidden />;
 
 interface RichTextEditorProps {
@@ -202,230 +235,261 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
       .run();
 
   return (
-    <div>
-      {/* Toolbar */}
-      <div
-        role="toolbar"
-        aria-label="Text formatting"
-        className="flex flex-wrap items-center gap-1.5 mb-3 bg-muted p-2 rounded-md"
-      >
-        <ToolbarButton label="Bold" onClick={() => editor.chain().focus().toggleBold().run()} isActive={editor.isActive("bold")}>
-          <Bold className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton label="Italic" onClick={() => editor.chain().focus().toggleItalic().run()} isActive={editor.isActive("italic")}>
-          <Italic className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton label="Underline" onClick={() => editor.chain().focus().toggleUnderline().run()} isActive={editor.isActive("underline")}>
-          <Underline className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton label="Strikethrough" onClick={() => editor.chain().focus().toggleStrike().run()} isActive={editor.isActive("strike")}>
-          <Strikethrough className="h-4 w-4" />
-        </ToolbarButton>
-
-        <Divider />
-
-        {/* Heading level */}
-        <Select
-          value={currentHeading}
-          onOpenChange={snapshotSelection}
-          onValueChange={(v) =>
-            v === "normal"
-              ? withSavedSelection().setParagraph().run()
-              : withSavedSelection().toggleHeading({ level: Number(v) as 1 | 2 | 3 }).run()
-          }
+    <TooltipProvider delayDuration={250}>
+      <div>
+        {/* Toolbar */}
+        <div
+          role="toolbar"
+          aria-label="Text formatting"
+          className="flex flex-wrap items-center gap-2 mb-3 bg-muted p-2 rounded-md"
         >
-          <SelectTrigger size="sm" className="w-auto gap-1.5 text-sm" aria-label="Text style">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent onCloseAutoFocus={(e) => e.preventDefault()}>
-            <SelectItem value="normal">Normal</SelectItem>
-            <SelectItem value="1">Heading 1</SelectItem>
-            <SelectItem value="2">Heading 2</SelectItem>
-            <SelectItem value="3">Heading 3</SelectItem>
-          </SelectContent>
-        </Select>
+          {/* Format */}
+          <Group>
+            <ToolbarButton label="Bold" onClick={() => editor.chain().focus().toggleBold().run()} isActive={editor.isActive("bold")}>
+              <Bold className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton label="Italic" onClick={() => editor.chain().focus().toggleItalic().run()} isActive={editor.isActive("italic")}>
+              <Italic className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton label="Underline" onClick={() => editor.chain().focus().toggleUnderline().run()} isActive={editor.isActive("underline")}>
+              <Underline className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton label="Strikethrough" onClick={() => editor.chain().focus().toggleStrike().run()} isActive={editor.isActive("strike")}>
+              <Strikethrough className="h-4 w-4" />
+            </ToolbarButton>
+          </Group>
 
-        <Divider />
+          <Divider />
 
-        <ToolbarButton label="Bullet list" onClick={() => editor.chain().focus().toggleBulletList().run()} isActive={editor.isActive("bulletList")}>
-          <List className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton label="Numbered list" onClick={() => editor.chain().focus().toggleOrderedList().run()} isActive={editor.isActive("orderedList")}>
-          <ListOrdered className="h-4 w-4" />
-        </ToolbarButton>
-
-        <Divider />
-
-        <ToolbarButton label="Align left" onClick={() => editor.chain().focus().setTextAlign("left").run()} isActive={editor.isActive({ textAlign: "left" })}>
-          <AlignLeft className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton label="Align center" onClick={() => editor.chain().focus().setTextAlign("center").run()} isActive={editor.isActive({ textAlign: "center" })}>
-          <AlignCenter className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton label="Align right" onClick={() => editor.chain().focus().setTextAlign("right").run()} isActive={editor.isActive({ textAlign: "right" })}>
-          <AlignRight className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton label="Justify" onClick={() => editor.chain().focus().setTextAlign("justify").run()} isActive={editor.isActive({ textAlign: "justify" })}>
-          <AlignJustify className="h-4 w-4" />
-        </ToolbarButton>
-
-        <Divider />
-
-        <ToolbarButton label="Decrease indent" onClick={() => changeIndent(-1)} isActive={false}>
-          <IndentDecrease className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton label="Increase indent" onClick={() => changeIndent(1)} isActive={false}>
-          <IndentIncrease className="h-4 w-4" />
-        </ToolbarButton>
-
-        <Divider />
-
-        <Select
-          value={editor.getAttributes("textStyle").fontFamily || undefined}
-          onOpenChange={snapshotSelection}
-          onValueChange={(v) => withSavedSelection().setFontFamily(v).run()}
-        >
-          <SelectTrigger size="sm" className="w-auto gap-1.5 text-sm" aria-label="Font family">
-            <SelectValue placeholder="Font" />
-          </SelectTrigger>
-          <SelectContent onCloseAutoFocus={(e) => e.preventDefault()}>
-            {FONT_FAMILIES.map((f) => (
-              <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={editor.getAttributes("textStyle").fontSize || undefined}
-          onOpenChange={snapshotSelection}
-          onValueChange={(v) => withSavedSelection().setMark("textStyle", { fontSize: v }).run()}
-        >
-          <SelectTrigger size="sm" className="w-auto gap-1.5 text-sm" aria-label="Font size">
-            <SelectValue placeholder="Size" />
-          </SelectTrigger>
-          <SelectContent onCloseAutoFocus={(e) => e.preventDefault()}>
-            {FONT_SIZES.map((s) => (
-              <SelectItem key={s} value={s}>{s.replace("px", "")}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Line spacing */}
-        <Select
-          value={currentLineHeight || "__default"}
-          onOpenChange={snapshotSelection}
-          onValueChange={(v) => setLineHeight(v === "__default" ? "" : v)}
-        >
-          <SelectTrigger size="sm" className="w-auto gap-1.5 text-sm" aria-label="Line spacing">
-            <SelectValue placeholder="Spacing" />
-          </SelectTrigger>
-          <SelectContent onCloseAutoFocus={(e) => e.preventDefault()}>
-            {LINE_HEIGHTS.map((lh) => (
-              <SelectItem key={lh.label} value={lh.value || "__default"}>{lh.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Divider />
-
-        {/* Text colour */}
-        <DropdownMenu onOpenChange={snapshotSelection}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 gap-1.5" aria-label="Text colour">
-              <Baseline className="h-4 w-4" style={{ color: editor.getAttributes("textStyle").color || undefined }} />
-              <ChevronDown className="h-3 w-3 opacity-60" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" onCloseAutoFocus={(e) => e.preventDefault()}>
-            {TEXT_COLORS.map((c) => (
-              <DropdownMenuItem
-                key={c.label}
-                onSelect={() =>
-                  c.value
-                    ? withSavedSelection().setColor(c.value).run()
-                    : withSavedSelection().unsetColor().run()
-                }
-              >
-                <span className="h-3.5 w-3.5 rounded-sm border" style={{ background: c.value ?? "transparent" }} />
-                {c.label}
-                {(editor.getAttributes("textStyle").color || null) === c.value ? (
-                  <Check className="h-3.5 w-3.5 ml-auto text-muted-foreground" />
-                ) : null}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* Highlight */}
-        <DropdownMenu onOpenChange={snapshotSelection}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 gap-1.5" aria-label="Highlight">
-              <Highlighter className="h-4 w-4" />
-              <ChevronDown className="h-3 w-3 opacity-60" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" onCloseAutoFocus={(e) => e.preventDefault()}>
-            {HIGHLIGHTS.map((h) => (
-              <DropdownMenuItem
-                key={h.label}
-                onSelect={() =>
-                  h.value
-                    ? withSavedSelection().setBackgroundColor(h.value).run()
-                    : withSavedSelection().unsetBackgroundColor().run()
-                }
-              >
-                <span className="h-3.5 w-3.5 rounded-sm border" style={{ background: h.value ?? "transparent" }} />
-                {h.label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <Divider />
-
-        <ToolbarButton label="Link" onClick={openLink} isActive={editor.isActive("link")}>
-          <Link2 className="h-4 w-4" />
-        </ToolbarButton>
-
-        <Divider />
-
-        <ToolbarButton label="Clear formatting" onClick={clearFormatting} isActive={false}>
-          <RemoveFormatting className="h-4 w-4" />
-        </ToolbarButton>
-      </div>
-
-      {/* Inline link input */}
-      {linkOpen && (
-        <div className="flex items-center gap-2 mb-3">
-          <Input
-            autoFocus
-            value={linkValue}
-            onChange={(e) => setLinkValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                applyLink();
+          {/* Text style */}
+          <Group>
+            <Select
+              value={currentHeading}
+              onOpenChange={snapshotSelection}
+              onValueChange={(v) =>
+                v === "normal"
+                  ? withSavedSelection().setParagraph().run()
+                  : withSavedSelection().toggleHeading({ level: Number(v) as 1 | 2 | 3 }).run()
               }
-              if (e.key === "Escape") {
-                setLinkOpen(false);
-                setLinkValue("");
-              }
-            }}
-            placeholder="https://example.com"
-            className="h-8 text-sm max-w-xs"
-            aria-label="Link URL"
-          />
-          <Button size="sm" className="h-8" onClick={applyLink}>Apply</Button>
-          <Button size="sm" variant="ghost" className="h-8" onClick={() => { setLinkOpen(false); setLinkValue(""); }}>
-            Cancel
-          </Button>
+            >
+              <TriggerTip label="Text style">
+                <SelectTrigger size="sm" className="h-8 w-auto gap-1.5 text-sm" aria-label="Text style">
+                  <SelectValue />
+                </SelectTrigger>
+              </TriggerTip>
+              <SelectContent onCloseAutoFocus={(e) => e.preventDefault()}>
+                <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="1">Heading 1</SelectItem>
+                <SelectItem value="2">Heading 2</SelectItem>
+                <SelectItem value="3">Heading 3</SelectItem>
+              </SelectContent>
+            </Select>
+          </Group>
+
+          <Divider />
+
+          {/* Lists */}
+          <Group>
+            <ToolbarButton label="Bullet list" onClick={() => editor.chain().focus().toggleBulletList().run()} isActive={editor.isActive("bulletList")}>
+              <List className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton label="Numbered list" onClick={() => editor.chain().focus().toggleOrderedList().run()} isActive={editor.isActive("orderedList")}>
+              <ListOrdered className="h-4 w-4" />
+            </ToolbarButton>
+          </Group>
+
+          <Divider />
+
+          {/* Align */}
+          <Group>
+            <ToolbarButton label="Align left" onClick={() => editor.chain().focus().setTextAlign("left").run()} isActive={editor.isActive({ textAlign: "left" })}>
+              <AlignLeft className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton label="Align center" onClick={() => editor.chain().focus().setTextAlign("center").run()} isActive={editor.isActive({ textAlign: "center" })}>
+              <AlignCenter className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton label="Align right" onClick={() => editor.chain().focus().setTextAlign("right").run()} isActive={editor.isActive({ textAlign: "right" })}>
+              <AlignRight className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton label="Justify" hint="Even both edges" onClick={() => editor.chain().focus().setTextAlign("justify").run()} isActive={editor.isActive({ textAlign: "justify" })}>
+              <AlignJustify className="h-4 w-4" />
+            </ToolbarButton>
+          </Group>
+
+          <Divider />
+
+          {/* Indent */}
+          <Group>
+            <ToolbarButton label="Decrease indent" hint="Move left" onClick={() => changeIndent(-1)} isActive={false}>
+              <IndentDecrease className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton label="Increase indent" hint="Move right" onClick={() => changeIndent(1)} isActive={false}>
+              <IndentIncrease className="h-4 w-4" />
+            </ToolbarButton>
+          </Group>
+
+          <Divider />
+
+          {/* Type */}
+          <Group>
+            <Select
+              value={editor.getAttributes("textStyle").fontFamily || undefined}
+              onOpenChange={snapshotSelection}
+              onValueChange={(v) => withSavedSelection().setFontFamily(v).run()}
+            >
+              <TriggerTip label="Font">
+                <SelectTrigger size="sm" className="h-8 w-auto gap-1.5 text-sm" aria-label="Font family">
+                  <SelectValue placeholder="Font" />
+                </SelectTrigger>
+              </TriggerTip>
+              <SelectContent onCloseAutoFocus={(e) => e.preventDefault()}>
+                {FONT_FAMILIES.map((f) => (
+                  <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={editor.getAttributes("textStyle").fontSize || undefined}
+              onOpenChange={snapshotSelection}
+              onValueChange={(v) => withSavedSelection().setMark("textStyle", { fontSize: v }).run()}
+            >
+              <TriggerTip label="Font size">
+                <SelectTrigger size="sm" className="h-8 w-auto gap-1.5 text-sm" aria-label="Font size">
+                  <SelectValue placeholder="Size" />
+                </SelectTrigger>
+              </TriggerTip>
+              <SelectContent onCloseAutoFocus={(e) => e.preventDefault()}>
+                {FONT_SIZES.map((s) => (
+                  <SelectItem key={s} value={s}>{s.replace("px", "")}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={currentLineHeight || "__default"}
+              onOpenChange={snapshotSelection}
+              onValueChange={(v) => setLineHeight(v === "__default" ? "" : v)}
+            >
+              <TriggerTip label="Line spacing">
+                <SelectTrigger size="sm" className="h-8 w-auto gap-1.5 text-sm" aria-label="Line spacing">
+                  <SelectValue placeholder="Spacing" />
+                </SelectTrigger>
+              </TriggerTip>
+              <SelectContent onCloseAutoFocus={(e) => e.preventDefault()}>
+                {LINE_HEIGHTS.map((lh) => (
+                  <SelectItem key={lh.label} value={lh.value || "__default"}>{lh.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Group>
+
+          <Divider />
+
+          {/* Colour */}
+          <Group>
+            <DropdownMenu onOpenChange={snapshotSelection}>
+              <TriggerTip label="Text colour">
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5" aria-label="Text colour">
+                    <Baseline className="h-4 w-4" style={{ color: editor.getAttributes("textStyle").color || undefined }} />
+                    <ChevronDown className="h-3 w-3 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+              </TriggerTip>
+              <DropdownMenuContent align="start" onCloseAutoFocus={(e) => e.preventDefault()}>
+                {TEXT_COLORS.map((c) => (
+                  <DropdownMenuItem
+                    key={c.label}
+                    onSelect={() =>
+                      c.value
+                        ? withSavedSelection().setColor(c.value).run()
+                        : withSavedSelection().unsetColor().run()
+                    }
+                  >
+                    <span className="h-3.5 w-3.5 rounded-sm border" style={{ background: c.value ?? "transparent" }} />
+                    {c.label}
+                    {(editor.getAttributes("textStyle").color || null) === c.value ? (
+                      <Check className="h-3.5 w-3.5 ml-auto text-muted-foreground" />
+                    ) : null}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu onOpenChange={snapshotSelection}>
+              <TriggerTip label="Highlight">
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5" aria-label="Highlight">
+                    <Highlighter className="h-4 w-4" />
+                    <ChevronDown className="h-3 w-3 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+              </TriggerTip>
+              <DropdownMenuContent align="start" onCloseAutoFocus={(e) => e.preventDefault()}>
+                {HIGHLIGHTS.map((h) => (
+                  <DropdownMenuItem
+                    key={h.label}
+                    onSelect={() =>
+                      h.value
+                        ? withSavedSelection().setBackgroundColor(h.value).run()
+                        : withSavedSelection().unsetBackgroundColor().run()
+                    }
+                  >
+                    <span className="h-3.5 w-3.5 rounded-sm border" style={{ background: h.value ?? "transparent" }} />
+                    {h.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </Group>
+
+          <Divider />
+
+          {/* Insert + reset */}
+          <Group>
+            <ToolbarButton label="Link" onClick={openLink} isActive={editor.isActive("link")}>
+              <Link2 className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton label="Clear formatting" hint="Remove styling" onClick={clearFormatting} isActive={false}>
+              <RemoveFormatting className="h-4 w-4" />
+            </ToolbarButton>
+          </Group>
         </div>
-      )}
 
-      {/* Editor area */}
-      <div className="border rounded-md p-2 min-h-30 bg-background text-foreground focus-within:ring-1 focus-within:ring-ring">
-        <EditorContent editor={editor} />
+        {/* Inline link input */}
+        {linkOpen && (
+          <div className="flex items-center gap-2 mb-3">
+            <Input
+              autoFocus
+              value={linkValue}
+              onChange={(e) => setLinkValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  applyLink();
+                }
+                if (e.key === "Escape") {
+                  setLinkOpen(false);
+                  setLinkValue("");
+                }
+              }}
+              placeholder="https://example.com"
+              className="h-8 text-sm max-w-xs"
+              aria-label="Link URL"
+            />
+            <Button size="sm" className="h-8" onClick={applyLink}>Apply</Button>
+            <Button size="sm" variant="ghost" className="h-8" onClick={() => { setLinkOpen(false); setLinkValue(""); }}>
+              Cancel
+            </Button>
+          </div>
+        )}
+
+        {/* Editor area */}
+        <div className="border rounded-md p-2 min-h-30 bg-background text-foreground focus-within:ring-1 focus-within:ring-ring">
+          <EditorContent editor={editor} />
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
