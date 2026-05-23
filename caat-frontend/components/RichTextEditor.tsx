@@ -48,10 +48,13 @@ const LINE_HEIGHTS: { value: string; label: string }[] = [
   { value: "1.5", label: "1.5" },
   { value: "2", label: "Double" },
 ];
-const TEXT_COLORS: { value: string | null; label: string }[] = [
-  { value: null, label: "Default" },
-  { value: "#0a0a0a", label: "Black" },
+// `swatch` overrides the colour shown in the dropdown chip (used so "Default"
+// reflects the real default text colour, black, instead of an empty square).
+const TEXT_COLORS: { value: string | null; label: string; swatch?: string }[] = [
+  { value: null, label: "Default", swatch: "#0a0a0a" },
   { value: "#9a1a27", label: "CAAT red" },
+  { value: "#dc2626", label: "Red" },
+  { value: "#0a0a0a", label: "Black" },
   { value: "#525252", label: "Grey" },
   { value: "#2563eb", label: "Blue" },
   { value: "#16a34a", label: "Green" },
@@ -333,16 +336,21 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
           {/* Type */}
           <Group>
             <Select
-              value={editor.getAttributes("textStyle").fontFamily || undefined}
+              value={editor.getAttributes("textStyle").fontFamily || "__default"}
               onOpenChange={snapshotSelection}
-              onValueChange={(v) => withSavedSelection().setFontFamily(v).run()}
+              onValueChange={(v) =>
+                v === "__default"
+                  ? withSavedSelection().unsetFontFamily().run()
+                  : withSavedSelection().setFontFamily(v).run()
+              }
             >
               <TriggerTip label="Font">
                 <SelectTrigger size="sm" className="h-8 w-auto gap-1.5 text-sm" aria-label="Font family">
-                  <SelectValue placeholder="Font" />
+                  <SelectValue />
                 </SelectTrigger>
               </TriggerTip>
               <SelectContent onCloseAutoFocus={(e) => e.preventDefault()}>
+                <SelectItem value="__default">Default</SelectItem>
                 {FONT_FAMILIES.map((f) => (
                   <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
                 ))}
@@ -350,16 +358,19 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
             </Select>
 
             <Select
-              value={editor.getAttributes("textStyle").fontSize || undefined}
+              value={editor.getAttributes("textStyle").fontSize || "__default"}
               onOpenChange={snapshotSelection}
-              onValueChange={(v) => withSavedSelection().setMark("textStyle", { fontSize: v }).run()}
+              onValueChange={(v) =>
+                withSavedSelection().setMark("textStyle", { fontSize: v === "__default" ? null : v }).run()
+              }
             >
               <TriggerTip label="Font size">
                 <SelectTrigger size="sm" className="h-8 w-auto gap-1.5 text-sm" aria-label="Font size">
-                  <SelectValue placeholder="Size" />
+                  <SelectValue />
                 </SelectTrigger>
               </TriggerTip>
               <SelectContent onCloseAutoFocus={(e) => e.preventDefault()}>
+                <SelectItem value="__default">Default</SelectItem>
                 {FONT_SIZES.map((s) => (
                   <SelectItem key={s} value={s}>{s.replace("px", "")}</SelectItem>
                 ))}
@@ -407,7 +418,7 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
                         : withSavedSelection().unsetColor().run()
                     }
                   >
-                    <span className="h-3.5 w-3.5 rounded-sm border" style={{ background: c.value ?? "transparent" }} />
+                    <span className="h-3.5 w-3.5 rounded-sm border" style={{ background: c.swatch ?? c.value ?? "transparent" }} />
                     {c.label}
                     {(editor.getAttributes("textStyle").color || null) === c.value ? (
                       <Check className="h-3.5 w-3.5 ml-auto text-muted-foreground" />
