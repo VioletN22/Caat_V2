@@ -33,6 +33,13 @@ import {
 
 import { Pencil, Trash2, Printer } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 
 import DocumentStructurePanel from "./DocumentStructurePanel";
@@ -515,22 +522,30 @@ export default function ResumeBuilderShell() {
             />
           ) : (
             <>
-              <select
-                value={resumeId}
-                onChange={(e) => switchResume(e.target.value)}
+              <Select
+                value={resumeId || undefined}
+                onValueChange={(v) => switchResume(v)}
                 disabled={isLoading}
-                className="font-semibold bg-transparent border-none cursor-pointer focus:ring-0 focus:outline-none text-sm py-0 pr-6 min-w-[140px]"
               >
-                {resumeList.length === 0 && resumeId ? (
-                  <option value={resumeId}>{resumeTitle}</option>
-                ) : (
-                  resumeList.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.title}
-                    </option>
-                  ))
-                )}
-              </select>
+                <SelectTrigger
+                  size="sm"
+                  aria-label="Switch resume"
+                  className="font-semibold border-none shadow-none bg-transparent gap-1.5 px-1 text-sm min-w-[140px] focus-visible:ring-0"
+                >
+                  <SelectValue placeholder="Select a resume" />
+                </SelectTrigger>
+                <SelectContent>
+                  {resumeList.length === 0 && resumeId ? (
+                    <SelectItem value={resumeId}>{resumeTitle}</SelectItem>
+                  ) : (
+                    resumeList.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.title}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
               <button
                 type="button"
                 onClick={startEditResumeTitle}

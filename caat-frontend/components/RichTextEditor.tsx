@@ -7,6 +7,24 @@ import FontFamily from "@tiptap/extension-font-family";
 import { TextStyle } from "@tiptap/extension-text-style";
 import React, { useEffect } from "react";
 import { FontSizeExtension } from "@/extensions/FontSize";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const FONT_FAMILIES: { value: string; label: string }[] = [
+  { value: "Arial", label: "Arial" },
+  { value: "Georgia", label: "Georgia" },
+  { value: "Times New Roman", label: "Times New Roman" },
+  { value: "Comic Sans MS", label: "Comic Sans" },
+  { value: "Verdana", label: "Verdana" },
+  { value: "Courier New", label: "Courier" },
+];
+
+const FONT_SIZES = ["12px", "14px", "16px", "18px", "20px", "24px", "28px", "32px"];
 
 const ToolbarButton = ({
   onClick,
@@ -62,6 +80,25 @@ export default function RichTextEditor({
       editor.commands.setContent(content, { emitUpdate: false });
     }
   }, [content, editor]);
+
+  // Opening a Radix Select moves focus out of the editor, which collapses the
+  // visible selection. We snapshot the editor's selection range the moment a
+  // font/size dropdown opens, then restore it before applying the mark so the
+  // change lands on the text the user had selected (matching the old native
+  // <select> behaviour). A collapsed range still works — it sets the stored
+  // mark for the next typed text.
+  const savedSelection = React.useRef<{ from: number; to: number } | null>(null);
+  const snapshotSelection = (open: boolean) => {
+    if (open && editor) {
+      const { from, to } = editor.state.selection;
+      savedSelection.current = { from, to };
+    }
+  };
+  const withSavedSelection = () => {
+    const chain = editor!.chain().focus();
+    const sel = savedSelection.current;
+    return sel ? chain.setTextSelection(sel) : chain;
+  };
 
   if (!editor) {
     return (
@@ -119,41 +156,45 @@ export default function RichTextEditor({
           Right
         </ToolbarButton>
 
-        <select
-          aria-label="Font family"
-          onChange={(e) =>
-            editor.chain().focus().setFontFamily(e.target.value).run()
-          }
-          value={editor.getAttributes("textStyle").fontFamily || "default"}
-          className="border rounded px-2 py-1 text-sm bg-background text-foreground"
+        {/* Font family — shadcn Select. onCloseAutoFocus is prevented so the
+            Radix popover doesn't yank focus back to the trigger; the
+            onValueChange runs editor.focus() which restores ProseMirror's
+            (retained) selection and applies the mark to it. */}
+        <Select
+          value={editor.getAttributes("textStyle").fontFamily || undefined}
+          onOpenChange={snapshotSelection}
+          onValueChange={(v) => withSavedSelection().setFontFamily(v).run()}
         >
-          <option value="default">Font</option>
-          <option value="Arial">Arial</option>
-          <option value="Georgia">Georgia</option>
-          <option value="Times New Roman">Times New Roman</option>
-          <option value="Comic Sans MS">Comic Sans</option>
-          <option value="Verdana">Verdana</option>
-          <option value="Courier New">Courier</option>
-        </select>
+          <SelectTrigger size="sm" className="w-auto gap-1.5 text-sm" aria-label="Font family">
+            <SelectValue placeholder="Font" />
+          </SelectTrigger>
+          <SelectContent onCloseAutoFocus={(e) => e.preventDefault()}>
+            {FONT_FAMILIES.map((f) => (
+              <SelectItem key={f.value} value={f.value}>
+                {f.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-        <select
-          aria-label="Font size"
-          onChange={(e) =>
-            editor.chain().focus().setMark("textStyle", { fontSize: e.target.value }).run()
+        <Select
+          value={editor.getAttributes("textStyle").fontSize || undefined}
+          onOpenChange={snapshotSelection}
+          onValueChange={(v) =>
+            withSavedSelection().setMark("textStyle", { fontSize: v }).run()
           }
-          value={editor.getAttributes("textStyle").fontSize || "default"}
-          className="border rounded px-2 py-1 text-sm bg-background text-foreground"
         >
-          <option value="default">Font Size</option>
-          <option value="12px">12</option>
-          <option value="14px">14</option>
-          <option value="16px">16</option>
-          <option value="18px">18</option>
-          <option value="20px">20</option>
-          <option value="24px">24</option>
-          <option value="28px">28</option>
-          <option value="32px">32</option>
-        </select>
+          <SelectTrigger size="sm" className="w-auto gap-1.5 text-sm" aria-label="Font size">
+            <SelectValue placeholder="Size" />
+          </SelectTrigger>
+          <SelectContent onCloseAutoFocus={(e) => e.preventDefault()}>
+            {FONT_SIZES.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s.replace("px", "")}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Editor area */}
