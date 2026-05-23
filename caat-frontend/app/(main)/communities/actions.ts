@@ -96,6 +96,27 @@ async function fetchBlockedIds(
 }
 
 /**
+ * True when either user has blocked the other. Used to stop blocked users from
+ * interacting (liking/commenting/voting) — feeds already filter by block list,
+ * but interactions weren't gated.
+ */
+async function isBlockedBetween(
+  supabase: SupabaseClient,
+  a: string | undefined,
+  b: string | null | undefined,
+): Promise<boolean> {
+  if (!a || !b || a === b) return false;
+  const { data } = await supabase
+    .from("community_blocks")
+    .select("blocker_id")
+    .or(
+      `and(blocker_id.eq.${a},blocked_id.eq.${b}),and(blocker_id.eq.${b},blocked_id.eq.${a})`,
+    )
+    .limit(1);
+  return !!(data && data.length);
+}
+
+/**
  * Verifies the caller can read/comment on a given post (A3).
  * Posts not in a group are accessible per existing RLS. Posts in a group inherit
  * that group's privacy gate.
@@ -546,9 +567,17 @@ export async function fetchPostsAction(
     .eq("is_hidden", false)
     .is("group_id", null)
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(20);
 
-  if (cursor) query = query.lt("created_at", cursor);
+  // Keyset cursor on (created_at, id) so posts sharing a timestamp aren't
+  // skipped or duplicated across pages. Cursor format: "<created_at>|<id>".
+  if (cursor) {
+    const [cTs, cId] = cursor.split("|");
+    query = cId
+      ? query.or(`created_at.lt.${cTs},and(created_at.eq.${cTs},id.lt.${cId})`)
+      : query.lt("created_at", cTs);
+  }
   if (followeeIds) query = query.in("user_id", followeeIds);
   if (blockedIds.length)
     query = query.not("user_id", "in", `(${blockedIds.join(",")})`);
@@ -561,8 +590,11 @@ export async function fetchPostsAction(
     rows as Record<string, unknown>[],
     user?.id,
   );
+  const last = rows[rows.length - 1];
   const nextCursor =
-    rows.length === 20 ? (rows[rows.length - 1].created_at as string) : null;
+    rows.length === 20
+      ? `${last.created_at as string}|${last.id as string}`
+      : null;
   return { posts, nextCursor };
 }
 
@@ -579,27 +611,43 @@ export async function fetchTrendingPostsAction(): Promise<{
     Date.now() - 7 * 24 * 60 * 60 * 1000,
   ).toISOString();
 
-  const { data: rows } = await supabase
+  const blockedIds = await fetchBlockedIds(supabase, user?.id);
+
+  // Pull a wide candidate window (not just the 50 most recent) so a highly
+  // engaged post can't be pushed out by sheer recency, then rank by a
+  // time-decayed score so fresh engagement beats stale engagement.
+  let candidateQuery = supabase
     .from("community_posts")
     .select(
       "*, likes:community_likes(count), comments:community_comments(count)",
     )
     .eq("is_hidden", false)
+    .is("group_id", null)
     .gte("created_at", sevenDaysAgo)
-    .limit(50);
+    .order("created_at", { ascending: false })
+    .limit(300);
+  if (blockedIds.length)
+    candidateQuery = candidateQuery.not(
+      "user_id",
+      "in",
+      `(${blockedIds.join(",")})`,
+    );
+  const { data: rows } = await candidateQuery;
 
   if (!rows?.length) return { posts: [] };
 
+  const now = Date.now();
+  const hotScore = (r: Record<string, unknown>) => {
+    const likes = (r.likes as { count: number }[] | undefined)?.[0]?.count ?? 0;
+    const comments =
+      (r.comments as { count: number }[] | undefined)?.[0]?.count ?? 0;
+    const ageHours =
+      (now - new Date(r.created_at as string).getTime()) / 3_600_000;
+    // Comments weighted higher than likes; gravity decay (Hacker-News style).
+    return (likes + 2 * comments + 1) / Math.pow(ageHours + 2, 1.5);
+  };
   const sorted = [...rows]
-    .sort((a, b) => {
-      const aScore =
-        ((a.likes as { count: number }[])?.[0]?.count ?? 0) +
-        ((a.comments as { count: number }[])?.[0]?.count ?? 0);
-      const bScore =
-        ((b.likes as { count: number }[])?.[0]?.count ?? 0) +
-        ((b.comments as { count: number }[])?.[0]?.count ?? 0);
-      return bScore - aScore;
-    })
+    .sort((a, b) => hotScore(b) - hotScore(a))
     .slice(0, 20);
 
   const posts = await enrichPosts(
@@ -955,15 +1003,18 @@ export async function toggleLikeAction(
     return { liked: false, error: null };
   }
 
-  await supabase
-    .from("community_likes")
-    .insert({ post_id: postId, user_id: user.id });
-
   const { data: post } = await supabase
     .from("community_posts")
     .select("user_id")
     .eq("id", postId)
     .single();
+  if (await isBlockedBetween(supabase, user.id, post?.user_id as string))
+    return { liked: false, error: "This post isn't available" };
+
+  await supabase
+    .from("community_likes")
+    .insert({ post_id: postId, user_id: user.id });
+
   if (post && post.user_id !== user.id) {
     await supabase
       .from("notifications")
@@ -1023,6 +1074,20 @@ export async function castPollVoteAction(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not signed in" };
+
+  const rl = await gate(ratelimits.likeAction, `pollvote:${user.id}`);
+  if (!rl.ok) return { error: rl.error };
+
+  // Inherit the post's privacy gate (private-group polls), and block enforcement.
+  if (!(await canAccessPost(supabase, postId, user.id)))
+    return { error: "Not authorized to vote on this poll" };
+  const { data: pollPost } = await supabase
+    .from("community_posts")
+    .select("user_id")
+    .eq("id", postId)
+    .maybeSingle();
+  if (await isBlockedBetween(supabase, user.id, pollPost?.user_id as string))
+    return { error: "This poll isn't available" };
 
   if (optionId === null) {
     await supabase
@@ -1157,6 +1222,15 @@ export async function addCommentAction(
   if (!(await canAccessPost(supabase, postId, user.id))) {
     return { comment: null, error: "Not authorized to comment on this post" };
   }
+
+  // Block enforcement — a blocked user can't comment on the post author's content.
+  const { data: postAuthor } = await supabase
+    .from("community_posts")
+    .select("user_id")
+    .eq("id", postId)
+    .maybeSingle();
+  if (await isBlockedBetween(supabase, user.id, postAuthor?.user_id as string))
+    return { comment: null, error: "You can't comment on this post" };
 
   // P2.4 — per-user-per-post comment cap (10/hour) so a single account can't
   // dump comments on a target post even within the global rate limit.
@@ -1436,6 +1510,16 @@ export async function toggleCommentLikeAction(
       .eq("user_id", user.id);
     return { liked: false, error: null };
   }
+
+  // Block enforcement — can't like a comment by someone you've blocked / who blocked you.
+  const { data: comment } = await supabase
+    .from("community_comments")
+    .select("user_id")
+    .eq("id", commentId)
+    .maybeSingle();
+  if (await isBlockedBetween(supabase, user.id, comment?.user_id as string))
+    return { liked: false, error: "This comment isn't available" };
+
   await supabase
     .from("community_comment_likes")
     .insert({ comment_id: commentId, user_id: user.id });
@@ -2037,6 +2121,19 @@ export async function leaveGroupAction(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not signed in" };
+
+  // The creator can't leave their own community (would orphan it). They must
+  // delete it (or, later, transfer ownership) instead.
+  const { data: group } = await supabase
+    .from("community_groups")
+    .select("creator_id")
+    .eq("id", groupId)
+    .maybeSingle();
+  if (group?.creator_id === user.id)
+    return {
+      error: "As the creator you can't leave — delete the community instead.",
+    };
+
   await supabase
     .from("community_group_members")
     .delete()
@@ -2070,13 +2167,19 @@ export async function fetchGroupPostsAction(
     .eq("group_id", groupId)
     .eq("is_hidden", false)
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(20);
 
   // A4 — exclude blocked relationships even within shared groups.
   if (blockedIds.length)
     query = query.not("user_id", "in", `(${blockedIds.join(",")})`);
 
-  if (cursor) query = query.lt("created_at", cursor);
+  if (cursor) {
+    const [cTs, cId] = cursor.split("|");
+    query = cId
+      ? query.or(`created_at.lt.${cTs},and(created_at.eq.${cTs},id.lt.${cId})`)
+      : query.lt("created_at", cTs);
+  }
 
   const { data: rows, error } = await query;
   if (error || !rows) return { posts: [], nextCursor: null };
@@ -2086,10 +2189,13 @@ export async function fetchGroupPostsAction(
     rows as Record<string, unknown>[],
     user?.id,
   );
+  const last = rows[rows.length - 1];
   return {
     posts,
     nextCursor:
-      rows.length === 20 ? (rows[rows.length - 1].created_at as string) : null,
+      rows.length === 20
+        ? `${last.created_at as string}|${last.id as string}`
+        : null,
   };
 }
 
