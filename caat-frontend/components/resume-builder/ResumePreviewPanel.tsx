@@ -103,11 +103,14 @@ function getTopLevelBlocks(
         return;
       }
 
+      const listStyle = el.getAttribute("style");
       items.forEach((li, liIndex) => {
         const wrapper = document.createElement(tagName);
         // Each li becomes its own list so it can page-break independently;
         // for ordered lists, carry the start number so 1,2,3 is preserved.
         if (tagName === "ol" && liIndex > 0) wrapper.setAttribute("start", String(liIndex + 1));
+        // Carry the list's inline style (e.g. list-style-type) onto each wrapper.
+        if (listStyle) wrapper.setAttribute("style", listStyle);
         wrapper.appendChild(li.cloneNode(true));
         blocks.push({
           id: `${sectionId}-li-${index}-${liIndex}`,

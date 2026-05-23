@@ -86,8 +86,10 @@ function getTopLevelBlocks(
         });
         return;
       }
+      const listStyle = el.getAttribute("style");
       items.forEach((li, liIndex) => {
         const wrapper = document.createElement(tagName);
+        if (listStyle) wrapper.setAttribute("style", listStyle);
         wrapper.appendChild(li.cloneNode(true));
         blocks.push({
           id: `${sectionId}-li-${index}-${liIndex}`,

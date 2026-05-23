@@ -9,7 +9,8 @@ import React, { useEffect } from "react";
 import { FontSizeExtension } from "@/extensions/FontSize";
 import { LineHeightExtension } from "@/extensions/LineHeight";
 import { IndentExtension } from "@/extensions/Indent";
-import { Bold, Italic, Underline, Strikethrough, List, ListOrdered, AlignLeft, AlignCenter, AlignRight, AlignJustify, IndentIncrease, IndentDecrease, Link2, Highlighter, Baseline, ChevronDown, Check, RemoveFormatting } from "lucide-react";
+import { ListStyleExtension } from "@/extensions/ListStyle";
+import { Bold, Italic, Underline, Strikethrough, List, ListOrdered, ListChecks, AlignLeft, AlignCenter, AlignRight, AlignJustify, IndentIncrease, IndentDecrease, Link2, Highlighter, Baseline, ChevronDown, Check, RemoveFormatting } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -47,6 +48,17 @@ const LINE_HEIGHTS: { value: string; label: string }[] = [
   { value: "1.15", label: "1.15" },
   { value: "1.5", label: "1.5" },
   { value: "2", label: "Double" },
+];
+const BULLET_STYLES: { value: string; label: string }[] = [
+  { value: "disc", label: "●  Disc" },
+  { value: "circle", label: "○  Circle" },
+  { value: "square", label: "▪  Square" },
+];
+const NUMBER_STYLES: { value: string; label: string }[] = [
+  { value: "decimal", label: "1.  Number" },
+  { value: "lower-alpha", label: "a.  Letter" },
+  { value: "upper-alpha", label: "A.  Letter" },
+  { value: "lower-roman", label: "i.  Roman" },
 ];
 // `swatch` overrides the colour shown in the dropdown chip (used so "Default"
 // reflects the real default text colour, black, instead of an empty square).
@@ -138,6 +150,7 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
       FontSizeExtension,
       LineHeightExtension,
       IndentExtension,
+      ListStyleExtension,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
     ],
     content,
@@ -237,6 +250,16 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
       .updateAttributes("paragraph", { lineHeight: null, indent: 0 })
       .run();
 
+  const inBulletList = editor.isActive("bulletList");
+  const inOrderedList = editor.isActive("orderedList");
+  const inList = inBulletList || inOrderedList;
+  const currentListStyle =
+    (inOrderedList ? editor.getAttributes("orderedList").listStyleType : editor.getAttributes("bulletList").listStyleType) || "";
+  const setListStyle = (val: string) => {
+    const type = inOrderedList ? "orderedList" : "bulletList";
+    withSavedSelection().updateAttributes(type, { listStyleType: val }).run();
+  };
+
   return (
     <TooltipProvider delayDuration={250}>
       <div>
@@ -299,6 +322,26 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
             <ToolbarButton label="Numbered list" onClick={() => editor.chain().focus().toggleOrderedList().run()} isActive={editor.isActive("orderedList")}>
               <ListOrdered className="h-4 w-4" />
             </ToolbarButton>
+            <DropdownMenu onOpenChange={snapshotSelection}>
+              <TriggerTip label="List style" hint={inList ? undefined : "Select a list first"}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5" aria-label="List style" disabled={!inList}>
+                    <ListChecks className="h-4 w-4" />
+                    <ChevronDown className="h-3 w-3 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+              </TriggerTip>
+              <DropdownMenuContent align="start" onCloseAutoFocus={(e) => e.preventDefault()}>
+                {(inOrderedList ? NUMBER_STYLES : BULLET_STYLES).map((s) => (
+                  <DropdownMenuItem key={s.value} onSelect={() => setListStyle(s.value)}>
+                    {s.label}
+                    {currentListStyle === s.value ? (
+                      <Check className="h-3.5 w-3.5 ml-auto text-muted-foreground" />
+                    ) : null}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </Group>
 
           <Divider />
