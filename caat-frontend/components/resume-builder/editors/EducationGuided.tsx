@@ -3,7 +3,8 @@
 import React from "react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
+import RichTextEditor from "@/components/RichTextEditor";
+import { isEmptyHtml } from "../publishedHtml";
 
 export type EducationEntry = {
   id: string;
@@ -53,14 +54,9 @@ export function educationToHtml(entries: EducationEntry[]): string {
       if (e.institution)
         lines.push(`<p><strong>${escapeHtml(e.institution)}</strong>${titleLine ? ` — ${titleLine}` : ""}</p>`);
       if (metaParts) lines.push(`<p>${metaParts}</p>`);
-      if (e.description) {
-        const bullets = e.description
-          .split("\n")
-          .map((l) => l.trim())
-          .filter(Boolean);
-        if (bullets.length > 0) {
-          lines.push(`<ul>${bullets.map((b) => `<li>${escapeHtml(b)}</li>`).join("")}</ul>`);
-        }
+      // description is rich-text HTML from the Notes editor — embed as-is.
+      if (e.description && !isEmptyHtml(e.description)) {
+        lines.push(e.description);
       }
       return lines.join("");
     })
@@ -186,13 +182,12 @@ export default function EducationGuided({
 
             <div className="col-span-2">
               <div className="mb-1 text-xs font-medium text-muted-foreground">
-                NOTES / ACHIEVEMENTS (one per line)
+                NOTES / ACHIEVEMENTS
               </div>
-              <Textarea
-                value={entry.description}
-                onChange={(e) => update(i, { description: e.target.value })}
-                placeholder="Dean's List&#10;Thesis: Machine Learning in Healthcare"
-                rows={3}
+              <RichTextEditor
+                variant="minimal"
+                content={entry.description}
+                onChange={(html) => update(i, { description: html })}
               />
             </div>
           </div>

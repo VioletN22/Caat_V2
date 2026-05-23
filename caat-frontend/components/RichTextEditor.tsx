@@ -136,9 +136,13 @@ const Divider = () => <span className="mx-0.5 h-6 w-px bg-border" aria-hidden />
 interface RichTextEditorProps {
   content: string;
   onChange: (value: string) => void;
+  // "minimal" trims the toolbar to the essentials (used for guided Notes fields,
+  // where a full toolbar per entry card would be cluttered).
+  variant?: "full" | "minimal";
 }
 
-export default function RichTextEditor({ content, onChange }: RichTextEditorProps) {
+export default function RichTextEditor({ content, onChange, variant = "full" }: RichTextEditorProps) {
+  const minimal = variant === "minimal";
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -285,6 +289,8 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
             </ToolbarButton>
           </Group>
 
+          {!minimal && (
+          <>
           <Divider />
 
           {/* Text style */}
@@ -311,6 +317,8 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
               </SelectContent>
             </Select>
           </Group>
+          </>
+          )}
 
           <Divider />
 
@@ -344,6 +352,8 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
             </DropdownMenu>
           </Group>
 
+          {!minimal && (
+          <>
           <Divider />
 
           {/* Align */}
@@ -497,6 +507,8 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
               </DropdownMenuContent>
             </DropdownMenu>
           </Group>
+          </>
+          )}
 
           <Divider />
 

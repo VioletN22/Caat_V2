@@ -3,6 +3,8 @@
 import React from "react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import RichTextEditor from "@/components/RichTextEditor";
+import { isEmptyHtml } from "../publishedHtml";
 
 export type ExperienceEntry = {
   id: string;
@@ -12,7 +14,8 @@ export type ExperienceEntry = {
   startDate: string;
   endDate: string;
   current: boolean;
-  bullets: string[];
+  description?: string;       // rich-text HTML (replaces the old bullets array)
+  bullets?: string[];         // legacy: read once to seed `description`
 };
 
 function emptyEntry(): ExperienceEntry {
@@ -24,7 +27,7 @@ function emptyEntry(): ExperienceEntry {
     startDate: "",
     endDate: "",
     current: false,
-    bullets: [""],
+    description: "",
   };
 }
 
@@ -35,6 +38,16 @@ function escapeHtml(text: string): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+// The entry's description as HTML: prefer the rich `description`, else derive
+// from the legacy `bullets` array so existing resumes keep their content.
+export function entryDescriptionHtml(e: ExperienceEntry): string {
+  if (typeof e.description === "string") return e.description;
+  const bullets = (e.bullets ?? []).map((b) => b.trim()).filter(Boolean);
+  return bullets.length > 0
+    ? `<ul>${bullets.map((b) => `<li>${escapeHtml(b)}</li>`).join("")}</ul>`
+    : "";
 }
 
 export function experienceToHtml(entries: ExperienceEntry[]): string {
@@ -54,10 +67,8 @@ export function experienceToHtml(entries: ExperienceEntry[]): string {
       }
       if (metaParts) lines.push(`<p>${metaParts}</p>`);
 
-      const filledBullets = e.bullets.map((b) => b.trim()).filter(Boolean);
-      if (filledBullets.length > 0) {
-        lines.push(`<ul>${filledBullets.map((b) => `<li>${escapeHtml(b)}</li>`).join("")}</ul>`);
-      }
+      const desc = entryDescriptionHtml(e);
+      if (desc && !isEmptyHtml(desc)) lines.push(desc);
 
       return lines.join("");
     })
@@ -91,22 +102,6 @@ export default function ExperienceGuided({
     const next = entries.filter((_, i) => i !== index);
     const nextValue: ExperienceValue = { ...value, entries: next };
     onChange(nextValue, experienceToHtml(next));
-  }
-
-  function updateBullet(entryIndex: number, bulletIndex: number, text: string) {
-    const newBullets = entries[entryIndex].bullets.map((b, bi) =>
-      bi === bulletIndex ? text : b
-    );
-    update(entryIndex, { bullets: newBullets });
-  }
-
-  function addBullet(entryIndex: number) {
-    update(entryIndex, { bullets: [...entries[entryIndex].bullets, ""] });
-  }
-
-  function removeBullet(entryIndex: number, bulletIndex: number) {
-    const newBullets = entries[entryIndex].bullets.filter((_, bi) => bi !== bulletIndex);
-    update(entryIndex, { bullets: newBullets.length > 0 ? newBullets : [""] });
   }
 
   return (
@@ -190,47 +185,12 @@ export default function ExperienceGuided({
           </div>
 
           <div>
-            <div className="mb-1 text-xs font-medium text-muted-foreground">BULLET POINTS</div>
-            <div className="space-y-1.5">
-              {entry.bullets.map((bullet, bi) => (
-                <div key={bi} className="flex items-center gap-2">
-                  <span className="text-muted-foreground text-sm shrink-0">•</span>
-                  <Input
-                    value={bullet}
-                    onChange={(e) => updateBullet(i, bi, e.target.value)}
-                    placeholder="Describe an achievement or responsibility..."
-                    className="flex-1"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addBullet(i);
-                      }
-                      if (e.key === "Backspace" && bullet === "" && entry.bullets.length > 1) {
-                        e.preventDefault();
-                        removeBullet(i, bi);
-                      }
-                    }}
-                  />
-                  {entry.bullets.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeBullet(i, bi)}
-                      className="text-muted-foreground hover:text-destructive text-sm"
-                      aria-label="Remove bullet"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => addBullet(i)}
-              className="mt-2 text-xs text-muted-foreground hover:text-foreground"
-            >
-              + Add bullet
-            </button>
+            <div className="mb-1 text-xs font-medium text-muted-foreground">DESCRIPTION</div>
+            <RichTextEditor
+              variant="minimal"
+              content={entryDescriptionHtml(entry)}
+              onChange={(html) => update(i, { description: html })}
+            />
           </div>
         </div>
       ))}
