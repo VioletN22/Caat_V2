@@ -227,11 +227,13 @@ export function ResumePage({
   page,
   totalPages,
   personalHeader,
+  marginPx = PAGE_PADDING_PX,
   showFooter = true,
 }: {
   page: PageModel;
   totalPages: number;
   personalHeader: PersonalHeader;
+  marginPx?: number;
   showFooter?: boolean;
 }) {
   return (
@@ -240,7 +242,7 @@ export function ResumePage({
       style={{
         width: PAGE_WIDTH_PX,
         height: PAGE_HEIGHT_PX,
-        padding: PAGE_PADDING_PX,
+        padding: marginPx,
         boxSizing: "border-box",
         color: "#000",
       }}
@@ -308,9 +310,11 @@ export function ResumePage({
 
 export default function ResumePreviewPanel({
   sections,
+  marginPx = PAGE_PADDING_PX,
   onPagesComputed,
 }: {
   sections: ResumeSection[];
+  marginPx?: number;
   onPagesComputed?: (pages: PageModel[], personalHeader: PersonalHeader) => void;
 }) {
   const personalSection = sections.find((s) => s.type === "personal");
@@ -425,7 +429,7 @@ export default function ResumePreviewPanel({
     if (!pageBody) return;
 
     const pageBodyHeight =
-      PAGE_HEIGHT_PX - PAGE_PADDING_PX * 2 - PAGE_BOTTOM_RESERVE_PX;
+      PAGE_HEIGHT_PX - marginPx * 2 - PAGE_BOTTOM_RESERVE_PX;
 
     const firstHeaderHeight = firstPageHeader?.offsetHeight ?? 0;
     const firstPageAvailable =
@@ -631,7 +635,7 @@ export default function ResumePreviewPanel({
     pushCurrentPage();
     setPages(resultPages);
     onPagesComputed?.(resultPages, personalHeader);
-  }, [blocks, fontsReady, personalHeaderKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [blocks, fontsReady, personalHeaderKey, marginPx]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div ref={containerRef} className="border-l bg-muted/30 p-4 overflow-auto h-full">
@@ -652,7 +656,7 @@ export default function ResumePreviewPanel({
           style={{
             width: PAGE_WIDTH_PX,
             height: PAGE_HEIGHT_PX,
-            padding: PAGE_PADDING_PX,
+            padding: marginPx,
             boxSizing: "border-box",
           }}
         >
@@ -719,6 +723,7 @@ export default function ResumePreviewPanel({
                 page={page}
                 totalPages={pages.length}
                 personalHeader={personalHeader}
+                marginPx={marginPx}
               />
             </div>
           </div>

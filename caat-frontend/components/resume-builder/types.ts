@@ -1,3 +1,6 @@
+import type { ResumeSettings } from "./settings";
+export type { ResumeSettings } from "./settings";
+
 export type SectionType =
   | "personal"
   | "education"
@@ -24,6 +27,7 @@ export type ResumeRow = {
         user_id: string;            // uuid (auth.users.id)
         title: string | null;
         template: string | null;
+        settings: ResumeSettings | null;  // jsonb (optional column; may be absent pre-migration)
         created_at: string;         // timestamptz ISO string
         updated_at: string;         // timestamptz ISO string
 };
@@ -56,6 +60,7 @@ export type ResumeState = {
         resumeId: string;
         title: string;
         template: string | null;
+        settings: ResumeSettings;
         sections: ResumeSectionState[];
 };
 
@@ -64,6 +69,7 @@ export type SaveResumePayload = {
         resumeId: string;
         title: string;
         template?: string | null;
+        settings?: ResumeSettings;
         sections: Array<{
                 id: string;                 // existing section uuid (or temp id tht gets map)
                 type: SectionType;
