@@ -77,6 +77,40 @@ export function CreatePostForm({ currentUser, onPostCreated, groupId }: CreatePo
 
   const isDirty = content.trim().length > 0 || !!topicTag || showResult || showScore || showResume || showSchool || showPoll;
 
+  // Draft autosave — survive accidental navigation away mid-post. Keyed per
+  // feed/group so a group draft doesn't bleed into the main composer.
+  const draftKey = `caat:community-draft:${groupId ?? "feed"}`;
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return;
+      const d = JSON.parse(raw) as { content?: string; topicTag?: TopicTag | "" };
+      if (d.content || d.topicTag) {
+        /* eslint-disable react-hooks/set-state-in-effect */
+        setContent(d.content ?? "");
+        setTopicTag(d.topicTag ?? "");
+        setIsExpanded(true);
+        /* eslint-enable react-hooks/set-state-in-effect */
+      }
+    } catch {
+      /* ignore malformed draft */
+    }
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!isExpanded) return;
+    try {
+      if (content.trim() || topicTag) {
+        localStorage.setItem(draftKey, JSON.stringify({ content, topicTag }));
+      } else {
+        localStorage.removeItem(draftKey);
+      }
+    } catch {
+      /* storage unavailable — non-fatal */
+    }
+  }, [content, topicTag, isExpanded, draftKey]);
+
   useEffect(() => {
     if (!isExpanded) return;
     textareaRef.current?.focus();
@@ -102,7 +136,8 @@ export function CreatePostForm({ currentUser, onPostCreated, groupId }: CreatePo
     setShowSchool(false); setSchoolQuery(""); setSelectedSchool(null); setSchoolSuggestions([]);
     setShowPoll(false); setPollOptions(["", ""]);
     setIsExpanded(false);
-  }, []);
+    try { localStorage.removeItem(draftKey); } catch { /* non-fatal */ }
+  }, [draftKey]);
 
   // Close on click outside
   useEffect(() => {

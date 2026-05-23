@@ -80,6 +80,8 @@ export interface CommunityComment {
   parent_comment_id: string | null;
   content: string;
   created_at: string;
+  edited_at?: string | null;
+  is_deleted?: boolean;
   likes_count: number;
   is_liked_by_user: boolean;
   author: PostAuthor | null;

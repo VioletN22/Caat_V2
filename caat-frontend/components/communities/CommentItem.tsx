@@ -9,7 +9,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { getInitials } from "@/lib/user-utils";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { addCommentAction, toggleCommentLikeAction } from "@/app/(main)/communities/actions";
+import {
+  addCommentAction,
+  toggleCommentLikeAction,
+  updateCommentAction,
+  deleteCommentAction,
+} from "@/app/(main)/communities/actions";
 import type { CommunityComment, PostAuthor } from "@/types/community";
 
 interface CommentItemProps {
@@ -17,11 +22,16 @@ interface CommentItemProps {
   currentUser: PostAuthor | null;
   isReply?: boolean;
   onReplyAdded: (parentId: string, reply: CommunityComment) => void;
+  onEdited: (id: string, content: string, editedAt: string) => void;
+  onDeleted: (id: string, mode: "soft" | "hard") => void;
 }
 
-export function CommentItem({ comment, currentUser, isReply = false, onReplyAdded }: CommentItemProps) {
+export function CommentItem({ comment, currentUser, isReply = false, onReplyAdded, onEdited, onDeleted }: CommentItemProps) {
   const [isReplying, setIsReplying] = useState(false);
   const [replyText, setReplyText] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(comment.content);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const [likeOptimistic, setLikeOptimistic] = useOptimistic(
@@ -29,6 +39,8 @@ export function CommentItem({ comment, currentUser, isReply = false, onReplyAdde
     (state) => ({ isLiked: !state.isLiked, count: state.isLiked ? state.count - 1 : state.count + 1 })
   );
 
+  const isOwn = !!currentUser && currentUser.id === comment.user_id;
+  const isDeleted = !!comment.is_deleted;
   const authorName = comment.author
     ? [comment.author.first_name, comment.author.last_name].filter(Boolean).join(" ") || "Anonymous"
     : "Anonymous";
@@ -60,6 +72,32 @@ export function CommentItem({ comment, currentUser, isReply = false, onReplyAdde
     });
   }
 
+  function submitEdit() {
+    const text = editText.trim();
+    if (!text) return;
+    startTransition(async () => {
+      const { error, edited_at } = await updateCommentAction(comment.id, text);
+      if (error || !edited_at) {
+        toast.error(error ?? "Could not edit comment.");
+        return;
+      }
+      onEdited(comment.id, text, edited_at);
+      setIsEditing(false);
+    });
+  }
+
+  function confirmDelete() {
+    startTransition(async () => {
+      const { mode, error } = await deleteCommentAction(comment.id);
+      if (error || !mode) {
+        toast.error(error ?? "Could not delete comment.");
+        return;
+      }
+      setConfirmingDelete(false);
+      onDeleted(comment.id, mode);
+    });
+  }
+
   return (
     <div className={isReply ? "ml-9 mt-2" : ""}>
       <div className="flex gap-2.5">
@@ -76,31 +114,71 @@ export function CommentItem({ comment, currentUser, isReply = false, onReplyAdde
               <span className="text-[10px] text-muted-foreground">
                 {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
               </span>
-            </div>
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">{comment.content}</p>
-          </div>
-
-          <div className="flex items-center gap-1 mt-1 ml-1">
-            <button
-              className={cn(
-                "flex items-center gap-1 text-[11px] transition-colors",
-                likeOptimistic.isLiked ? "text-[#9a1a27] hover:text-[#9a1a27]" : "text-muted-foreground hover:text-foreground"
+              {comment.edited_at && !isDeleted && (
+                <span className="text-[10px] text-muted-foreground">· edited</span>
               )}
-              onClick={handleLike}
-            >
-              <Heart className={cn("size-3", likeOptimistic.isLiked && "fill-current")} />
-              {likeOptimistic.count > 0 && <span>{likeOptimistic.count}</span>}
-            </button>
+            </div>
 
-            {!isReply && (
-              <button
-                className="text-[11px] text-muted-foreground hover:text-foreground ml-2 transition-colors"
-                onClick={() => setIsReplying((v) => !v)}
-              >
-                Reply
-              </button>
+            {isDeleted ? (
+              <p className="text-sm italic text-muted-foreground">[deleted]</p>
+            ) : isEditing ? (
+              <div className="space-y-1.5">
+                <Textarea
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  className="min-h-[60px] resize-none text-sm"
+                  autoFocus
+                  onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submitEdit(); }}
+                />
+                <div className="flex gap-1.5 justify-end">
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setIsEditing(false); setEditText(comment.content); }} disabled={isPending}>Cancel</Button>
+                  <Button size="sm" className="h-7 text-xs" onClick={submitEdit} disabled={isPending || !editText.trim()}>{isPending ? "Saving…" : "Save"}</Button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{comment.content}</p>
             )}
           </div>
+
+          {!isDeleted && !isEditing && (
+            <div className="flex items-center gap-1 mt-1 ml-1">
+              <button
+                className={cn(
+                  "flex items-center gap-1 text-[11px] transition-colors",
+                  likeOptimistic.isLiked ? "text-[#9a1a27] hover:text-[#9a1a27]" : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={handleLike}
+              >
+                <Heart className={cn("size-3", likeOptimistic.isLiked && "fill-current")} />
+                {likeOptimistic.count > 0 && <span>{likeOptimistic.count}</span>}
+              </button>
+
+              {!isReply && (
+                <button className="text-[11px] text-muted-foreground hover:text-foreground ml-2 transition-colors" onClick={() => setIsReplying((v) => !v)}>
+                  Reply
+                </button>
+              )}
+
+              {isOwn && (
+                <>
+                  <button className="text-[11px] text-muted-foreground hover:text-foreground ml-2 transition-colors" onClick={() => { setIsEditing(true); setEditText(comment.content); }}>
+                    Edit
+                  </button>
+                  {confirmingDelete ? (
+                    <span className="ml-2 text-[11px] text-muted-foreground">
+                      Delete?
+                      <button className="ml-1 text-[#9a1a27] hover:underline" onClick={confirmDelete} disabled={isPending}>Yes</button>
+                      <button className="ml-1 hover:underline" onClick={() => setConfirmingDelete(false)}>No</button>
+                    </span>
+                  ) : (
+                    <button className="text-[11px] text-muted-foreground hover:text-[#9a1a27] ml-2 transition-colors" onClick={() => setConfirmingDelete(true)}>
+                      Delete
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
           {/* Inline reply form */}
           {isReplying && (
@@ -108,11 +186,7 @@ export function CommentItem({ comment, currentUser, isReply = false, onReplyAdde
               <Avatar className="size-6 shrink-0 mt-1">
                 <AvatarImage src={currentUser?.avatar_url ?? undefined} />
                 <AvatarFallback className="text-[9px] bg-zinc-100 dark:bg-zinc-800">
-                  {getInitials(
-                    currentUser
-                      ? [currentUser.first_name, currentUser.last_name].filter(Boolean).join(" ") || "You"
-                      : "You"
-                  )}
+                  {getInitials(currentUser ? [currentUser.first_name, currentUser.last_name].filter(Boolean).join(" ") || "You" : "You")}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 space-y-1.5">
@@ -121,28 +195,11 @@ export function CommentItem({ comment, currentUser, isReply = false, onReplyAdde
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   className="min-h-[60px] resize-none text-sm"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submitReply();
-                  }}
+                  onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submitReply(); }}
                 />
                 <div className="flex gap-1.5 justify-end">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => { setIsReplying(false); setReplyText(""); }}
-                    disabled={isPending}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={submitReply}
-                    disabled={isPending || !replyText.trim()}
-                  >
-                    {isPending ? "Posting…" : "Reply"}
-                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setIsReplying(false); setReplyText(""); }} disabled={isPending}>Cancel</Button>
+                  <Button size="sm" className="h-7 text-xs" onClick={submitReply} disabled={isPending || !replyText.trim()}>{isPending ? "Posting…" : "Reply"}</Button>
                 </div>
               </div>
             </div>
@@ -158,6 +215,8 @@ export function CommentItem({ comment, currentUser, isReply = false, onReplyAdde
                   currentUser={currentUser}
                   isReply
                   onReplyAdded={onReplyAdded}
+                  onEdited={onEdited}
+                  onDeleted={onDeleted}
                 />
               ))}
             </div>

@@ -1319,6 +1319,97 @@ export async function addCommentAction(
   };
 }
 
+// ─── Comment edit / delete ─────────────────────────────────────────────────────
+
+export async function updateCommentAction(
+  commentId: string,
+  content: string,
+): Promise<{ error: string | null; edited_at: string | null }> {
+  const supabase = await createSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in", edited_at: null };
+
+  const text = content.trim();
+  if (!text) return { error: "Comment cannot be empty", edited_at: null };
+  if (text.length > 1000)
+    return { error: "Comment exceeds 1000 characters", edited_at: null };
+  if (containsProfanity(text))
+    return { error: "Comment contains prohibited language", edited_at: null };
+
+  const { data: comment } = await supabase
+    .from("community_comments")
+    .select("user_id")
+    .eq("id", commentId)
+    .maybeSingle();
+  if (!comment || comment.user_id !== user.id)
+    return { error: "Not authorized", edited_at: null };
+
+  const editedAt = new Date().toISOString();
+  const { error } = await supabase
+    .from("community_comments")
+    .update({ content: text, edited_at: editedAt })
+    .eq("id", commentId)
+    .eq("user_id", user.id);
+
+  return {
+    error: error ? sanitizeError(error, "Could not update comment.") : null,
+    edited_at: error ? null : editedAt,
+  };
+}
+
+export async function deleteCommentAction(
+  commentId: string,
+): Promise<{ mode: "soft" | "hard" | null; error: string | null }> {
+  const supabase = await createSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { mode: null, error: "Not signed in" };
+
+  const { data: comment } = await supabase
+    .from("community_comments")
+    .select("user_id, post_id")
+    .eq("id", commentId)
+    .maybeSingle();
+  if (!comment || comment.user_id !== user.id)
+    return { mode: null, error: "Not authorized" };
+
+  // If the comment has replies, soft-delete so the thread structure survives;
+  // otherwise remove it outright.
+  const { count: replyCount } = await supabase
+    .from("community_comments")
+    .select("id", { count: "exact", head: true })
+    .eq("parent_comment_id", commentId);
+
+  if ((replyCount ?? 0) > 0) {
+    const { error } = await supabase
+      .from("community_comments")
+      .update({ is_deleted: true, content: "[deleted]" })
+      .eq("id", commentId)
+      .eq("user_id", user.id);
+    return {
+      mode: error ? null : "soft",
+      error: error ? sanitizeError(error, "Could not delete comment.") : null,
+    };
+  }
+
+  await supabase
+    .from("community_comment_likes")
+    .delete()
+    .eq("comment_id", commentId);
+  const { error } = await supabase
+    .from("community_comments")
+    .delete()
+    .eq("id", commentId)
+    .eq("user_id", user.id);
+  return {
+    mode: error ? null : "hard",
+    error: error ? sanitizeError(error, "Could not delete comment.") : null,
+  };
+}
+
 // ─── Notifications ────────────────────────────────────────────────────────────
 
 export async function fetchNotificationsAction(

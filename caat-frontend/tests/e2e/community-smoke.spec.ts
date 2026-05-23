@@ -30,4 +30,9 @@ test("community: create post, like, comment", async ({ page }) => {
   await commentBox.fill(commentText);
   await commentBox.press("ControlOrMeta+Enter");
   await expect(page.getByText(commentText).first()).toBeVisible({ timeout: 10_000 });
+
+  // Own comment shows Edit + Delete controls (UI present regardless of the
+  // edited_at/is_deleted migration; persistence verified separately).
+  await expect(page.getByRole("button", { name: "Edit", exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Delete", exact: true }).first()).toBeVisible();
 });
