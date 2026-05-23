@@ -280,3 +280,22 @@ html { scroll-behavior: smooth; }
 /* strip chrome native video-controls dark gradient on the demo player */
 .demo-video::-webkit-media-controls-panel { background-image: none !important; }
 .demo-video::-webkit-media-controls-enclosure { background-image: none !important; background-color: transparent !important; }
+
+@layer base {
+  /* --- Resume rich-text editor (.ProseMirror) + preview heading sizes (batch 1-6) --- */
+  .ProseMirror { outline: none; }
+  .ProseMirror p { margin: 0 0 0.5rem; }
+  .ProseMirror h1 { font-size: 1.5em; font-weight: 700; line-height: 1.2; margin: 0.4em 0 0.2em; }
+  .ProseMirror h2 { font-size: 1.25em; font-weight: 700; line-height: 1.2; margin: 0.4em 0 0.2em; }
+  .ProseMirror h3 { font-size: 1.1em; font-weight: 700; line-height: 1.25; margin: 0.3em 0 0.2em; }
+  .ProseMirror ul { list-style: disc; margin: 0 0 0.5rem 1.5rem; padding: 0; }
+  .ProseMirror ol { list-style: decimal; margin: 0 0 0.5rem 1.5rem; padding: 0; }
+  .ProseMirror li { margin: 0.15em 0; }
+  .ProseMirror li > p { margin: 0; }
+  .ProseMirror a { color: #2563eb; text-decoration: underline; }
+
+  /* Heading sizes for the rendered preview + PDF (base rule sets weight only). */
+  .resume-preview-content h1 { font-size: 1.5em; }
+  .resume-preview-content h2 { font-size: 1.25em; }
+  .resume-preview-content h3 { font-size: 1.1em; }
+}
