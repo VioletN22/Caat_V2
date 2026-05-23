@@ -19,6 +19,13 @@ import {
 
 import { getDefaultSections } from "./defaultSections";
 import { ResumeSection, SectionType } from "./types";
+import {
+  type ResumeSettings,
+  type MarginPreset,
+  DEFAULT_SETTINGS,
+  MARGIN_LABELS,
+  marginPxOf,
+} from "./settings";
 
 // Supabase API helpers
 import {
@@ -33,16 +40,24 @@ import {
 
 import { Pencil, Trash2, Printer } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 
 import DocumentStructurePanel from "./DocumentStructurePanel";
 import SectionEditorPanel from "./SectionEditorPanel";
 import ResumePreviewPanel, { ResumePage } from "./ResumePreviewPanel";
-import type { PageModel } from "./ResumePreviewPanel";
+import type { PageModel, PersonalHeader } from "./ResumePreviewPanel";
 
 export default function ResumeBuilderShell() {
   const [sections, setSections] = useState<ResumeSection[]>([]);
   const [activeSectionId, setActiveSectionId] = useState<string>("");
+  const [settings, setSettings] = useState<ResumeSettings>(DEFAULT_SETTINGS);
 
   // Resume metadata (needed for save/load)
   const [resumeId, setResumeId] = useState<string>("");
@@ -59,7 +74,11 @@ export default function ResumeBuilderShell() {
 
   // Computed page layout from the preview panel — used by the print container
   const [printPages, setPrintPages] = useState<PageModel[]>([]);
-  const [printPersonal, setPrintPersonal] = useState<Record<string, unknown>>({});
+  const [printPersonal, setPrintPersonal] = useState<PersonalHeader>({
+    isFree: false,
+    html: "",
+    data: {},
+  });
 
   // Resume title edit (inline, same as section rename)
   const [editingResumeTitle, setEditingResumeTitle] = useState(false);
@@ -116,6 +135,7 @@ export default function ResumeBuilderShell() {
 
         setResumeId(state.resumeId);
         setResumeTitle(state.title || "My Professional Resume");
+        setSettings(state.settings ?? DEFAULT_SETTINGS);
 
         // Load resume list for switcher
         const list = await listResumes();
@@ -276,6 +296,7 @@ export default function ResumeBuilderShell() {
         resumeId,
         title: resumeTitle,
         template: null,
+        settings,
         sections: sections.map((s, idx) => ({
           id: s.id,
           type: s.type,
@@ -316,7 +337,7 @@ export default function ResumeBuilderShell() {
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sections]);
+  }, [sections, settings]);
 
   // --------------------------------------------------
   // Switch resume (load by id)
@@ -330,6 +351,7 @@ export default function ResumeBuilderShell() {
 
       setResumeId(state.resumeId);
       setResumeTitle(state.title || "Untitled");
+      setSettings(state.settings ?? DEFAULT_SETTINGS);
 
       if (!state.sections || state.sections.length === 0) {
         const defaults = getDefaultSections();
@@ -515,22 +537,30 @@ export default function ResumeBuilderShell() {
             />
           ) : (
             <>
-              <select
-                value={resumeId}
-                onChange={(e) => switchResume(e.target.value)}
+              <Select
+                value={resumeId || undefined}
+                onValueChange={(v) => switchResume(v)}
                 disabled={isLoading}
-                className="font-semibold bg-transparent border-none cursor-pointer focus:ring-0 focus:outline-none text-sm py-0 pr-6 min-w-[140px]"
               >
-                {resumeList.length === 0 && resumeId ? (
-                  <option value={resumeId}>{resumeTitle}</option>
-                ) : (
-                  resumeList.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.title}
-                    </option>
-                  ))
-                )}
-              </select>
+                <SelectTrigger
+                  size="sm"
+                  aria-label="Switch resume"
+                  className="font-semibold border-none shadow-none bg-transparent gap-1.5 px-1 text-sm min-w-[140px] focus-visible:ring-0"
+                >
+                  <SelectValue placeholder="Select a resume" />
+                </SelectTrigger>
+                <SelectContent>
+                  {resumeList.length === 0 && resumeId ? (
+                    <SelectItem value={resumeId}>{resumeTitle}</SelectItem>
+                  ) : (
+                    resumeList.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.title}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
               <button
                 type="button"
                 onClick={startEditResumeTitle}
@@ -569,6 +599,23 @@ export default function ResumeBuilderShell() {
               Last saved on: {format(lastSavedAt, "MMM d, yyyy 'at' h:mm a")}
             </span>
           ) : null}
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground">Margins</span>
+            <Select
+              value={settings.marginPreset}
+              onValueChange={(v) => setSettings((s) => ({ ...s, marginPreset: v as MarginPreset }))}
+            >
+              <SelectTrigger size="sm" className="h-8 w-auto gap-1.5 text-sm" aria-label="Page margins">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="narrow">{MARGIN_LABELS.narrow}</SelectItem>
+                <SelectItem value="normal">{MARGIN_LABELS.normal}</SelectItem>
+                <SelectItem value="wide">{MARGIN_LABELS.wide}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           <button
             onClick={handlePrint}
@@ -649,6 +696,7 @@ export default function ResumeBuilderShell() {
           <div className="flex flex-col min-h-0 overflow-hidden border-l shrink-0" style={{ width: 520 }}>
             <ResumePreviewPanel
               sections={sections}
+              marginPx={marginPxOf(settings)}
               onPagesComputed={(pages, personal) => {
                 setPrintPages(pages);
                 setPrintPersonal(personal);
@@ -690,6 +738,7 @@ export default function ResumeBuilderShell() {
           {mobileTab === "preview" && (
             <ResumePreviewPanel
               sections={sections}
+              marginPx={marginPxOf(settings)}
               onPagesComputed={(pages, personal) => {
                 setPrintPages(pages);
                 setPrintPersonal(personal);
@@ -710,7 +759,8 @@ export default function ResumeBuilderShell() {
                 <ResumePage
                   page={page}
                   totalPages={printPages.length}
-                  personal={printPersonal}
+                  personalHeader={printPersonal}
+                  marginPx={marginPxOf(settings)}
                   showFooter={false}
                 />
               </div>

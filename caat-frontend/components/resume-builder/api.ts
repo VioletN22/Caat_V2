@@ -9,6 +9,7 @@ import type {
         SectionType,
         SectionMode,
 } from "./types";
+import { coerceSettings, DEFAULT_SETTINGS } from "./settings";
 
 /* ---------------------------
    Small helpers: map DB to UI
@@ -98,6 +99,7 @@ export async function loadResumeById(resumeId: string): Promise<ResumeState | nu
 		resumeId: (resume as ResumeRow).id,
 		title: (resume as ResumeRow).title ?? "Untitled",
 		template: (resume as ResumeRow).template ?? null,
+		settings: coerceSettings((resume as ResumeRow).settings),
 		sections: (sectionRows ?? []).map(rowToState),
 	};
 }
@@ -123,6 +125,7 @@ export async function createResume(title?: string): Promise<ResumeState> {
 		resumeId: resume.id,
 		title: resume.title ?? "New Resume",
 		template: resume.template ?? null,
+		settings: { ...DEFAULT_SETTINGS },
 		sections: [],
 	};
 }
@@ -171,8 +174,8 @@ export async function loadOrCreateResumeState(): Promise<ResumeState> {
         return {
                 resumeId: resume.id,
                 title: resume.title ?? "Main Resume",
-                
                 template: resume.template ?? null,
+                settings: coerceSettings(resume.settings),
                 sections: (sectionRows ?? []).map(rowToState),
         };
 }
@@ -195,6 +198,23 @@ export async function saveResumeState(payload: SaveResumePayload): Promise<void>
                 .eq("user_id", userId);
 
         if (resumeErr) throw new Error(resumeErr.message);
+
+        // 1b) Best-effort: persist resume-level settings. Tolerates the `settings`
+        //     column not existing yet (pre-migration) so saving never breaks —
+        //     the rest of the resume still saves; settings just won't persist.
+        if (payload.settings !== undefined) {
+                const { error: settingsErr } = await supabase
+                        .from("resumes")
+                        .update({ settings: payload.settings })
+                        .eq("id", payload.resumeId)
+                        .eq("user_id", userId);
+                if (settingsErr && process.env.NODE_ENV !== "production") {
+                        console.warn(
+                                "Resume settings not persisted (run the `settings jsonb` migration on resumes?):",
+                                settingsErr.message
+                        );
+                }
+        }
 
         // 2) Verify any existing section IDs in the payload actually belong to
         //    this resume — prevents overwriting another user's sections via
