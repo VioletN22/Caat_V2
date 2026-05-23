@@ -233,6 +233,14 @@
     display: block !important;
   }
 
+  /* Browsers drop background colours (e.g. text highlights) when printing
+     unless we explicitly opt in. Force exact colour rendering for the resume. */
+  [data-print-resume],
+  [data-print-resume] * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   /* A4 with zero margins — padding is baked into ResumePage */
   @page {
     size: A4 portrait;
