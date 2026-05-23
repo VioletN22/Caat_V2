@@ -168,17 +168,70 @@ function words(text: string) {
   return text.trim().split(/\s+/).filter(Boolean);
 }
 
+/* The resume's top header. Guided personal -> structured contact line; free
+   personal -> the student's own free-text rendered in the same top slot. */
+export type PersonalHeader = {
+  isFree: boolean;
+  html: string;
+  data: Record<string, unknown>;
+};
+
+export function PersonalHeaderView({ header }: { header: PersonalHeader }) {
+  if (header.isFree) {
+    if (!header.html) return null;
+    return (
+      <div
+        className="resume-preview-content"
+        dangerouslySetInnerHTML={{ __html: header.html }}
+      />
+    );
+  }
+  const personal = header.data;
+  return (
+    <div style={{ textAlign: "center" }}>
+      <div
+        style={{
+          fontSize: NAME_FONT_PX,
+          fontWeight: 700,
+          letterSpacing: "0.05em",
+          lineHeight: 1.2,
+        }}
+      >
+        {safeText(personal.fullName) || "JOHN DOE"}
+      </div>
+      <div
+        style={{
+          marginTop: 4,
+          fontSize: CONTACT_FONT_PX,
+          color: "#666",
+          lineHeight: 1.4,
+        }}
+      >
+        {safeText(personal.email) || "john@example.com"}
+        {"  •  "}
+        {safeText(personal.phone) || "+1 234 567 890"}
+        {"  •  "}
+        {safeText(personal.location) || "Sydney, Australia"}
+        {"  •  "}
+        <span style={{ color: "rgb(37 99 235)", textDecoration: "underline" }}>
+          {safeText(personal.linkedin) || "linkedin.com/in/johndoe"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /* Shared JSX for a single page — used by both the visible preview and the
    print portal so the two always render identical content. */
 export function ResumePage({
   page,
   totalPages,
-  personal,
+  personalHeader,
   showFooter = true,
 }: {
   page: PageModel;
   totalPages: number;
-  personal: Record<string, unknown>;
+  personalHeader: PersonalHeader;
   showFooter?: boolean;
 }) {
   return (
@@ -193,38 +246,7 @@ export function ResumePage({
       }}
     >
       <div style={{ flex: "1 1 0%", minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        {page.pageIndex === 0 && (
-          <div style={{ textAlign: "center" }}>
-            <div
-              style={{
-                fontSize: NAME_FONT_PX,
-                fontWeight: 700,
-                letterSpacing: "0.05em",
-                lineHeight: 1.2,
-              }}
-            >
-              {safeText(personal.fullName) || "JOHN DOE"}
-            </div>
-            <div
-              style={{
-                marginTop: 4,
-                fontSize: CONTACT_FONT_PX,
-                color: "#666",
-                lineHeight: 1.4,
-              }}
-            >
-              {safeText(personal.email) || "john@example.com"}
-              {"  \u2022  "}
-              {safeText(personal.phone) || "+1 234 567 890"}
-              {"  \u2022  "}
-              {safeText(personal.location) || "Sydney, Australia"}
-              {"  \u2022  "}
-              <span style={{ color: "rgb(37 99 235)", textDecoration: "underline" }}>
-                {safeText(personal.linkedin) || "linkedin.com/in/johndoe"}
-              </span>
-            </div>
-          </div>
-        )}
+        {page.pageIndex === 0 && <PersonalHeaderView header={personalHeader} />}
 
         <div style={page.pageIndex === 0 ? { marginTop: FIRST_PAGE_GAP_PX } : undefined}>
           {page.sections.map((section, sectionIndex) => (
@@ -289,10 +311,19 @@ export default function ResumePreviewPanel({
   onPagesComputed,
 }: {
   sections: ResumeSection[];
-  onPagesComputed?: (pages: PageModel[], personal: Record<string, unknown>) => void;
+  onPagesComputed?: (pages: PageModel[], personalHeader: PersonalHeader) => void;
 }) {
-  const personal =
-    sections.find((s) => s.type === "personal")?.structuredData ?? {};
+  const personalSection = sections.find((s) => s.type === "personal");
+  const personalHeader: PersonalHeader = useMemo(
+    () => ({
+      isFree: personalSection?.mode === "free",
+      html: personalSection?.contentHtml ?? "",
+      data: personalSection?.structuredData ?? {},
+    }),
+    [personalSection?.mode, personalSection?.contentHtml, personalSection?.structuredData]
+  );
+  // Re-paginate when the header changes height (mode flip or free-text edits).
+  const personalHeaderKey = `${personalHeader.isFree}|${personalHeader.html}|${JSON.stringify(personalHeader.data)}`;
 
   const contentSections = useMemo(
     () => sections.filter((s) => s.type !== "personal"),
@@ -372,7 +403,7 @@ export default function ResumePreviewPanel({
       const empty: PageModel[] = [{ pageIndex: 0, sections: [] }];
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setPages(empty);
-      onPagesComputed?.(empty, personal);
+      onPagesComputed?.(empty, personalHeader);
       return;
     }
 
@@ -599,8 +630,8 @@ export default function ResumePreviewPanel({
 
     pushCurrentPage();
     setPages(resultPages);
-    onPagesComputed?.(resultPages, personal);
-  }, [blocks, fontsReady]); // eslint-disable-line react-hooks/exhaustive-deps
+    onPagesComputed?.(resultPages, personalHeader);
+  }, [blocks, fontsReady, personalHeaderKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div ref={containerRef} className="border-l bg-muted/30 p-4 overflow-auto h-full">
@@ -626,35 +657,8 @@ export default function ResumePreviewPanel({
           }}
         >
           <div data-measure-page-body className="h-full overflow-hidden">
-            <div data-measure-personal-header style={{ textAlign: "center" }}>
-              <div
-                style={{
-                  fontSize: NAME_FONT_PX,
-                  fontWeight: 700,
-                  letterSpacing: "0.05em",
-                  lineHeight: 1.2,
-                }}
-              >
-                {safeText(personal.fullName) || "JOHN DOE"}
-              </div>
-              <div
-                style={{
-                  marginTop: 4,
-                  fontSize: CONTACT_FONT_PX,
-                  color: "#666",
-                  lineHeight: 1.4,
-                }}
-              >
-                {safeText(personal.email) || "john@example.com"}
-                {"  \u2022  "}
-                {safeText(personal.phone) || "+1 234 567 890"}
-                {"  \u2022  "}
-                {safeText(personal.location) || "Sydney, Australia"}
-                {"  \u2022  "}
-                <span style={{ color: "rgb(37 99 235)", textDecoration: "underline" }}>
-                  {safeText(personal.linkedin) || "linkedin.com/in/johndoe"}
-                </span>
-              </div>
+            <div data-measure-personal-header>
+              <PersonalHeaderView header={personalHeader} />
             </div>
 
             <div style={{ marginTop: FIRST_PAGE_GAP_PX }}>
@@ -714,7 +718,7 @@ export default function ResumePreviewPanel({
               <ResumePage
                 page={page}
                 totalPages={pages.length}
-                personal={personal}
+                personalHeader={personalHeader}
               />
             </div>
           </div>

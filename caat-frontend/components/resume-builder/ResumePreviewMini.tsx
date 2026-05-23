@@ -4,6 +4,8 @@ import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ResumeSection } from "./types";
 import {
   ResumePage,
+  PersonalHeaderView,
+  type PersonalHeader,
   PAGE_WIDTH_PX,
   PAGE_HEIGHT_PX,
   PAGE_PADDING_PX,
@@ -11,13 +13,10 @@ import {
   SECTION_GROUP_GAP_PX,
   SECTION_HEADER_MARGIN_PX,
   PAGE_BOTTOM_RESERVE_PX,
-  NAME_FONT_PX,
-  CONTACT_FONT_PX,
   SECTION_LABEL_FONT_PX,
 } from "./ResumePreviewPanel";
 import type { PageModel, PageSectionChunk } from "./ResumePreviewPanel";
 import { publishedHtml } from "./publishedHtml";
-import { safeText } from "@/lib/resume-utils";
 
 type RenderBlock = {
   id: string;
@@ -122,8 +121,12 @@ function getTopLevelBlocks(
  * a card. Reuses the same ResumePage component so rendering is identical.
  */
 export function ResumePreviewMini({ sections }: { sections: ResumeSection[] }) {
-  const personal =
-    sections.find((s) => s.type === "personal")?.structuredData ?? {};
+  const personalSection = sections.find((s) => s.type === "personal");
+  const personalHeader: PersonalHeader = {
+    isFree: personalSection?.mode === "free",
+    html: personalSection?.contentHtml ?? "",
+    data: personalSection?.structuredData ?? {},
+  };
 
   const contentSections = useMemo(
     () => sections.filter((s) => s.type !== "personal"),
@@ -257,27 +260,8 @@ export function ResumePreviewMini({ sections }: { sections: ResumeSection[] }) {
           }}
         >
           <div data-measure-page-body className="h-full overflow-hidden">
-            <div data-measure-personal-header style={{ textAlign: "center" }}>
-              <div
-                style={{
-                  fontSize: NAME_FONT_PX,
-                  fontWeight: 700,
-                  letterSpacing: "0.05em",
-                  lineHeight: 1.2,
-                }}
-              >
-                {safeText(personal.fullName) || "JOHN DOE"}
-              </div>
-              <div
-                style={{
-                  marginTop: 4,
-                  fontSize: CONTACT_FONT_PX,
-                  color: "#666",
-                  lineHeight: 1.4,
-                }}
-              >
-                {safeText(personal.email) || "john@example.com"}
-              </div>
+            <div data-measure-personal-header>
+              <PersonalHeaderView header={personalHeader} />
             </div>
             <div style={{ marginTop: FIRST_PAGE_GAP_PX }}>
               {contentSections.map((section) => (
@@ -332,7 +316,7 @@ export function ResumePreviewMini({ sections }: { sections: ResumeSection[] }) {
             <ResumePage
               page={page}
               totalPages={1}
-              personal={personal}
+              personalHeader={personalHeader}
               showFooter={false}
             />
           </div>

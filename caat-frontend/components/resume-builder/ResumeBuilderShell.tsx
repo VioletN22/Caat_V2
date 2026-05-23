@@ -45,7 +45,7 @@ import { toast } from "sonner";
 import DocumentStructurePanel from "./DocumentStructurePanel";
 import SectionEditorPanel from "./SectionEditorPanel";
 import ResumePreviewPanel, { ResumePage } from "./ResumePreviewPanel";
-import type { PageModel } from "./ResumePreviewPanel";
+import type { PageModel, PersonalHeader } from "./ResumePreviewPanel";
 
 export default function ResumeBuilderShell() {
   const [sections, setSections] = useState<ResumeSection[]>([]);
@@ -66,7 +66,11 @@ export default function ResumeBuilderShell() {
 
   // Computed page layout from the preview panel — used by the print container
   const [printPages, setPrintPages] = useState<PageModel[]>([]);
-  const [printPersonal, setPrintPersonal] = useState<Record<string, unknown>>({});
+  const [printPersonal, setPrintPersonal] = useState<PersonalHeader>({
+    isFree: false,
+    html: "",
+    data: {},
+  });
 
   // Resume title edit (inline, same as section rename)
   const [editingResumeTitle, setEditingResumeTitle] = useState(false);
@@ -725,7 +729,7 @@ export default function ResumeBuilderShell() {
                 <ResumePage
                   page={page}
                   totalPages={printPages.length}
-                  personal={printPersonal}
+                  personalHeader={printPersonal}
                   showFooter={false}
                 />
               </div>
