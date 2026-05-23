@@ -7,6 +7,7 @@ import EducationGuided, { type EducationValue } from "./editors/EducationGuided"
 import ExperienceGuided, { type ExperienceValue } from "./editors/ExperienceGuided";
 import SkillsGuided, { type SkillsValue } from "./editors/SkillsGuided";
 import RichTextEditor from "@/components/RichTextEditor";
+import { isEmptyHtml } from "./publishedHtml";
 
 const GUIDED_TYPES = new Set(["personal", "education", "experience", "skills"]);
 
@@ -41,7 +42,7 @@ export default function SectionEditorPanel({
       return (
         <EducationGuided
           value={structuredData as EducationValue}
-          onChange={(data, html) => onChange({ structuredData: data, contentHtml: html })}
+          onChange={(data) => onChange({ structuredData: data })}
         />
       );
     }
@@ -50,7 +51,7 @@ export default function SectionEditorPanel({
       return (
         <ExperienceGuided
           value={structuredData as ExperienceValue}
-          onChange={(data, html) => onChange({ structuredData: data, contentHtml: html })}
+          onChange={(data) => onChange({ structuredData: data })}
         />
       );
     }
@@ -59,7 +60,7 @@ export default function SectionEditorPanel({
       return (
         <SkillsGuided
           value={structuredData as SkillsValue}
-          onChange={(data, html) => onChange({ structuredData: data, contentHtml: html })}
+          onChange={(data) => onChange({ structuredData: data })}
         />
       );
     }
@@ -94,14 +95,39 @@ export default function SectionEditorPanel({
         )}
       </div>
 
+      {supportsGuided && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Preview is using your{" "}
+          <span className="font-medium text-foreground">
+            {section.mode === "guided" ? "Guided" : "Free Text"}
+          </span>{" "}
+          version. Switching never erases the other one.
+        </p>
+      )}
+
       <div className="mt-4">
         {section.mode === "guided" && supportsGuided ? (
           renderGuidedEditor()
         ) : (
-          <RichTextEditor
-            content={section.contentHtml}
-            onChange={(html) => onChange({ contentHtml: html })}
-          />
+          <>
+            {supportsGuided && isEmptyHtml(section.contentHtml) && (
+              <div className="mb-3 rounded-md border border-dashed bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                Your free-text version is empty — type below, or switch back to{" "}
+                <button
+                  type="button"
+                  onClick={() => setMode("guided")}
+                  className="font-medium text-foreground underline underline-offset-2"
+                >
+                  Guided
+                </button>
+                .
+              </div>
+            )}
+            <RichTextEditor
+              content={section.contentHtml}
+              onChange={(html) => onChange({ contentHtml: html })}
+            />
+          </>
         )}
       </div>
     </div>

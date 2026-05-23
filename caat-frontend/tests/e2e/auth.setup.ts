@@ -13,9 +13,9 @@ const TEST_PASSWORD = process.env.E2E_TEST_PASSWORD ?? "testtest123";
 
 setup("authenticate", async ({ page }) => {
   await page.goto("/login");
-  await page.getByLabel("Email").fill(TEST_EMAIL);
-  await page.getByLabel("Password").fill(TEST_PASSWORD);
-  await page.getByRole("button", { name: /login/i }).click();
+  await page.getByLabel("Email", { exact: true }).fill(TEST_EMAIL);
+  await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
+  await page.getByRole("button", { name: /sign in/i }).click();
 
   await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
   await expect(page).toHaveURL(/\/dashboard/);
