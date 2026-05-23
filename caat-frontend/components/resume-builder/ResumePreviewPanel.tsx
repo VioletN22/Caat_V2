@@ -8,6 +8,7 @@ import React, {
   useState,
 } from "react";
 import { ResumeSection } from "./types";
+import { publishedHtml } from "./publishedHtml";
 import { safeText } from "@/lib/resume-utils";
 
 // True A4 dimensions at 96 CSS-dpi (210mm x 297mm)
@@ -303,7 +304,7 @@ export default function ResumePreviewPanel({
 
     const result: RenderBlock[] = [];
     contentSections.forEach((section) => {
-      const sectionBlocks = getTopLevelBlocks(section.id, section.label, section.contentHtml);
+      const sectionBlocks = getTopLevelBlocks(section.id, section.label, publishedHtml(section));
       if (sectionBlocks.length === 0) {
         // Empty section — push a zero-height sentinel so the section header
         // still appears in pagination without any visible placeholder text.

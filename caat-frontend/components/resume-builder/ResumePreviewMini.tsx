@@ -16,6 +16,7 @@ import {
   SECTION_LABEL_FONT_PX,
 } from "./ResumePreviewPanel";
 import type { PageModel, PageSectionChunk } from "./ResumePreviewPanel";
+import { publishedHtml } from "./publishedHtml";
 import { safeText } from "@/lib/resume-utils";
 
 type RenderBlock = {
@@ -136,7 +137,7 @@ export function ResumePreviewMini({ sections }: { sections: ResumeSection[] }) {
       const sectionBlocks = getTopLevelBlocks(
         section.id,
         section.label,
-        section.contentHtml
+        publishedHtml(section)
       );
       if (sectionBlocks.length === 0) {
         result.push({
