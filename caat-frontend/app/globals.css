@@ -293,9 +293,12 @@ html { scroll-behavior: smooth; }
   .ProseMirror li { margin: 0.15em 0; }
   .ProseMirror li > p { margin: 0; }
   .ProseMirror a { color: #2563eb; text-decoration: underline; }
+  .ProseMirror s { text-decoration: line-through; }
 
   /* Heading sizes for the rendered preview + PDF (base rule sets weight only). */
   .resume-preview-content h1 { font-size: 1.5em; }
   .resume-preview-content h2 { font-size: 1.25em; }
   .resume-preview-content h3 { font-size: 1.1em; }
+  .resume-preview-content s,
+  .resume-preview-content del { text-decoration: line-through; }
 }

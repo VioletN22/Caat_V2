@@ -7,7 +7,9 @@ import FontFamily from "@tiptap/extension-font-family";
 import { TextStyle, Color, BackgroundColor } from "@tiptap/extension-text-style";
 import React, { useEffect } from "react";
 import { FontSizeExtension } from "@/extensions/FontSize";
-import { Bold, Italic, Underline, List, ListOrdered, AlignLeft, AlignCenter, AlignRight, Link2, Highlighter, Baseline, ChevronDown, Check } from "lucide-react";
+import { LineHeightExtension } from "@/extensions/LineHeight";
+import { IndentExtension } from "@/extensions/Indent";
+import { Bold, Italic, Underline, Strikethrough, List, ListOrdered, AlignLeft, AlignCenter, AlignRight, AlignJustify, IndentIncrease, IndentDecrease, Link2, Highlighter, Baseline, ChevronDown, Check, RemoveFormatting } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -33,6 +35,13 @@ const FONT_FAMILIES: { value: string; label: string }[] = [
   { value: "Courier New", label: "Courier" },
 ];
 const FONT_SIZES = ["12px", "14px", "16px", "18px", "20px", "24px", "28px", "32px"];
+const LINE_HEIGHTS: { value: string; label: string }[] = [
+  { value: "", label: "Default" },
+  { value: "1", label: "Single" },
+  { value: "1.15", label: "1.15" },
+  { value: "1.5", label: "1.5" },
+  { value: "2", label: "Double" },
+];
 const TEXT_COLORS: { value: string | null; label: string }[] = [
   { value: null, label: "Default" },
   { value: "#0a0a0a", label: "Black" },
@@ -91,6 +100,8 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
       BackgroundColor,
       FontFamily.configure({ types: ["textStyle"] }),
       FontSizeExtension,
+      LineHeightExtension,
+      IndentExtension,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
     ],
     content,
@@ -158,6 +169,38 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
         ? "3"
         : "normal";
 
+  const currentLineHeight =
+    editor.getAttributes("paragraph").lineHeight ||
+    editor.getAttributes("heading").lineHeight ||
+    "";
+  const setLineHeight = (v: string) => {
+    const lh = v || null;
+    withSavedSelection()
+      .updateAttributes("paragraph", { lineHeight: lh })
+      .updateAttributes("heading", { lineHeight: lh })
+      .run();
+  };
+  const currentIndent = () =>
+    Number(editor.getAttributes("paragraph").indent ?? editor.getAttributes("heading").indent ?? 0);
+  const changeIndent = (delta: number) => {
+    const next = Math.max(0, Math.min(8, currentIndent() + delta));
+    editor
+      .chain()
+      .focus()
+      .updateAttributes("paragraph", { indent: next })
+      .updateAttributes("heading", { indent: next })
+      .run();
+  };
+  const clearFormatting = () =>
+    editor
+      .chain()
+      .focus()
+      .unsetAllMarks()
+      .clearNodes()
+      .unsetTextAlign()
+      .updateAttributes("paragraph", { lineHeight: null, indent: 0 })
+      .run();
+
   return (
     <div>
       {/* Toolbar */}
@@ -174,6 +217,9 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
         </ToolbarButton>
         <ToolbarButton label="Underline" onClick={() => editor.chain().focus().toggleUnderline().run()} isActive={editor.isActive("underline")}>
           <Underline className="h-4 w-4" />
+        </ToolbarButton>
+        <ToolbarButton label="Strikethrough" onClick={() => editor.chain().focus().toggleStrike().run()} isActive={editor.isActive("strike")}>
+          <Strikethrough className="h-4 w-4" />
         </ToolbarButton>
 
         <Divider />
@@ -219,6 +265,18 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
         <ToolbarButton label="Align right" onClick={() => editor.chain().focus().setTextAlign("right").run()} isActive={editor.isActive({ textAlign: "right" })}>
           <AlignRight className="h-4 w-4" />
         </ToolbarButton>
+        <ToolbarButton label="Justify" onClick={() => editor.chain().focus().setTextAlign("justify").run()} isActive={editor.isActive({ textAlign: "justify" })}>
+          <AlignJustify className="h-4 w-4" />
+        </ToolbarButton>
+
+        <Divider />
+
+        <ToolbarButton label="Decrease indent" onClick={() => changeIndent(-1)} isActive={false}>
+          <IndentDecrease className="h-4 w-4" />
+        </ToolbarButton>
+        <ToolbarButton label="Increase indent" onClick={() => changeIndent(1)} isActive={false}>
+          <IndentIncrease className="h-4 w-4" />
+        </ToolbarButton>
 
         <Divider />
 
@@ -248,6 +306,22 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
           <SelectContent onCloseAutoFocus={(e) => e.preventDefault()}>
             {FONT_SIZES.map((s) => (
               <SelectItem key={s} value={s}>{s.replace("px", "")}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Line spacing */}
+        <Select
+          value={currentLineHeight || "__default"}
+          onOpenChange={snapshotSelection}
+          onValueChange={(v) => setLineHeight(v === "__default" ? "" : v)}
+        >
+          <SelectTrigger size="sm" className="w-auto gap-1.5 text-sm" aria-label="Line spacing">
+            <SelectValue placeholder="Spacing" />
+          </SelectTrigger>
+          <SelectContent onCloseAutoFocus={(e) => e.preventDefault()}>
+            {LINE_HEIGHTS.map((lh) => (
+              <SelectItem key={lh.label} value={lh.value || "__default"}>{lh.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -311,6 +385,12 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
 
         <ToolbarButton label="Link" onClick={openLink} isActive={editor.isActive("link")}>
           <Link2 className="h-4 w-4" />
+        </ToolbarButton>
+
+        <Divider />
+
+        <ToolbarButton label="Clear formatting" onClick={clearFormatting} isActive={false}>
+          <RemoveFormatting className="h-4 w-4" />
         </ToolbarButton>
       </div>
 
