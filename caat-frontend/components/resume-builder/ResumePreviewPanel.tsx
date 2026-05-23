@@ -389,10 +389,10 @@ export default function ResumePreviewPanel({
     return () => observer.disconnect();
   }, []);
 
-  // Filmstrip layout: fixed-width readable thumbnails, fit as many as the
-  // container allows, then page through whole groups.
-  const FILM_THUMB_W = 168;
-  const FILM_GAP = 16;
+  // Filmstrip layout: pages at the original single-preview size, fit as many as
+  // the container allows side by side, then page through whole groups.
+  const FILM_THUMB_W = 340;
+  const FILM_GAP = 20;
   const filmScale = FILM_THUMB_W / PAGE_WIDTH_PX;
   const perWindow = Math.max(
     1,
