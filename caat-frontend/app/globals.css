@@ -309,4 +309,16 @@ html { scroll-behavior: smooth; }
   .resume-preview-content h3 { font-size: 1.1em; }
   .resume-preview-content s,
   .resume-preview-content del { text-decoration: line-through; }
+
+  /* Community post body (sanitized rich text). */
+  .community-prose p { margin: 0 0 0.5rem; }
+  .community-prose p:last-child { margin-bottom: 0; }
+  .community-prose strong, .community-prose b { font-weight: 700; }
+  .community-prose em, .community-prose i { font-style: italic; }
+  .community-prose u { text-decoration: underline; }
+  .community-prose s { text-decoration: line-through; }
+  .community-prose ul { list-style: disc; margin: 0 0 0.5rem 1.5rem; padding: 0; }
+  .community-prose ol { list-style: decimal; margin: 0 0 0.5rem 1.5rem; padding: 0; }
+  .community-prose li { margin: 0.1em 0; }
+  .community-prose a { color: #2563eb; text-decoration: underline; word-break: break-word; }
 }

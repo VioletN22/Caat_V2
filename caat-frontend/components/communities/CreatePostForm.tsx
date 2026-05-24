@@ -9,7 +9,8 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import RichTextEditor from "@/components/RichTextEditor";
+import { htmlToText } from "@/lib/sanitize-html";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -68,18 +69,52 @@ export function CreatePostForm({ currentUser, onPostCreated, groupId }: CreatePo
   const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
 
   const [isPending, startTransition] = useTransition();
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
   const authorName = currentUser
     ? [currentUser.first_name, currentUser.last_name].filter(Boolean).join(" ") || "You"
     : "You";
 
-  const isDirty = content.trim().length > 0 || !!topicTag || showResult || showScore || showResume || showSchool || showPoll;
+  // content holds rich HTML; checks/limits operate on the visible plain text.
+  const plainContent = htmlToText(content);
+  const isDirty = plainContent.trim().length > 0 || !!topicTag || showResult || showScore || showResume || showSchool || showPoll;
+
+  // Draft autosave — survive accidental navigation away mid-post. Keyed per
+  // feed/group so a group draft doesn't bleed into the main composer.
+  const draftKey = `caat:community-draft:${groupId ?? "feed"}`;
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return;
+      const d = JSON.parse(raw) as { content?: string; topicTag?: TopicTag | "" };
+      if (d.content || d.topicTag) {
+        /* eslint-disable react-hooks/set-state-in-effect */
+        setContent(d.content ?? "");
+        setTopicTag(d.topicTag ?? "");
+        setIsExpanded(true);
+        /* eslint-enable react-hooks/set-state-in-effect */
+      }
+    } catch {
+      /* ignore malformed draft */
+    }
+  }, [draftKey]);
 
   useEffect(() => {
     if (!isExpanded) return;
-    textareaRef.current?.focus();
+    try {
+      if (htmlToText(content).trim() || topicTag) {
+        localStorage.setItem(draftKey, JSON.stringify({ content, topicTag }));
+      } else {
+        localStorage.removeItem(draftKey);
+      }
+    } catch {
+      /* storage unavailable — non-fatal */
+    }
+  }, [content, topicTag, isExpanded, draftKey]);
+
+  useEffect(() => {
+    if (!isExpanded) return;
     fetchUserResumesAction().then(setResumes);
   }, [isExpanded]);
 
@@ -102,7 +137,8 @@ export function CreatePostForm({ currentUser, onPostCreated, groupId }: CreatePo
     setShowSchool(false); setSchoolQuery(""); setSelectedSchool(null); setSchoolSuggestions([]);
     setShowPoll(false); setPollOptions(["", ""]);
     setIsExpanded(false);
-  }, []);
+    try { localStorage.removeItem(draftKey); } catch { /* non-fatal */ }
+  }, [draftKey]);
 
   // Close on click outside
   useEffect(() => {
@@ -139,7 +175,7 @@ export function CreatePostForm({ currentUser, onPostCreated, groupId }: CreatePo
 
   function handleSubmit() {
     const hasAttachment = showScore || showResult || (showResume && selectedResumeId) || showPoll;
-    if (!content.trim() && !hasAttachment) return toast.error("Add some text, a score, result, resume, or poll.");
+    if (!plainContent.trim() && !hasAttachment) return toast.error("Add some text, a score, result, resume, or poll.");
     if (!topicTag) return toast.error("Select a topic for your post.");
     if (showResult && (!resultOutcome || !resultUniversity.trim())) return toast.error("Fill in the result card or remove it.");
     if (showScore && (!scoreExam || !scoreValue.trim())) return toast.error("Fill in the score card or remove it.");
@@ -162,7 +198,7 @@ export function CreatePostForm({ currentUser, onPostCreated, groupId }: CreatePo
 
     startTransition(async () => {
       const { post, error } = await createPostAction({
-        content: content.trim(),
+        content,
         topic_tag: topicTag,
         result_card: resultCard,
         score_card: scoreCard,
@@ -180,7 +216,7 @@ export function CreatePostForm({ currentUser, onPostCreated, groupId }: CreatePo
     });
   }
 
-  const charCount = content.length;
+  const charCount = plainContent.length;
   const isOverLimit = charCount > 2000;
 
   if (!isExpanded) {
@@ -236,14 +272,7 @@ export function CreatePostForm({ currentUser, onPostCreated, groupId }: CreatePo
 
           {/* Content */}
           <div className="space-y-1">
-            <Textarea
-              ref={textareaRef}
-              placeholder="What's on your mind?"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              className="resize-none min-h-[100px]"
-              maxLength={2100}
-            />
+            <RichTextEditor variant="minimal" content={content} onChange={setContent} />
             <p className={cn("text-xs text-right", isOverLimit ? "text-[#9a1a27]" : "text-muted-foreground")}>
               {charCount} / 2000
             </p>
@@ -440,7 +469,7 @@ export function CreatePostForm({ currentUser, onPostCreated, groupId }: CreatePo
 
         <CardFooter className="pt-3 gap-2 justify-end border-t">
           <Button variant="ghost" size="sm" onClick={handleTryClose} disabled={isPending}>Cancel</Button>
-          <Button size="sm" onClick={handleSubmit} disabled={isPending || isOverLimit || (!content.trim() && !showScore && !showResult && !(showResume && selectedResumeId) && !showPoll) || !topicTag} className="bg-[#9a1a27] hover:bg-[#7d1520] text-white disabled:opacity-50">
+          <Button size="sm" onClick={handleSubmit} disabled={isPending || isOverLimit || (!plainContent.trim() && !showScore && !showResult && !(showResume && selectedResumeId) && !showPoll) || !topicTag} className="bg-[#9a1a27] hover:bg-[#7d1520] text-white disabled:opacity-50">
             {isPending ? "Posting…" : "Post"}
           </Button>
         </CardFooter>

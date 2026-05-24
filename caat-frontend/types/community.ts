@@ -41,7 +41,14 @@ export interface PostAuthor {
 
 export interface NotificationItem {
   id: string;
-  type: "like" | "comment" | "reply" | "follow" | "join_request";
+  type:
+    | "like"
+    | "comment"
+    | "reply"
+    | "follow"
+    | "join_request"
+    | "request_approved"
+    | "comment_like";
   actor_name: string;
   actor_avatar: string | null;
   post_id: string | null;
@@ -80,6 +87,8 @@ export interface CommunityComment {
   parent_comment_id: string | null;
   content: string;
   created_at: string;
+  edited_at?: string | null;
+  is_deleted?: boolean;
   likes_count: number;
   is_liked_by_user: boolean;
   author: PostAuthor | null;

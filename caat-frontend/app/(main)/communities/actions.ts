@@ -5,6 +5,7 @@ import { createSupabaseServer } from "@/lib/supabase-server";
 import { containsProfanity } from "@/lib/profanity-filter";
 import { gate, ratelimits } from "@/lib/rate-limit";
 import { sanitizeError } from "@/lib/safe-error";
+import { sanitizePostHtml, htmlToText } from "@/lib/sanitize-html";
 import {
   PostInputSchema,
   CommentInputSchema,
@@ -93,6 +94,27 @@ async function fetchBlockedIds(
     ...(blockedByMe.data ?? []).map((r) => r.blocked_id as string),
     ...(blockedMe.data ?? []).map((r) => r.blocker_id as string),
   ];
+}
+
+/**
+ * True when either user has blocked the other. Used to stop blocked users from
+ * interacting (liking/commenting/voting) — feeds already filter by block list,
+ * but interactions weren't gated.
+ */
+async function isBlockedBetween(
+  supabase: SupabaseClient,
+  a: string | undefined,
+  b: string | null | undefined,
+): Promise<boolean> {
+  if (!a || !b || a === b) return false;
+  const { data } = await supabase
+    .from("community_blocks")
+    .select("blocker_id")
+    .or(
+      `and(blocker_id.eq.${a},blocked_id.eq.${b}),and(blocker_id.eq.${b},blocked_id.eq.${a})`,
+    )
+    .limit(1);
+  return !!(data && data.length);
 }
 
 /**
@@ -411,19 +433,22 @@ export async function createPostAction(input: {
   }
   const data = parsed.data;
 
-  const content = data.content.trim();
+  const content = sanitizePostHtml(data.content);
+  const plain = htmlToText(content);
   const hasAttachment = !!(
     data.resume_id ||
     data.score_card ||
     data.result_card ||
     data.poll_options?.length
   );
-  if (!content && !hasAttachment)
+  if (!plain && !hasAttachment)
     return {
       post: null,
       error: "Add some text, a score, result, resume, or poll before posting",
     };
-  if (containsProfanity(content))
+  if (plain.length > 2000)
+    return { post: null, error: "Post exceeds 2000 characters" };
+  if (containsProfanity(plain))
     return { post: null, error: "Post contains prohibited language" };
 
   if (data.resume_id) {
@@ -485,10 +510,11 @@ export async function updatePostAction(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not signed in" };
 
-  const text = content.trim();
-  if (!text) return { error: "Post cannot be empty" };
-  if (text.length > 2000) return { error: "Post exceeds 2000 characters" };
-  if (containsProfanity(text))
+  const sanitized = sanitizePostHtml(content);
+  const plain = htmlToText(sanitized);
+  if (!plain) return { error: "Post cannot be empty" };
+  if (plain.length > 2000) return { error: "Post exceeds 2000 characters" };
+  if (containsProfanity(plain))
     return { error: "Post contains prohibited language" };
 
   const { data: post } = await supabase
@@ -505,7 +531,7 @@ export async function updatePostAction(
 
   const { error } = await supabase
     .from("community_posts")
-    .update({ content: text, edited_at: new Date().toISOString() })
+    .update({ content: sanitized, edited_at: new Date().toISOString() })
     .eq("id", postId)
     .eq("user_id", user.id);
 
@@ -546,9 +572,17 @@ export async function fetchPostsAction(
     .eq("is_hidden", false)
     .is("group_id", null)
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(20);
 
-  if (cursor) query = query.lt("created_at", cursor);
+  // Keyset cursor on (created_at, id) so posts sharing a timestamp aren't
+  // skipped or duplicated across pages. Cursor format: "<created_at>|<id>".
+  if (cursor) {
+    const [cTs, cId] = cursor.split("|");
+    query = cId
+      ? query.or(`created_at.lt.${cTs},and(created_at.eq.${cTs},id.lt.${cId})`)
+      : query.lt("created_at", cTs);
+  }
   if (followeeIds) query = query.in("user_id", followeeIds);
   if (blockedIds.length)
     query = query.not("user_id", "in", `(${blockedIds.join(",")})`);
@@ -561,8 +595,11 @@ export async function fetchPostsAction(
     rows as Record<string, unknown>[],
     user?.id,
   );
+  const last = rows[rows.length - 1];
   const nextCursor =
-    rows.length === 20 ? (rows[rows.length - 1].created_at as string) : null;
+    rows.length === 20
+      ? `${last.created_at as string}|${last.id as string}`
+      : null;
   return { posts, nextCursor };
 }
 
@@ -579,27 +616,43 @@ export async function fetchTrendingPostsAction(): Promise<{
     Date.now() - 7 * 24 * 60 * 60 * 1000,
   ).toISOString();
 
-  const { data: rows } = await supabase
+  const blockedIds = await fetchBlockedIds(supabase, user?.id);
+
+  // Pull a wide candidate window (not just the 50 most recent) so a highly
+  // engaged post can't be pushed out by sheer recency, then rank by a
+  // time-decayed score so fresh engagement beats stale engagement.
+  let candidateQuery = supabase
     .from("community_posts")
     .select(
       "*, likes:community_likes(count), comments:community_comments(count)",
     )
     .eq("is_hidden", false)
+    .is("group_id", null)
     .gte("created_at", sevenDaysAgo)
-    .limit(50);
+    .order("created_at", { ascending: false })
+    .limit(300);
+  if (blockedIds.length)
+    candidateQuery = candidateQuery.not(
+      "user_id",
+      "in",
+      `(${blockedIds.join(",")})`,
+    );
+  const { data: rows } = await candidateQuery;
 
   if (!rows?.length) return { posts: [] };
 
+  const now = Date.now();
+  const hotScore = (r: Record<string, unknown>) => {
+    const likes = (r.likes as { count: number }[] | undefined)?.[0]?.count ?? 0;
+    const comments =
+      (r.comments as { count: number }[] | undefined)?.[0]?.count ?? 0;
+    const ageHours =
+      (now - new Date(r.created_at as string).getTime()) / 3_600_000;
+    // Comments weighted higher than likes; gravity decay (Hacker-News style).
+    return (likes + 2 * comments + 1) / Math.pow(ageHours + 2, 1.5);
+  };
   const sorted = [...rows]
-    .sort((a, b) => {
-      const aScore =
-        ((a.likes as { count: number }[])?.[0]?.count ?? 0) +
-        ((a.comments as { count: number }[])?.[0]?.count ?? 0);
-      const bScore =
-        ((b.likes as { count: number }[])?.[0]?.count ?? 0) +
-        ((b.comments as { count: number }[])?.[0]?.count ?? 0);
-      return bScore - aScore;
-    })
+    .sort((a, b) => hotScore(b) - hotScore(a))
     .slice(0, 20);
 
   const posts = await enrichPosts(
@@ -955,15 +1008,18 @@ export async function toggleLikeAction(
     return { liked: false, error: null };
   }
 
-  await supabase
-    .from("community_likes")
-    .insert({ post_id: postId, user_id: user.id });
-
   const { data: post } = await supabase
     .from("community_posts")
     .select("user_id")
     .eq("id", postId)
     .single();
+  if (await isBlockedBetween(supabase, user.id, post?.user_id as string))
+    return { liked: false, error: "This post isn't available" };
+
+  await supabase
+    .from("community_likes")
+    .insert({ post_id: postId, user_id: user.id });
+
   if (post && post.user_id !== user.id) {
     await supabase
       .from("notifications")
@@ -1023,6 +1079,20 @@ export async function castPollVoteAction(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not signed in" };
+
+  const rl = await gate(ratelimits.likeAction, `pollvote:${user.id}`);
+  if (!rl.ok) return { error: rl.error };
+
+  // Inherit the post's privacy gate (private-group polls), and block enforcement.
+  if (!(await canAccessPost(supabase, postId, user.id)))
+    return { error: "Not authorized to vote on this poll" };
+  const { data: pollPost } = await supabase
+    .from("community_posts")
+    .select("user_id")
+    .eq("id", postId)
+    .maybeSingle();
+  if (await isBlockedBetween(supabase, user.id, pollPost?.user_id as string))
+    return { error: "This poll isn't available" };
 
   if (optionId === null) {
     await supabase
@@ -1158,6 +1228,15 @@ export async function addCommentAction(
     return { comment: null, error: "Not authorized to comment on this post" };
   }
 
+  // Block enforcement — a blocked user can't comment on the post author's content.
+  const { data: postAuthor } = await supabase
+    .from("community_posts")
+    .select("user_id")
+    .eq("id", postId)
+    .maybeSingle();
+  if (await isBlockedBetween(supabase, user.id, postAuthor?.user_id as string))
+    return { comment: null, error: "You can't comment on this post" };
+
   // P2.4 — per-user-per-post comment cap (10/hour) so a single account can't
   // dump comments on a target post even within the global rate limit.
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -1245,6 +1324,97 @@ export async function addCommentAction(
   };
 }
 
+// ─── Comment edit / delete ─────────────────────────────────────────────────────
+
+export async function updateCommentAction(
+  commentId: string,
+  content: string,
+): Promise<{ error: string | null; edited_at: string | null }> {
+  const supabase = await createSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in", edited_at: null };
+
+  const text = content.trim();
+  if (!text) return { error: "Comment cannot be empty", edited_at: null };
+  if (text.length > 1000)
+    return { error: "Comment exceeds 1000 characters", edited_at: null };
+  if (containsProfanity(text))
+    return { error: "Comment contains prohibited language", edited_at: null };
+
+  const { data: comment } = await supabase
+    .from("community_comments")
+    .select("user_id")
+    .eq("id", commentId)
+    .maybeSingle();
+  if (!comment || comment.user_id !== user.id)
+    return { error: "Not authorized", edited_at: null };
+
+  const editedAt = new Date().toISOString();
+  const { error } = await supabase
+    .from("community_comments")
+    .update({ content: text, edited_at: editedAt })
+    .eq("id", commentId)
+    .eq("user_id", user.id);
+
+  return {
+    error: error ? sanitizeError(error, "Could not update comment.") : null,
+    edited_at: error ? null : editedAt,
+  };
+}
+
+export async function deleteCommentAction(
+  commentId: string,
+): Promise<{ mode: "soft" | "hard" | null; error: string | null }> {
+  const supabase = await createSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { mode: null, error: "Not signed in" };
+
+  const { data: comment } = await supabase
+    .from("community_comments")
+    .select("user_id, post_id")
+    .eq("id", commentId)
+    .maybeSingle();
+  if (!comment || comment.user_id !== user.id)
+    return { mode: null, error: "Not authorized" };
+
+  // If the comment has replies, soft-delete so the thread structure survives;
+  // otherwise remove it outright.
+  const { count: replyCount } = await supabase
+    .from("community_comments")
+    .select("id", { count: "exact", head: true })
+    .eq("parent_comment_id", commentId);
+
+  if ((replyCount ?? 0) > 0) {
+    const { error } = await supabase
+      .from("community_comments")
+      .update({ is_deleted: true, content: "[deleted]" })
+      .eq("id", commentId)
+      .eq("user_id", user.id);
+    return {
+      mode: error ? null : "soft",
+      error: error ? sanitizeError(error, "Could not delete comment.") : null,
+    };
+  }
+
+  await supabase
+    .from("community_comment_likes")
+    .delete()
+    .eq("comment_id", commentId);
+  const { error } = await supabase
+    .from("community_comments")
+    .delete()
+    .eq("id", commentId)
+    .eq("user_id", user.id);
+  return {
+    mode: error ? null : "hard",
+    error: error ? sanitizeError(error, "Could not delete comment.") : null,
+  };
+}
+
 // ─── Notifications ────────────────────────────────────────────────────────────
 
 export async function fetchNotificationsAction(
@@ -1300,7 +1470,7 @@ export async function fetchNotificationsAction(
   const postMap = new Map(
     ((postsResult.data ?? []) as { id: string; content: string }[]).map((p) => [
       p.id,
-      p.content.slice(0, 60),
+      htmlToText(p.content).slice(0, 60),
     ]),
   );
 
@@ -1371,14 +1541,18 @@ export async function deletePostAction(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not signed in" };
-  const { error } = await supabase
+  const { data: deleted, error } = await supabase
     .from("community_posts")
     .delete()
     .eq("id", postId)
-    .eq("user_id", user.id);
-  return {
-    error: error ? sanitizeError(error, "Could not delete post.") : null,
-  };
+    .eq("user_id", user.id)
+    .select("id");
+  if (error) return { error: sanitizeError(error, "Could not delete post.") };
+  // A delete that affects zero rows (e.g. RLS) returns no error — surface it
+  // instead of falsely reporting success.
+  if (!deleted || deleted.length === 0)
+    return { error: "Could not delete post. Please try again." };
+  return { error: null };
 }
 
 // ─── Topic Stats (for sidebar) ───────────────────────────────────────────────
@@ -1436,9 +1610,30 @@ export async function toggleCommentLikeAction(
       .eq("user_id", user.id);
     return { liked: false, error: null };
   }
+
+  // Block enforcement — can't like a comment by someone you've blocked / who blocked you.
+  const { data: comment } = await supabase
+    .from("community_comments")
+    .select("user_id, post_id")
+    .eq("id", commentId)
+    .maybeSingle();
+  if (await isBlockedBetween(supabase, user.id, comment?.user_id as string))
+    return { liked: false, error: "This comment isn't available" };
+
   await supabase
     .from("community_comment_likes")
     .insert({ comment_id: commentId, user_id: user.id });
+
+  // Notify the comment author (not on self-like).
+  if (comment && comment.user_id !== user.id) {
+    await supabase.from("notifications").insert({
+      user_id: comment.user_id,
+      actor_id: user.id,
+      type: "comment_like",
+      post_id: comment.post_id,
+      comment_id: commentId,
+    });
+  }
   return { liked: true, error: null };
 }
 
@@ -1683,6 +1878,76 @@ export async function createGroupAction(input: {
       is_owner: true,
     },
     error: null,
+  };
+}
+
+export async function updateGroupAction(
+  groupId: string,
+  input: { name: string; description?: string; is_private: boolean },
+): Promise<{ error: string | null }> {
+  const supabase = await createSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  const { data: group } = await supabase
+    .from("community_groups")
+    .select("creator_id")
+    .eq("id", groupId)
+    .maybeSingle();
+  if (!group || group.creator_id !== user.id) return { error: "Not authorized" };
+
+  const parsed = GroupInputSchema.safeParse(input);
+  if (!parsed.success)
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+
+  // Note: slug is intentionally NOT changed on rename so existing links keep working.
+  const { error } = await supabase
+    .from("community_groups")
+    .update({
+      name: parsed.data.name,
+      description: parsed.data.description || null,
+      is_private: parsed.data.is_private,
+    })
+    .eq("id", groupId)
+    .eq("creator_id", user.id);
+
+  revalidatePath("/communities/groups");
+  revalidatePath("/communities");
+  return {
+    error: error ? sanitizeError(error, "Could not update community.") : null,
+  };
+}
+
+export async function deleteGroupAction(
+  groupId: string,
+): Promise<{ error: string | null }> {
+  const supabase = await createSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  const { data: group } = await supabase
+    .from("community_groups")
+    .select("creator_id")
+    .eq("id", groupId)
+    .maybeSingle();
+  if (!group || group.creator_id !== user.id) return { error: "Not authorized" };
+
+  // Children (posts, members, requests) are removed by the delete_group_children
+  // trigger so other members' posts cascade despite per-row RLS.
+  const { error } = await supabase
+    .from("community_groups")
+    .delete()
+    .eq("id", groupId)
+    .eq("creator_id", user.id);
+
+  revalidatePath("/communities/groups");
+  revalidatePath("/communities");
+  return {
+    error: error ? sanitizeError(error, "Could not delete community.") : null,
   };
 }
 
@@ -2037,6 +2302,19 @@ export async function leaveGroupAction(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not signed in" };
+
+  // The creator can't leave their own community (would orphan it). They must
+  // delete it (or, later, transfer ownership) instead.
+  const { data: group } = await supabase
+    .from("community_groups")
+    .select("creator_id")
+    .eq("id", groupId)
+    .maybeSingle();
+  if (group?.creator_id === user.id)
+    return {
+      error: "As the creator you can't leave — delete the community instead.",
+    };
+
   await supabase
     .from("community_group_members")
     .delete()
@@ -2070,13 +2348,19 @@ export async function fetchGroupPostsAction(
     .eq("group_id", groupId)
     .eq("is_hidden", false)
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(20);
 
   // A4 — exclude blocked relationships even within shared groups.
   if (blockedIds.length)
     query = query.not("user_id", "in", `(${blockedIds.join(",")})`);
 
-  if (cursor) query = query.lt("created_at", cursor);
+  if (cursor) {
+    const [cTs, cId] = cursor.split("|");
+    query = cId
+      ? query.or(`created_at.lt.${cTs},and(created_at.eq.${cTs},id.lt.${cId})`)
+      : query.lt("created_at", cTs);
+  }
 
   const { data: rows, error } = await query;
   if (error || !rows) return { posts: [], nextCursor: null };
@@ -2086,10 +2370,13 @@ export async function fetchGroupPostsAction(
     rows as Record<string, unknown>[],
     user?.id,
   );
+  const last = rows[rows.length - 1];
   return {
     posts,
     nextCursor:
-      rows.length === 20 ? (rows[rows.length - 1].created_at as string) : null,
+      rows.length === 20
+        ? `${last.created_at as string}|${last.id as string}`
+        : null,
   };
 }
 

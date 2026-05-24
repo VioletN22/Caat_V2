@@ -33,7 +33,9 @@ const PollOptionSchema = z.object({
 });
 
 export const PostInputSchema = z.object({
-  content: z.string().max(2000),
+  // Raw (possibly HTML) content; the visible plain-text length is capped to
+  // 2000 in the action after sanitizing. The larger cap here is markup overhead.
+  content: z.string().max(20000),
   topic_tag: TopicTagSchema,
   result_card: ResultCardSchema.nullable().optional(),
   score_card: ScoreCardSchema.nullable().optional(),

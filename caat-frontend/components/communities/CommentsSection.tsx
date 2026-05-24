@@ -44,6 +44,41 @@ export function CommentsSection({ postId, currentUser, onCountChange }: Comments
     onCountChange(1);
   }
 
+  // Recursive helpers so edits/deletes work on replies too.
+  function mapTree(
+    list: CommunityComment[],
+    id: string,
+    fn: (c: CommunityComment) => CommunityComment,
+  ): CommunityComment[] {
+    return list.map((c) =>
+      c.id === id ? fn(c) : { ...c, replies: mapTree(c.replies, id, fn) },
+    );
+  }
+  function removeFromTree(
+    list: CommunityComment[],
+    id: string,
+  ): CommunityComment[] {
+    return list
+      .filter((c) => c.id !== id)
+      .map((c) => ({ ...c, replies: removeFromTree(c.replies, id) }));
+  }
+
+  function handleEdited(id: string, content: string, editedAt: string) {
+    setComments((prev) =>
+      mapTree(prev, id, (c) => ({ ...c, content, edited_at: editedAt })),
+    );
+  }
+  function handleDeleted(id: string, mode: "soft" | "hard") {
+    if (mode === "soft") {
+      setComments((prev) =>
+        mapTree(prev, id, (c) => ({ ...c, is_deleted: true, content: "[deleted]" })),
+      );
+    } else {
+      setComments((prev) => removeFromTree(prev, id));
+    }
+    onCountChange(-1);
+  }
+
   function submitComment() {
     if (!newComment.trim()) return;
     startTransition(async () => {
@@ -88,6 +123,8 @@ export function CommentsSection({ postId, currentUser, onCountChange }: Comments
               comment={comment}
               currentUser={currentUser}
               onReplyAdded={handleReplyAdded}
+              onEdited={handleEdited}
+              onDeleted={handleDeleted}
             />
           ))}
         </div>
