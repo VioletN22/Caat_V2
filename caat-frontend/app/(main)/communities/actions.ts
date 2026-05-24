@@ -5,6 +5,7 @@ import { createSupabaseServer } from "@/lib/supabase-server";
 import { containsProfanity } from "@/lib/profanity-filter";
 import { gate, ratelimits } from "@/lib/rate-limit";
 import { sanitizeError } from "@/lib/safe-error";
+import { sanitizePostHtml, htmlToText } from "@/lib/sanitize-html";
 import {
   PostInputSchema,
   CommentInputSchema,
@@ -432,19 +433,22 @@ export async function createPostAction(input: {
   }
   const data = parsed.data;
 
-  const content = data.content.trim();
+  const content = sanitizePostHtml(data.content);
+  const plain = htmlToText(content);
   const hasAttachment = !!(
     data.resume_id ||
     data.score_card ||
     data.result_card ||
     data.poll_options?.length
   );
-  if (!content && !hasAttachment)
+  if (!plain && !hasAttachment)
     return {
       post: null,
       error: "Add some text, a score, result, resume, or poll before posting",
     };
-  if (containsProfanity(content))
+  if (plain.length > 2000)
+    return { post: null, error: "Post exceeds 2000 characters" };
+  if (containsProfanity(plain))
     return { post: null, error: "Post contains prohibited language" };
 
   if (data.resume_id) {
@@ -506,10 +510,11 @@ export async function updatePostAction(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not signed in" };
 
-  const text = content.trim();
-  if (!text) return { error: "Post cannot be empty" };
-  if (text.length > 2000) return { error: "Post exceeds 2000 characters" };
-  if (containsProfanity(text))
+  const sanitized = sanitizePostHtml(content);
+  const plain = htmlToText(sanitized);
+  if (!plain) return { error: "Post cannot be empty" };
+  if (plain.length > 2000) return { error: "Post exceeds 2000 characters" };
+  if (containsProfanity(plain))
     return { error: "Post contains prohibited language" };
 
   const { data: post } = await supabase
@@ -526,7 +531,7 @@ export async function updatePostAction(
 
   const { error } = await supabase
     .from("community_posts")
-    .update({ content: text, edited_at: new Date().toISOString() })
+    .update({ content: sanitized, edited_at: new Date().toISOString() })
     .eq("id", postId)
     .eq("user_id", user.id);
 
@@ -1465,7 +1470,7 @@ export async function fetchNotificationsAction(
   const postMap = new Map(
     ((postsResult.data ?? []) as { id: string; content: string }[]).map((p) => [
       p.id,
-      p.content.slice(0, 60),
+      htmlToText(p.content).slice(0, 60),
     ]),
   );
 
