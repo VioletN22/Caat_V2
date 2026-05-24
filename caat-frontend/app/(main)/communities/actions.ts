@@ -1541,14 +1541,18 @@ export async function deletePostAction(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not signed in" };
-  const { error } = await supabase
+  const { data: deleted, error } = await supabase
     .from("community_posts")
     .delete()
     .eq("id", postId)
-    .eq("user_id", user.id);
-  return {
-    error: error ? sanitizeError(error, "Could not delete post.") : null,
-  };
+    .eq("user_id", user.id)
+    .select("id");
+  if (error) return { error: sanitizeError(error, "Could not delete post.") };
+  // A delete that affects zero rows (e.g. RLS) returns no error — surface it
+  // instead of falsely reporting success.
+  if (!deleted || deleted.length === 0)
+    return { error: "Could not delete post. Please try again." };
+  return { error: null };
 }
 
 // ─── Topic Stats (for sidebar) ───────────────────────────────────────────────
