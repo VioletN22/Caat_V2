@@ -1872,6 +1872,76 @@ export async function createGroupAction(input: {
   };
 }
 
+export async function updateGroupAction(
+  groupId: string,
+  input: { name: string; description?: string; is_private: boolean },
+): Promise<{ error: string | null }> {
+  const supabase = await createSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  const { data: group } = await supabase
+    .from("community_groups")
+    .select("creator_id")
+    .eq("id", groupId)
+    .maybeSingle();
+  if (!group || group.creator_id !== user.id) return { error: "Not authorized" };
+
+  const parsed = GroupInputSchema.safeParse(input);
+  if (!parsed.success)
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+
+  // Note: slug is intentionally NOT changed on rename so existing links keep working.
+  const { error } = await supabase
+    .from("community_groups")
+    .update({
+      name: parsed.data.name,
+      description: parsed.data.description || null,
+      is_private: parsed.data.is_private,
+    })
+    .eq("id", groupId)
+    .eq("creator_id", user.id);
+
+  revalidatePath("/communities/groups");
+  revalidatePath("/communities");
+  return {
+    error: error ? sanitizeError(error, "Could not update community.") : null,
+  };
+}
+
+export async function deleteGroupAction(
+  groupId: string,
+): Promise<{ error: string | null }> {
+  const supabase = await createSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  const { data: group } = await supabase
+    .from("community_groups")
+    .select("creator_id")
+    .eq("id", groupId)
+    .maybeSingle();
+  if (!group || group.creator_id !== user.id) return { error: "Not authorized" };
+
+  // Children (posts, members, requests) are removed by the delete_group_children
+  // trigger so other members' posts cascade despite per-row RLS.
+  const { error } = await supabase
+    .from("community_groups")
+    .delete()
+    .eq("id", groupId)
+    .eq("creator_id", user.id);
+
+  revalidatePath("/communities/groups");
+  revalidatePath("/communities");
+  return {
+    error: error ? sanitizeError(error, "Could not delete community.") : null,
+  };
+}
+
 export async function fetchGroupsAction(
   query?: string,
 ): Promise<{ groups: CommunityGroup[] }> {

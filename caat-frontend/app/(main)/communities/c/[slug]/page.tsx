@@ -10,6 +10,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { NotificationBell } from "@/components/communities/NotificationBell";
 import { Button } from "@/components/ui/button";
 import { GroupJoinButton } from "@/components/communities/GroupJoinButton";
+import { GroupManageMenu } from "@/components/communities/GroupManageMenu";
 import { GroupFeedClient } from "@/components/communities/GroupFeedClient";
 import { createSupabaseServer } from "@/lib/supabase-server";
 import {
@@ -205,6 +206,16 @@ export default async function GroupPage({ params }: Props) {
                 isPrivate={group.is_private}
                 initialHasRequested={group.has_requested}
               />
+
+              {group.is_owner && (
+                <GroupManageMenu
+                  groupId={group.id}
+                  groupSlug={group.slug}
+                  initialName={group.name}
+                  initialDescription={group.description ?? ""}
+                  initialIsPrivate={group.is_private}
+                />
+              )}
             </div>
 
             {/* My Communities */}
