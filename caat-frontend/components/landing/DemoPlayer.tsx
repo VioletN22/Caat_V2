@@ -1,117 +1,67 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-
-/**
- * Demo player: YouTube first (so the public landing page leans on YouTube's
- * CDN, not our storage), with a Supabase-hosted MP4 as the fallback that only
- * loads if the YouTube embed fails (private/embedding-disabled/blocked).
- *
- * We use the YouTube IFrame Player API rather than a bare <iframe> because a
- * blocked iframe does not fire a normal error event. The Player API's onError
- * (codes 100/101/150 = unavailable / embedding disabled) is the reliable
- * signal to fall back; a readiness timeout is the backstop.
- */
+import { useEffect, useState } from "react";
+import { Play } from "lucide-react";
 
 const YT_VIDEO_ID = "ESIc6o3kMpk";
-// Public object URLs in the dedicated, public "demo-media" bucket.
-const FALLBACK_SRC = `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}/storage/v1/object/public/demo-media/caat-demo.mp4`;
-const POSTER_SRC = `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}/storage/v1/object/public/demo-media/caat-demo-poster.png`;
-
-interface YTPlayer {
-  destroy: () => void;
-}
-interface YTPlayerEvent {
-  data?: number;
-}
-declare global {
-  interface Window {
-    YT?: {
-      Player: new (
-        el: HTMLElement,
-        opts: {
-          videoId: string;
-          playerVars?: Record<string, number>;
-          events?: {
-            onReady?: (e: YTPlayerEvent) => void;
-            onError?: (e: YTPlayerEvent) => void;
-          };
-        }
-      ) => YTPlayer;
-    };
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
+const THUMB_SRC = `https://i.ytimg.com/vi/${YT_VIDEO_ID}/maxresdefault.jpg`;
 
 export function DemoPlayer() {
-  const [failed, setFailed] = useState(false);
-  const mountRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<YTPlayer | null>(null);
-  const readyRef = useRef(false);
+  const [activated, setActivated] = useState(false);
 
   useEffect(() => {
-    if (failed) return;
-    let cancelled = false;
-
-    const createPlayer = () => {
-      if (cancelled || !window.YT?.Player || !mountRef.current) return;
-      playerRef.current = new window.YT.Player(mountRef.current, {
-        videoId: YT_VIDEO_ID,
-        playerVars: { rel: 0, modestbranding: 1 },
-        events: {
-          onReady: () => {
-            readyRef.current = true;
-          },
-          onError: () => {
-            if (!cancelled) setFailed(true);
-          },
-        },
-      });
+    if (activated) return;
+    const activate = () => setActivated(true);
+    const onHash = () => {
+      if (window.location.hash === "#demo") activate();
     };
-
-    if (window.YT?.Player) {
-      createPlayer();
-    } else {
-      if (!document.getElementById("yt-iframe-api")) {
-        const tag = document.createElement("script");
-        tag.id = "yt-iframe-api";
-        tag.src = "https://www.youtube.com/iframe_api";
-        document.head.appendChild(tag);
-      }
-      window.onYouTubeIframeAPIReady = createPlayer;
-    }
-
-    // Backstop: if the player never signals ready (e.g. silently blocked),
-    // fall back to the Supabase MP4.
-    const t = setTimeout(() => {
-      if (!cancelled && !readyRef.current) setFailed(true);
-    }, 7000);
-
+    const onClick = (e: MouseEvent) => {
+      const a = (e.target as HTMLElement | null)?.closest?.('a[href="#demo"]');
+      if (a) activate();
+    };
+    window.addEventListener("hashchange", onHash);
+    document.addEventListener("click", onClick);
+    if (window.location.hash === "#demo") activate();
     return () => {
-      cancelled = true;
-      clearTimeout(t);
-      try {
-        playerRef.current?.destroy();
-      } catch {
-        /* noop */
-      }
+      window.removeEventListener("hashchange", onHash);
+      document.removeEventListener("click", onClick);
     };
-  }, [failed]);
+  }, [activated]);
 
-  if (failed) {
+  if (activated) {
     return (
       <div className="aspect-video w-full">
-        <video className="demo-video block h-full w-full" controls preload="metadata" playsInline poster={POSTER_SRC}>
-          <source src={FALLBACK_SRC} type="video/mp4" />
-          Your browser does not support the video tag.
-        </video>
+        <iframe
+          className="h-full w-full"
+          src={`https://www.youtube-nocookie.com/embed/${YT_VIDEO_ID}?rel=0&modestbranding=1&autoplay=1&playsinline=1`}
+          title="CAAT Product Demo"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+          allowFullScreen
+        />
       </div>
     );
   }
 
   return (
-    <div className="aspect-video w-full">
-      <div ref={mountRef} className="h-full w-full" />
-    </div>
+    <button
+      type="button"
+      onClick={() => setActivated(true)}
+      aria-label="Play CAAT product demo"
+      className="group relative aspect-video w-full overflow-hidden bg-black focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-[#9a1a27] focus-visible:outline-offset-[3px]"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={THUMB_SRC}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+        loading="lazy"
+      />
+      <span className="absolute inset-0 bg-black/20 transition-colors group-hover:bg-black/10" />
+      <span className="absolute inset-0 flex items-center justify-center">
+        <span className="flex h-20 w-20 items-center justify-center rounded-full bg-[#9a1a27] text-white shadow-[6px_6px_0_0_rgba(0,0,0,0.85)] transition-transform group-hover:scale-110">
+          <Play size={32} strokeWidth={2} fill="currentColor" />
+        </span>
+      </span>
+    </button>
   );
 }
