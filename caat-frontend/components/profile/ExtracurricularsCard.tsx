@@ -18,7 +18,7 @@ import {
   loadResumeById,
 } from "@/components/resume-builder/api";
 import type { ResumeSection } from "@/components/resume-builder/types";
-import { ResumePreviewMini } from "@/components/resume-builder/ResumePreviewMini";
+import ResumePreviewPanel from "@/components/resume-builder/ResumePreviewPanel";
 import { fetchActivities, updateActivities, setDefaultResumeId } from "@/app/(main)/profile/api";
 import { supabase } from "@/src/lib/supabaseClient";
 import { toast } from "sonner";
@@ -283,12 +283,9 @@ export function ExtracurricularsCard() {
             {previewLoading ? (
               <Skeleton className="w-full h-90 rounded-lg" />
             ) : sections && sections.length > 0 ? (
-              <Link
-                href="/resume-builder"
-                className="block rounded-lg border bg-muted/30 overflow-hidden hover:ring-2 hover:ring-primary/20 transition-shadow"
-              >
-                <ResumePreviewMini sections={sections} />
-              </Link>
+              <div className="rounded-lg border bg-muted/30 overflow-hidden p-3">
+                <ResumePreviewPanel sections={sections} display="filmstrip" />
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-32 rounded-lg border border-dashed gap-2 text-sm text-muted-foreground">
                 <span>

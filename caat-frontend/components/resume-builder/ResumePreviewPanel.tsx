@@ -314,10 +314,14 @@ export function ResumePage({
 export default function ResumePreviewPanel({
   sections,
   marginPx = PAGE_PADDING_PX,
+  display = "panel",
   onPagesComputed,
 }: {
   sections: ResumeSection[];
   marginPx?: number;
+  // "panel" = full builder preview (vertical, fits panel width).
+  // "filmstrip" = compact horizontal pages with group navigation (profile view).
+  display?: "panel" | "filmstrip";
   onPagesComputed?: (pages: PageModel[], personalHeader: PersonalHeader) => void;
 }) {
   const personalSection = sections.find((s) => s.type === "personal");
@@ -367,6 +371,8 @@ export default function ResumePreviewPanel({
   const [pages, setPages] = useState<PageModel[]>([]);
   const [fontsReady, setFontsReady] = useState(false);
   const [displayScale, setDisplayScale] = useState(0.53);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [windowIndex, setWindowIndex] = useState(0);
 
   // Track available width in the preview panel so we can scale pages to fit
   useEffect(() => {
@@ -376,11 +382,26 @@ export default function ResumePreviewPanel({
       const width = entries[0]?.contentRect.width ?? 0;
       if (width > 0) {
         setDisplayScale(Math.min(1, width / PAGE_WIDTH_PX));
+        setContainerWidth(width);
       }
     });
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  // Filmstrip layout: pages at the original single-preview size, fit as many as
+  // the container allows side by side, then page through whole groups.
+  const FILM_THUMB_W = 340;
+  const FILM_GAP = 20;
+  const filmScale = FILM_THUMB_W / PAGE_WIDTH_PX;
+  const perWindow = Math.max(
+    1,
+    Math.floor((containerWidth + FILM_GAP) / (FILM_THUMB_W + FILM_GAP))
+  );
+  const windowCount = Math.max(1, Math.ceil(pages.length / perWindow));
+  const safeWindow = Math.min(windowIndex, windowCount - 1);
+  const winStart = safeWindow * perWindow;
+  const winEnd = Math.min(pages.length, winStart + perWindow);
 
   useEffect(() => {
     if (typeof document === "undefined") {
@@ -640,13 +661,43 @@ export default function ResumePreviewPanel({
     onPagesComputed?.(resultPages, personalHeader);
   }, [blocks, fontsReady, personalHeaderKey, marginPx]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return (
-    <div ref={containerRef} className="border-l bg-muted/30 p-4 overflow-auto h-full">
-      <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
-        <div>A4</div>
-        <div>Professional Resume Style</div>
-        <div>100%</div>
+  const renderPage = (page: PageModel, scale: number) => (
+    <div
+      key={page.pageIndex}
+      style={{
+        width: PAGE_WIDTH_PX * scale,
+        height: PAGE_HEIGHT_PX * scale,
+        overflow: "hidden",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+        border: "1px solid #9a1a27",
+        flex: "0 0 auto",
+      }}
+    >
+      <div style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}>
+        <ResumePage
+          page={page}
+          totalPages={pages.length}
+          personalHeader={personalHeader}
+          marginPx={marginPx}
+        />
       </div>
+    </div>
+  );
+
+  const isFilm = display === "filmstrip";
+
+  return (
+    <div
+      ref={containerRef}
+      className={isFilm ? "w-full" : "border-l bg-muted/30 p-4 overflow-auto h-full"}
+    >
+      {!isFilm && (
+        <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
+          <div>A4</div>
+          <div>Professional Resume Style</div>
+          <div>100%</div>
+        </div>
+      )}
 
       {/* Hidden measurement container — renders at true A4 width so that
           text wrapping matches the visible pages exactly. */}
@@ -701,37 +752,70 @@ export default function ResumePreviewPanel({
         </div>
       </div>
 
-      {/* Visible preview — each page is rendered at true A4 size and CSS-scaled
-          to fit the panel width. This guarantees text wrapping and page breaks
-          in the preview match the printed output exactly. */}
-      <div className="flex flex-col items-center gap-6">
-        {pages.map((page) => (
+      {isFilm ? (
+        /* Filmstrip — fixed-width page thumbnails, fit as many as the container
+           allows, then page through whole groups. Indicator is group dots while
+           pages are few, a range once they grow past where dots stay legible. */
+        <div>
           <div
-            key={page.pageIndex}
-            style={{
-              width: PAGE_WIDTH_PX * displayScale,
-              height: PAGE_HEIGHT_PX * displayScale,
-              overflow: "hidden",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-              border: "1px solid #9a1a27",
-            }}
+            className="flex justify-center overflow-hidden py-1"
+            style={{ gap: FILM_GAP }}
           >
-            <div
-              style={{
-                transform: `scale(${displayScale})`,
-                transformOrigin: "top left",
-              }}
-            >
-              <ResumePage
-                page={page}
-                totalPages={pages.length}
-                personalHeader={personalHeader}
-                marginPx={marginPx}
-              />
-            </div>
+            {pages.slice(winStart, winEnd).map((page) => renderPage(page, filmScale))}
           </div>
-        ))}
-      </div>
+
+          {pages.length > perWindow && (
+            <div className="mt-3 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                aria-label="Previous pages"
+                disabled={safeWindow === 0}
+                onClick={() => setWindowIndex((w) => Math.max(0, w - 1))}
+                className="h-8 w-8 inline-flex items-center justify-center rounded-md border text-muted-foreground hover:bg-muted disabled:opacity-40 transition-colors"
+              >
+                ‹
+              </button>
+
+              {pages.length <= 8 ? (
+                <div className="flex items-center gap-1.5">
+                  {Array.from({ length: windowCount }).map((_, g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      aria-label={`Page group ${g + 1}`}
+                      onClick={() => setWindowIndex(g)}
+                      className={`h-2 w-2 rounded-full transition-colors ${
+                        g === safeWindow ? "bg-[#9a1a27]" : "bg-muted-foreground/40 hover:bg-muted-foreground/70"
+                      }`}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  Pages {winStart + 1}–{winEnd} of {pages.length}
+                </span>
+              )}
+
+              <button
+                type="button"
+                aria-label="Next pages"
+                disabled={safeWindow >= windowCount - 1}
+                onClick={() => setWindowIndex((w) => Math.min(windowCount - 1, w + 1))}
+                className="h-8 w-8 inline-flex items-center justify-center rounded-md border text-muted-foreground hover:bg-muted disabled:opacity-40 transition-colors"
+              >
+                ›
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Visible preview — each page is rendered at true A4 size and CSS-scaled
+           to fit the panel width. This guarantees text wrapping and page breaks
+           in the preview match the printed output exactly. */
+        <div className="flex flex-col items-center gap-6">
+          {pages.map((page) => renderPage(page, displayScale))}
+        </div>
+      )}
     </div>
   );
 }

@@ -13,7 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
+import RichTextEditor from "@/components/RichTextEditor";
+import { postBodyHtml, htmlToText } from "@/lib/sanitize-html";
 import { getInitials } from "@/lib/user-utils";
 import { cn } from "@/lib/utils";
 import {
@@ -156,12 +157,11 @@ export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved, on
   }
 
   function handleEditSave() {
-    const trimmed = editContent.trim();
-    if (!trimmed || trimmed === displayContent) { setIsEditing(false); return; }
+    if (!htmlToText(editContent).trim() || editContent === displayContent) { setIsEditing(false); return; }
     startTransition(async () => {
-      const { error } = await updatePostAction(post.id, trimmed);
+      const { error } = await updatePostAction(post.id, editContent);
       if (error) { toast.error(error); return; }
-      setDisplayContent(trimmed);
+      setDisplayContent(editContent);
       setDisplayEditedAt(new Date().toISOString());
       setIsEditing(false);
       toast.success("Post updated.");
@@ -283,20 +283,17 @@ export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved, on
         {/* Content or edit mode */}
         {isEditing ? (
           <div className="space-y-2">
-            <Textarea
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              className="resize-none min-h-[80px] text-sm"
-              maxLength={2100}
-              autoFocus
-            />
+            <RichTextEditor variant="minimal" content={editContent} onChange={setEditContent} />
             <div className="flex gap-2 justify-end">
               <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}>Cancel</Button>
-              <Button size="sm" onClick={handleEditSave} disabled={!editContent.trim() || editContent.trim() === displayContent}>Save</Button>
+              <Button size="sm" onClick={handleEditSave} disabled={!htmlToText(editContent).trim() || editContent === displayContent}>Save</Button>
             </div>
           </div>
         ) : (
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{displayContent}</p>
+          <div
+            className="text-sm leading-relaxed community-prose"
+            dangerouslySetInnerHTML={{ __html: postBodyHtml(displayContent) }}
+          />
         )}
 
         {/* Result card */}

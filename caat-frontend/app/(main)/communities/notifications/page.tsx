@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { Bell, Heart, MessageCircle, CornerDownRight, UserPlus, DoorOpen } from "lucide-react";
+import { Bell, Heart, MessageCircle, CornerDownRight, UserPlus, DoorOpen, Check } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator,
@@ -15,9 +15,12 @@ const TYPE_CONFIG: Record<NotificationItem["type"], { icon: React.ElementType; l
   like:    { icon: Heart,           label: "liked your post" },
   comment: { icon: MessageCircle,   label: "commented on your post" },
   reply:   { icon: CornerDownRight, label: "replied to your comment" },
+  comment_like: { icon: Heart,      label: "liked your comment" },
   follow:       { icon: UserPlus,        label: "started following you" },
   join_request: { icon: DoorOpen,        label: "requested to join your community" },
+  request_approved: { icon: Check,       label: "approved your request to join" },
 };
+const FALLBACK_CONFIG = { icon: Bell, label: "sent you a notification" };
 
 export default async function NotificationsPage() {
   const { notifications } = await fetchNotificationsAction(50);
@@ -57,7 +60,7 @@ export default async function NotificationsPage() {
           ) : (
             <div className="rounded-xl border divide-y">
               {notifications.map((n) => {
-                const cfg = TYPE_CONFIG[n.type];
+                const cfg = TYPE_CONFIG[n.type] ?? FALLBACK_CONFIG;
                 const Icon = cfg.icon;
                 const href = n.post_id ? `/communities/${n.post_id}` : n.type === "follow" ? `/communities/profile/${n.actor_name}` : "/communities";
                 return (
