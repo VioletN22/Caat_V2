@@ -41,7 +41,14 @@ export interface PostAuthor {
 
 export interface NotificationItem {
   id: string;
-  type: "like" | "comment" | "reply" | "follow" | "join_request";
+  type:
+    | "like"
+    | "comment"
+    | "reply"
+    | "follow"
+    | "join_request"
+    | "request_approved"
+    | "comment_like";
   actor_name: string;
   actor_avatar: string | null;
   post_id: string | null;

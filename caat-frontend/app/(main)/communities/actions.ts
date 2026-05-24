@@ -1605,7 +1605,7 @@ export async function toggleCommentLikeAction(
   // Block enforcement — can't like a comment by someone you've blocked / who blocked you.
   const { data: comment } = await supabase
     .from("community_comments")
-    .select("user_id")
+    .select("user_id, post_id")
     .eq("id", commentId)
     .maybeSingle();
   if (await isBlockedBetween(supabase, user.id, comment?.user_id as string))
@@ -1614,6 +1614,17 @@ export async function toggleCommentLikeAction(
   await supabase
     .from("community_comment_likes")
     .insert({ comment_id: commentId, user_id: user.id });
+
+  // Notify the comment author (not on self-like).
+  if (comment && comment.user_id !== user.id) {
+    await supabase.from("notifications").insert({
+      user_id: comment.user_id,
+      actor_id: user.id,
+      type: "comment_like",
+      post_id: comment.post_id,
+      comment_id: commentId,
+    });
+  }
   return { liked: true, error: null };
 }
 
