@@ -42,9 +42,12 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: "npm run dev",
+    // In CI, test against a real production build — dev mode would NOT have
+    // caught the /communities serverless 500 (jsdom only failed in the prod
+    // bundle). Locally, use the fast dev server.
+    command: process.env.CI ? "npm run build && npm run start" : "npm run dev",
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 240_000,
   },
 });
