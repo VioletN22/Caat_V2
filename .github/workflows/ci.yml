@@ -168,3 +168,65 @@ jobs:
         if: ${{ matrix.project.scripts.build }}
         run: npm run build
 
+  e2e-smoke:
+    name: E2E runtime smoke (production build)
+    needs: discover-projects
+    runs-on: ubuntu-latest
+    # OFF by default so it never blocks a PR before a CI test-login is set up.
+    # To enable: add a repo VARIABLE (Settings > Secrets and variables >
+    # Actions > Variables) named ENABLE_E2E_SMOKE = true, and make sure the
+    # E2E_TEST_EMAIL / E2E_TEST_PASSWORD secrets point at a working account.
+    if: ${{ vars.ENABLE_E2E_SMOKE == 'true' }}
+    # Read-only: loads every critical authenticated route against a real
+    # production build and asserts no 5xx. This is the cheap check that catches
+    # "build passed but the deployed app 500s" regressions (e.g. the
+    # /communities serverless crash). It creates no data, so it is safe to run
+    # against the shared Supabase.
+    defaults:
+      run:
+        working-directory: caat-frontend
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      # Optional — falls back to the seeded test account if unset.
+      E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
+      E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+      PLAYWRIGHT_BASE_URL: http://localhost:3000
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: |
+            caat-frontend/package-lock.json
+            caat-frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            corepack enable
+            pnpm install --frozen-lockfile
+          elif [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --no-fund --no-audit
+          fi
+
+      - name: Install Playwright (chromium only)
+        run: npx playwright install --with-deps chromium
+
+      - name: Runtime smoke (Playwright builds + starts the prod server)
+        run: npm run test:e2e:smoke
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: caat-frontend/playwright-report
+          retention-days: 7
+
