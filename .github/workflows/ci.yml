@@ -172,6 +172,11 @@ jobs:
     name: E2E runtime smoke (production build)
     needs: discover-projects
     runs-on: ubuntu-latest
+    # OFF by default so it never blocks a PR before a CI test-login is set up.
+    # To enable: add a repo VARIABLE (Settings > Secrets and variables >
+    # Actions > Variables) named ENABLE_E2E_SMOKE = true, and make sure the
+    # E2E_TEST_EMAIL / E2E_TEST_PASSWORD secrets point at a working account.
+    if: ${{ vars.ENABLE_E2E_SMOKE == 'true' }}
     # Read-only: loads every critical authenticated route against a real
     # production build and asserts no 5xx. This is the cheap check that catches
     # "build passed but the deployed app 500s" regressions (e.g. the
