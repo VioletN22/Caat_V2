@@ -49,7 +49,7 @@ function makeScholarship(s: Partial<ScholarshipRow> = {}): ScholarshipRow {
     application_open_at: null, deadline_at: null, start_term: null,
     is_recurring: false, is_active: true, is_featured: false,
     last_verified_at: null, source_last_synced_at: null,
-    tags: [], eligibility_summary: null,
+    tags: [], field_of_study: [], year_level: [], eligibility_summary: null,
     application_requirements: null, contact_info: null, raw_payload: null,
     created_at: "", updated_at: "",
     ...s,

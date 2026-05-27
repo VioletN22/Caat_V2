@@ -40,6 +40,8 @@ function baseScholarship(overrides: Partial<ScholarshipRow> = {}): ScholarshipRo
     last_verified_at: null,
     source_last_synced_at: null,
     tags: [],
+    field_of_study: [],
+    year_level: [],
     eligibility_summary: null,
     application_requirements: null,
     contact_info: null,
