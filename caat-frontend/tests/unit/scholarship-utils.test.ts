@@ -40,6 +40,8 @@ function baseScholarship(overrides: Partial<ScholarshipRow> = {}): ScholarshipRo
     last_verified_at: null,
     source_last_synced_at: null,
     tags: [],
+    field_of_study: [],
+    year_level: [],
     eligibility_summary: null,
     application_requirements: null,
     contact_info: null,
@@ -116,8 +118,8 @@ describe("deriveDisplayTags()", () => {
     expect(deriveDisplayTags(baseScholarship({ merit_based: true }))).toContain("MERIT-BASED");
   });
 
-  it("returns NEED-BLIND tag when need_based is true", () => {
-    expect(deriveDisplayTags(baseScholarship({ need_based: true }))).toContain("NEED-BLIND");
+  it("returns NEED-BASED tag when need_based is true", () => {
+    expect(deriveDisplayTags(baseScholarship({ need_based: true }))).toContain("NEED-BASED");
   });
 
   it("returns FULL RIDE tag when funding_type includes 'full_ride'", () => {
@@ -136,10 +138,10 @@ describe("deriveDisplayTags()", () => {
     ).not.toContain("POST-GRAD");
   });
 
-  it("returns REGIONAL tag when state_region is set", () => {
+  it("does not return REGIONAL tag (tag removed from implementation)", () => {
     expect(
       deriveDisplayTags(baseScholarship({ state_region: "NSW" }))
-    ).toContain("REGIONAL");
+    ).not.toContain("REGIONAL");
   });
 
   it("does not return REGIONAL when only eligible_countries is set (country-only restriction)", () => {
