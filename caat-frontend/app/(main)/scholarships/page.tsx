@@ -27,7 +27,7 @@ const SCHOLARSHIP_LIST_COLUMNS = `
   need_based, merit_based, school_name, country, state_region,
   application_open_at, deadline_at, start_term, is_recurring, is_active,
   is_featured, last_verified_at, source_last_synced_at, tags,
-  eligibility_summary, created_at, updated_at
+  field_of_study, year_level, eligibility_summary, created_at, updated_at
 `;
 
 async function fetchAllScholarships() {

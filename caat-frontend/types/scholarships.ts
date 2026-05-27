@@ -41,6 +41,8 @@ export interface ScholarshipRow {
   last_verified_at: string | null;
   source_last_synced_at: string | null;
   tags: string[];
+  field_of_study: string[];
+  year_level: string[];
   eligibility_summary: string | null;
   application_requirements: Record<string, unknown> | null;
   contact_info: Record<string, unknown> | null;
@@ -58,7 +60,7 @@ export function deriveDisplayTags(s: ScholarshipRow): string[] {
 
   if (s.funding_type.includes("full_ride")) badges.push("FULL RIDE");
   if (s.merit_based) badges.push("MERIT-BASED");
-  if (s.need_based) badges.push("NEED-BLIND");
+  if (s.need_based) badges.push("NEED-BASED");
 
   // Post-grad only (not mixed level)
   if (
@@ -68,13 +70,9 @@ export function deriveDisplayTags(s: ScholarshipRow): string[] {
     badges.push("POST-GRAD");
   }
 
-  // Regional: restricted to a sub-national region (state/province). A
-  // country-only restriction isn't "regional" — most uni scholarships limit
-  // by country, and tagging them all REGIONAL was noise (e.g. every Sydney
-  // scholarship with eligible_countries=["AU"] was lighting up).
-  if ((s.state_region ?? "").trim().length > 0) {
-    badges.push("REGIONAL");
-  }
+  // International: open to international students
+  const cits = Array.isArray(s.citizenships) ? s.citizenships : [];
+  if (cits.includes("INTERNATIONAL")) badges.push("INTERNATIONAL");
 
   // STEM: inferred from tags or description keywords
   const stemKeywords = ["stem", "science", "engineering", "technology", "mathematics", "physics", "chemistry"];
