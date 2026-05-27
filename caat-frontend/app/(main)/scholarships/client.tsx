@@ -140,6 +140,9 @@ const FIELD_PATTERNS: { label: string; re: RegExp }[] = [
 ];
 
 function matchFieldsForRow(s: ScholarshipRow): string[] {
+  if (s.field_of_study && s.field_of_study.length > 0) {
+    return s.field_of_study.filter((f) => f !== "General");
+  }
   const haystack = [s.title, s.description ?? "", ...s.tags].join(" ");
   return FIELD_PATTERNS.filter((p) => p.re.test(haystack)).map((p) => p.label);
 }
