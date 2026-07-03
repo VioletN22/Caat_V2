@@ -13,8 +13,14 @@ export async function verifyTurnstile(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
 
-  // Bypass in dev / preview where secret is not configured.
-  if (!secret) return { ok: true };
+  // A4 — fail closed in production. A missing secret in prod is a misconfig that
+  // must NOT silently disable CAPTCHA; only dev/preview keeps the permissive bypass.
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      return { ok: false, error: "CAPTCHA is not configured" };
+    }
+    return { ok: true };
+  }
 
   if (!token) return { ok: false, error: "CAPTCHA verification required." };
 
