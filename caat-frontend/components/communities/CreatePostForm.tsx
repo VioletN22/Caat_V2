@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useRef, useEffect, useCallback } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { PlusCircle, X, CheckCircle, Clock, XCircle, FileText, EyeOff, School, BarChart2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -248,12 +249,15 @@ export function CreatePostForm({ currentUser, onPostCreated, groupId }: CreatePo
 
   return (
     <div ref={formRef} className="relative">
-      {/* Discard confirmation overlay */}
-      {showDiscardConfirm && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-background/85 backdrop-blur-sm">
-          <div className="rounded-xl border bg-background shadow-lg p-5 space-y-3 w-64">
-            <p className="text-sm font-semibold">Discard post?</p>
-            <p className="text-xs text-muted-foreground">Everything you&apos;ve written will be lost.</p>
+      {/* Discard confirmation — real Radix Dialog (role, focus trap, Escape) (M16) */}
+      <Dialog.Root open={showDiscardConfirm} onOpenChange={setShowDiscardConfirm}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[90%] max-w-xs -translate-x-1/2 -translate-y-1/2 rounded-xl border bg-background shadow-lg p-5 space-y-3 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+            <Dialog.Title className="text-sm font-semibold">Discard post?</Dialog.Title>
+            <Dialog.Description className="text-xs text-muted-foreground">
+              Everything you&apos;ve written will be lost.
+            </Dialog.Description>
             <div className="flex gap-2 justify-end pt-1">
               <Button size="sm" variant="ghost" onClick={() => setShowDiscardConfirm(false)}>
                 Keep editing
@@ -262,9 +266,9 @@ export function CreatePostForm({ currentUser, onPostCreated, groupId }: CreatePo
                 Discard
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
       <Card className="w-full">
         <CardContent className="pt-4 pb-3 space-y-4">

@@ -380,6 +380,8 @@ export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved, on
             variant="ghost" size="sm"
             className={cn("gap-1.5 h-8 px-2", optimistic.isLiked ? "text-[#9a1a27] dark:text-[#e06b78] hover:text-[#9a1a27]" : "text-muted-foreground")}
             onClick={handleLike}
+            aria-pressed={optimistic.isLiked}
+            aria-label={`${optimistic.isLiked ? "Unlike" : "Like"} post, ${optimistic.likeCount} like${optimistic.likeCount === 1 ? "" : "s"}`}
           >
             <Heart className={cn("size-4", optimistic.isLiked && "fill-current")} />
             <span className="text-xs">{optimistic.likeCount}</span>
@@ -389,6 +391,8 @@ export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved, on
             variant="ghost" size="sm"
             className={cn("gap-1.5 h-8 px-2", isCommentsOpen ? "text-foreground" : "text-muted-foreground")}
             onClick={() => setIsCommentsOpen((v) => !v)}
+            aria-expanded={isCommentsOpen}
+            aria-label={`${isCommentsOpen ? "Hide" : "Show"} comments, ${commentCount} comment${commentCount === 1 ? "" : "s"}`}
           >
             <MessageCircle className="size-4" />
             <span className="text-xs">{commentCount}</span>
@@ -400,9 +404,10 @@ export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved, on
             variant="ghost" size="sm"
             className={cn("h-8 w-8 p-0", optimistic.isSaved ? "text-foreground" : "text-muted-foreground")}
             onClick={handleSave}
+            aria-pressed={optimistic.isSaved}
           >
             <Bookmark className={cn("size-4", optimistic.isSaved && "fill-current")} />
-            <span className="sr-only">Save post</span>
+            <span className="sr-only">{optimistic.isSaved ? "Unsave post" : "Save post"}</span>
           </Button>
 
           <Button variant="ghost" size="sm" className="text-muted-foreground h-8 w-8 p-0" onClick={handleShare}>

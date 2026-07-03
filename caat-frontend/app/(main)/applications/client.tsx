@@ -83,7 +83,7 @@ function deadlineLabel(dateStr: string) {
   if (days < 0) return { text: `${Math.abs(days)}d overdue`, color: "text-[#9a1a27] dark:text-[#e06b78]" };
   if (days === 0) return { text: "Today", color: "text-[#9a1a27] dark:text-[#e06b78]" };
   if (days <= 7) return { text: `${days}d`, color: "text-[#9a1a27] dark:text-[#e06b78]" };
-  if (days <= 30) return { text: `${days}d`, color: "text-amber-500" };
+  if (days <= 30) return { text: `${days}d`, color: "text-amber-600 dark:text-amber-400" };
   return { text: `${days}d`, color: "text-green-600 dark:text-green-400" };
 }
 
@@ -550,6 +550,7 @@ function ApplicationCard({
             onChange={(e) => onDeadlineChange(app.id, e.target.value)}
             className="h-7 rounded-md border border-input bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
             title="Application deadline"
+            aria-label={`Application deadline for ${schoolName}`}
           />
 
           {/* Deadline countdown */}

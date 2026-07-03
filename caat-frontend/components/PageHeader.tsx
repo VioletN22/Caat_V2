@@ -1,8 +1,8 @@
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
+  BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -25,7 +25,7 @@ export function PageHeader({ title, hideOnMobile = false }: PageHeaderProps) {
       <Breadcrumb className="flex-1">
         <BreadcrumbList>
           <BreadcrumbItem className={hideOnMobile ? "hidden md:block" : undefined}>
-            <BreadcrumbLink>{title}</BreadcrumbLink>
+            <BreadcrumbPage>{title}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>

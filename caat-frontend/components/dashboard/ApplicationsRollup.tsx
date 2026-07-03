@@ -33,7 +33,7 @@ function daysUntil(dateStr: string): number {
 function deadlineLabel(dateStr: string | null) {
   if (!dateStr) return { text: "no date", cls: "text-muted-foreground" };
   const d = daysUntil(dateStr);
-  const cls = d < 0 || d <= 7 ? "text-[#9a1a27] dark:text-[#e06b78]" : d <= 30 ? "text-amber-500" : "text-green-600";
+  const cls = d < 0 || d <= 7 ? "text-[#9a1a27] dark:text-[#e06b78]" : d <= 30 ? "text-amber-600 dark:text-amber-400" : "text-green-600";
   return { text: d < 0 ? `${Math.abs(d)}d over` : d === 0 ? "today" : `${d}d`, cls };
 }
 

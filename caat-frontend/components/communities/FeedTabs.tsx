@@ -17,10 +17,12 @@ const TABS: { id: FeedTab; label: string }[] = [
 
 export function FeedTabs({ activeTab, onTabChange }: FeedTabsProps) {
   return (
-    <div className="flex gap-1 border-b mb-4">
+    <div className="flex gap-1 border-b mb-4" role="tablist" aria-label="Feed">
       {TABS.map((tab) => (
         <button
           key={tab.id}
+          role="tab"
+          aria-selected={activeTab === tab.id}
           onClick={() => onTabChange(tab.id)}
           className={cn(
             "px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px",

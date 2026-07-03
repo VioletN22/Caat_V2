@@ -58,10 +58,10 @@ export default function SortableSectionItem({
       {/* Drag handle stuck to left */}
       <button
         type="button"
-        className="cursor-grab rounded p-1 hover:bg-muted"
+        className="cursor-grab rounded p-1 hover:bg-muted touch-none"
         {...(!isEditing ? attributes : {})}
         {...(!isEditing ? listeners : {})}
-        aria-label="Drag section"
+        aria-label={`Reorder ${label} section. Press space, then use arrow keys.`}
         disabled={isEditing}
       >
         <GripVertical className="h-4 w-4 text-muted-foreground" />

@@ -25,6 +25,7 @@ import {
   Loader2,
   FileArchive,
 } from "lucide-react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -207,41 +208,52 @@ function CategoryPill({ label }: { label: string }) {
 // ---------------------------------------------------------------------------
 // Delete confirmation modal
 // ---------------------------------------------------------------------------
+// M16 — a real Radix Dialog: role="dialog", focus trap, Escape + backdrop close.
 function DeleteModal({
   doc,
   onConfirm,
   onCancel,
   isDeleting,
 }: {
-  doc: DocumentRow;
+  doc: DocumentRow | null;
   onConfirm: () => void;
   onCancel: () => void;
   isDeleting: boolean;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-card rounded-xl border p-6 shadow-xl w-[90%] max-w-md">
-        <h3 className="font-semibold text-lg mb-1">Delete Document</h3>
-        <p className="text-sm text-muted-foreground mb-5">
-          Are you sure you want to delete{" "}
-          <span className="font-medium text-foreground">{doc.file_name}</span>?
-          This action cannot be undone.
-        </p>
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onCancel} disabled={isDeleting}>
-            Cancel
-          </Button>
-          <Button
-            onClick={onConfirm}
-            disabled={isDeleting}
-            className="bg-[#9a1a27] hover:bg-[#7d1520] text-white"
-          >
-            {isDeleting && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
-            Delete
-          </Button>
-        </div>
-      </div>
-    </div>
+    <Dialog.Root
+      open={doc !== null}
+      onOpenChange={(open) => {
+        if (!open && !isDeleting) onCancel();
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[90%] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border bg-card p-6 shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+          <Dialog.Title className="font-semibold text-lg mb-1">
+            Delete Document
+          </Dialog.Title>
+          <Dialog.Description className="text-sm text-muted-foreground mb-5">
+            Are you sure you want to delete{" "}
+            <span className="font-medium text-foreground">{doc?.file_name}</span>?
+            This action cannot be undone.
+          </Dialog.Description>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={onCancel} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button
+              onClick={onConfirm}
+              disabled={isDeleting}
+              className="bg-[#9a1a27] hover:bg-[#7d1520] text-white"
+            >
+              {isDeleting && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+              Delete
+            </Button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
@@ -770,6 +782,7 @@ export default function DocumentVaultClient({
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={safePage <= 1}
+              aria-label="Previous page"
               className="inline-flex h-7 w-7 items-center justify-center rounded border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -780,6 +793,7 @@ export default function DocumentVaultClient({
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={safePage >= totalPages}
+              aria-label="Next page"
               className="inline-flex h-7 w-7 items-center justify-center rounded border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <ChevronRight className="h-4 w-4" />
@@ -967,14 +981,12 @@ export default function DocumentVaultClient({
       {/* ------------------------------------------------------------------ */}
       {/* Delete confirmation modal                                           */}
       {/* ------------------------------------------------------------------ */}
-      {deleteTarget && (
-        <DeleteModal
-          doc={deleteTarget}
-          onConfirm={handleDelete}
-          onCancel={() => setDeleteTarget(null)}
-          isDeleting={isDeleting}
-        />
-      )}
+      <DeleteModal
+        doc={deleteTarget}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+        isDeleting={isDeleting}
+      />
       </div>
     </div>
   );

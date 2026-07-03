@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import {
   DndContext,
   PointerSensor,
+  KeyboardSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -14,6 +15,7 @@ import {
 import {
   SortableContext,
   verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
   arrayMove,
 } from "@dnd-kit/sortable";
 
@@ -123,7 +125,12 @@ export default function ResumeBuilderShell() {
     return sections.find((s) => s.id === activeSectionId) ?? sections[0];
   }, [sections, activeSectionId]);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  // M11 — keyboard DnD as well as pointer: Tab to a section handle, Space to
+  // pick up, arrow keys to reorder, Space to drop.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   // Mirror the live editor state into refs so the pre-switch / unmount flush can
   // persist the OUTGOING resume without depending on stale closures.

@@ -32,7 +32,7 @@ export default function SortSelect({ defaultValue }: { defaultValue: string }) {
   return (
     <div className="w-full md:w-[180px]">
       <Select defaultValue={defaultValue || "name_asc"} onValueChange={handleChange}>
-        <SelectTrigger className="w-full">
+        <SelectTrigger className="w-full" aria-label="Sort schools">
           <SelectValue placeholder="Sort by…" />
         </SelectTrigger>
         <SelectContent>

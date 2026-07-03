@@ -104,7 +104,14 @@ export function NotificationBell() {
     // Static, non-interactive placeholder for SSR + first paint. Same shape
     // as the Button below so there's no layout shift on hydration.
     return (
-      <Button variant="ghost" size="icon" className="relative h-8 w-8" aria-hidden>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="relative h-8 w-8"
+        aria-hidden
+        tabIndex={-1}
+        disabled
+      >
         <Bell className="size-4" />
         <span className="sr-only">Notifications</span>
       </Button>

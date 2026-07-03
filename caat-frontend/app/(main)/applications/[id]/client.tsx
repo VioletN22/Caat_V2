@@ -53,7 +53,7 @@ function daysUntil(dateStr: string): number {
 function deadlineParts(dateStr: string | null) {
   if (!dateStr) return { num: "—", label: "no deadline set", color: "text-muted-foreground" };
   const d = daysUntil(dateStr);
-  const color = d < 0 || d <= 7 ? "text-[#9a1a27] dark:text-[#e06b78]" : d <= 30 ? "text-amber-500" : "text-green-600";
+  const color = d < 0 || d <= 7 ? "text-[#9a1a27] dark:text-[#e06b78]" : d <= 30 ? "text-amber-600 dark:text-amber-400" : "text-green-600";
   const num = d < 0 ? `${Math.abs(d)}d` : d === 0 ? "Today" : `${d}d`;
   const label = d < 0 ? "overdue" : "until due";
   return { num, label, color };
@@ -621,7 +621,7 @@ function ReadyItem({ done, children }: { done: boolean; children: React.ReactNod
 function StatusText({ tone, children }: { tone: "green" | "amber" | "maroon"; children: React.ReactNode }) {
   const map = {
     green: { cls: "text-green-600", Icon: CheckCircle2 },
-    amber: { cls: "text-amber-500", Icon: Clock },
+    amber: { cls: "text-amber-600 dark:text-amber-400", Icon: Clock },
     maroon: { cls: "text-[#9a1a27] dark:text-[#e06b78]", Icon: AlertTriangle },
   } as const;
   const { cls, Icon } = map[tone];
