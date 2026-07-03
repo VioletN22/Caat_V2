@@ -63,14 +63,22 @@ function resolveLayout(widgets: PlacedWidget[]): PlacedWidget[] {
   });
 }
 
-export function DashboardShell() {
+export function DashboardShell({
+  initialWidgets,
+}: {
+  /** Widget layout resolved on the server (C6). When provided, the shell paints
+   *  it immediately instead of fetching + showing a skeleton on hydrate. */
+  initialWidgets?: PlacedWidget[] | null;
+}) {
   const { user } = useAuth();
-  const [placedWidgets, setPlacedWidgets] = useState<PlacedWidget[]>([]);
-  const [loading, setLoading] = useState(true);
+  const hasInitial = initialWidgets != null;
+  const seeded = hasInitial ? resolveLayout(initialWidgets) : [];
+  const [placedWidgets, setPlacedWidgets] = useState<PlacedWidget[]>(seeded);
+  const [loading, setLoading] = useState(!hasInitial);
   const [storeOpen, setStoreOpen] = useState(false);
   const [adding, setAdding] = useState<string | null>(null);
   // Ref so save callbacks always see the latest widget list.
-  const widgetsRef = useRef<PlacedWidget[]>([]);
+  const widgetsRef = useRef<PlacedWidget[]>(seeded);
 
   const userName =
     user?.user_metadata?.full_name ||
@@ -83,6 +91,16 @@ export function DashboardShell() {
   // -------------------------------------------------------------------------
 
   useEffect(() => {
+    if (hasInitial) {
+      // Layout came from the server. Only persist if any widget arrived without
+      // a saved position (auto-placed above), so the next load skips that step.
+      const anyUnpositioned = initialWidgets.some((w) => w.gridX === undefined);
+      if (anyUnpositioned) {
+        saveDashboardWidgets(widgetsRef.current).catch(() => {});
+      }
+      return;
+    }
+
     fetchDashboardWidgets()
       .then((raw) => {
         const resolved = resolveLayout(raw);
@@ -105,6 +123,7 @@ export function DashboardShell() {
         }
       })
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // -------------------------------------------------------------------------

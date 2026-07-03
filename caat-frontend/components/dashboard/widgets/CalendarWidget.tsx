@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Trash2, MapPin, Wifi, Clock, CalendarDays, Pencil } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
+import { getClientUserId } from "@/lib/current-user";
 import { toast } from "sonner";
 import { toDateKey, formatTime } from "@/lib/calendar-utils";
 import {
@@ -75,17 +76,15 @@ export function CalendarWidget() {
 
   useEffect(() => {
     async function load() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+      const userId = await getClientUserId();
+      if (!userId) return;
 
       const { data, error } = await supabase
         .from("calendar_events")
         .select(
           "id, title, event_date, description, time_start, time_end, location, is_online"
         )
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .order("time_start", { ascending: true, nullsFirst: true });
 
       if (error) {
@@ -98,7 +97,7 @@ export function CalendarWidget() {
       // Events come from calendar_events natively above — exclude them here
       // to avoid double-rendering.
       try {
-        const all = await fetchUnifiedDeadlines(supabase, user.id);
+        const all = await fetchUnifiedDeadlines(supabase, userId);
         setDeadlines(all.filter((d) => d.source !== "event"));
       } catch {
         // non-critical
@@ -156,10 +155,8 @@ export function CalendarWidget() {
     if (!form.title.trim() || !date) return;
     setSaving(true);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
+    const userId = await getClientUserId();
+    if (!userId) {
       toast.error("Not authenticated.");
       setSaving(false);
       return;
@@ -182,7 +179,7 @@ export function CalendarWidget() {
         .from("calendar_events")
         .update(payload)
         .eq("id", editingId)
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .select(
           "id, title, event_date, description, time_start, time_end, location, is_online"
         )
@@ -199,7 +196,7 @@ export function CalendarWidget() {
     } else {
       const { data, error } = await supabase
         .from("calendar_events")
-        .insert({ user_id: user.id, ...payload })
+        .insert({ user_id: userId, ...payload })
         .select(
           "id, title, event_date, description, time_start, time_end, location, is_online"
         )
@@ -216,16 +213,14 @@ export function CalendarWidget() {
   }
 
   async function handleDeleteEvent(id: string) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = await getClientUserId();
+    if (!userId) return;
 
     const { error } = await supabase
       .from("calendar_events")
       .delete()
       .eq("id", id)
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
 
     if (error) {
       toast.error("Could not delete event.");

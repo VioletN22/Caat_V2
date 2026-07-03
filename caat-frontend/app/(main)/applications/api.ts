@@ -1,14 +1,14 @@
 import { supabase } from "@/lib/supabase/client";
 import { sanitizeError } from "@/lib/safe-error";
+import { getClientUserId } from "@/lib/current-user";
 import type { ApplicationRow, ApplicationStatus } from "@/types/applications";
 
-async function getUser() {
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-  if (error || !user) throw new Error("Not authenticated");
-  return user;
+// C5: resolve the user id via local JWT claims (getClientUserId) instead of a
+// /auth/v1/user network call on every fetcher. Callers only use `.id`.
+async function getUser(): Promise<{ id: string }> {
+  const id = await getClientUserId();
+  if (!id) throw new Error("Not authenticated");
+  return { id };
 }
 
 /** A new application defaults its "applying for" majors from the student's

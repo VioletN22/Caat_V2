@@ -33,7 +33,7 @@ import {
   SidebarGroupLabel
 } from "@/components/ui/sidebar"
 import { NavUser } from "./nav-user"
-import { supabase } from "@/lib/supabase/client"
+import { useAuth } from "@/components/providers/AuthContext"
 
 const tools = [
   { title: "Dashboard", icon: LayoutDashboard, url: "/dashboard" },
@@ -52,61 +52,28 @@ const community = [
   { title: "Saved Posts",  icon: Bookmark, url: "/communities/saved" },
 ]
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  initialAvatarUrl = null,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & { initialAvatarUrl?: string | null }) {
   const pathname = usePathname()
-  const [user, setUser] = React.useState<{ name: string; email: string; avatar: string } | null>(null)
+  // C5: read the already-resolved user from AuthContext instead of firing this
+  // sidebar's own getUser() + profile fetch on every navigation. The avatar is
+  // resolved once server-side and passed in.
+  const { user: authUser } = useAuth()
 
-  React.useEffect(() => {
-    const loadUser = async () => {
-      const { data: { user: authUser } } = await supabase.auth.getUser()
-      if (authUser) {
-        const name =
+  const user = authUser
+    ? {
+        name:
           authUser.user_metadata?.full_name ||
           authUser.user_metadata?.name ||
           authUser.email?.split("@")[0] ||
-          "User"
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("avatar_url")
-          .eq("id", authUser.id)
-          .single()
-        setUser({
-          name,
-          email: authUser.email ?? "",
-          avatar: profileData?.avatar_url ?? authUser.user_metadata?.avatar_url ?? "",
-        })
+          "User",
+        email: authUser.email ?? "",
+        avatar:
+          initialAvatarUrl ?? authUser.user_metadata?.avatar_url ?? "",
       }
-    }
-
-    loadUser()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        const authUser = session.user
-        const name =
-          authUser.user_metadata?.full_name ||
-          authUser.user_metadata?.name ||
-          authUser.email?.split("@")[0] ||
-          "User"
-        supabase
-          .from("profiles")
-          .select("avatar_url")
-          .eq("id", authUser.id)
-          .single()
-          .then(({ data: profileData }) => {
-            setUser({
-              name,
-              email: authUser.email ?? "",
-              avatar: profileData?.avatar_url ?? authUser.user_metadata?.avatar_url ?? "",
-            })
-          })
-      } else {
-        setUser(null)
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
+    : null
 
   return (
     <Sidebar {...props}>
