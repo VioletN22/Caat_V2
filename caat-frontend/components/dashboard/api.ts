@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase/client";
+import { sanitizeError } from "@/lib/safe-error";
 import type { TablesInsert } from "@/types/database";
 
 // ---------------------------------------------------------------------------
@@ -61,7 +62,7 @@ export async function fetchDashboardWidgets(): Promise<PlacedWidget[]> {
     .eq("user_id", user.id)
     .order("order", { ascending: true });
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
 
   return (data ?? []).map((row) => ({
     instanceId: row.id as string,
@@ -113,7 +114,7 @@ export async function addDashboardWidget(
     .select("id, widget_id, order, grid_x, grid_y, grid_w, grid_h")
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
 
   return {
     instanceId: data.id as string,
@@ -143,7 +144,7 @@ export async function removeDashboardWidget(instanceId: string): Promise<void> {
     .eq("id", instanceId)
     .eq("user_id", user.id);
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
 }
 
 // ---------------------------------------------------------------------------
@@ -174,7 +175,7 @@ export async function saveDashboardWidgets(widgets: PlacedWidget[]): Promise<voi
     .from("user_dashboard_widgets")
     .upsert(upsertRows, { onConflict: "id" });
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
 }
 
 // ---------------------------------------------------------------------------
@@ -208,7 +209,7 @@ export async function fetchTodos(): Promise<TodoItem[]> {
     .order("priority", { ascending: true })
     .order("created_at", { ascending: true });
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
   return (data ?? []) as TodoItem[];
 }
 
@@ -234,7 +235,7 @@ export async function addTodo(
     .select(TODO_SELECT)
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
   return data as TodoItem;
 }
 
@@ -253,7 +254,7 @@ export async function updateTodo(
     .update(patch)
     .eq("id", id)
     .eq("user_id", user.id);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
 }
 
 export async function toggleTodo(id: string, done: boolean): Promise<void> {
@@ -268,7 +269,7 @@ export async function toggleTodo(id: string, done: boolean): Promise<void> {
     .update({ done })
     .eq("id", id)
     .eq("user_id", user.id);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
 }
 
 export async function deleteTodo(id: string): Promise<void> {
@@ -283,5 +284,5 @@ export async function deleteTodo(id: string): Promise<void> {
     .delete()
     .eq("id", id)
     .eq("user_id", user.id);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
 }
