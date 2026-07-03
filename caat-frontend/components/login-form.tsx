@@ -50,9 +50,12 @@ export function LoginForm({
         return
       }
 
+      // A2 — pass the Turnstile token into the auth call itself so Supabase's
+      // native CAPTCHA enforces it server-side (the preflight alone is bypassable).
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: { captchaToken: captchaToken ?? undefined },
       })
 
       if (signInError) throw signInError

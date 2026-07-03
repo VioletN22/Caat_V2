@@ -41,9 +41,14 @@ export default function ForgotPasswordPage() {
         return;
       }
 
+      // A2 — pass the Turnstile token so Supabase's native CAPTCHA enforces it
+      // server-side (the preflight alone is bypassable via a direct auth call).
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(
         email,
-        { redirectTo: `${window.location.origin}/reset-password` }
+        {
+          redirectTo: `${window.location.origin}/reset-password`,
+          captchaToken: captchaToken ?? undefined,
+        }
       );
       if (resetError) throw resetError;
       setSubmitted(true);
