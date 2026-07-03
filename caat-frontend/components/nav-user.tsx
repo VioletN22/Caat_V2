@@ -53,7 +53,7 @@ export function NavUser({
   const [mounted, setMounted] = React.useState(false)
   const router = useRouter()
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+   
   React.useEffect(() => setMounted(true), [])
 
   const initials = getInitials(user.name)

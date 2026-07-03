@@ -36,13 +36,14 @@ jobs:
           echo "matrix=$(cat projects.json)" >> "$GITHUB_OUTPUT"
 
   lint:
-    name: Lint (non-blocking)
+    name: Lint
     needs: discover-projects
     runs-on: ubuntu-latest
-    continue-on-error: true  # Lint failures show red on the job but do not fail the PR
+    # Blocking (G5): the pre-existing "unused eslint-disable" backlog was cleared
+    # in Phase 6, so lint failures now fail the PR instead of just showing red.
     strategy:
       # Run lint for every discovered project, but keep it as a separate job so
-      # it can be marked as a non-required check in branch protection rules.
+      # it can be marked as a required check in branch protection rules.
       fail-fast: false
       matrix:
         project: ${{ fromJSON(needs.discover-projects.outputs.project_matrix).include }}
@@ -152,14 +153,21 @@ jobs:
         run: npm run typecheck
 
       - name: Test
-        # Lightweight smoke tests: these currently just echo that no tests exist yet.
-        # The placeholder script is intentional and can be replaced with a real test runner later.
+        # Real Vitest unit suite (the old file-existence "smoke" was removed in
+        # Phase 6). Kept as a distinct step so the matrix reports it by name.
         if: ${{ matrix.project.scripts.test }}
         run: npm test
 
       - name: Unit tests (Vitest)
         if: ${{ matrix.project.scripts['test:unit'] }}
         run: npm run test:unit
+
+      - name: Coverage summary (soft, reporting only)
+        # Prints a coverage text-summary for the pure-logic modules the unit
+        # suite targets. No hard threshold yet (G5): informational, does not
+        # fail the build.
+        if: ${{ matrix.project.scripts['test:coverage'] }}
+        run: npm run test:coverage
 
       - name: Build
         # Build only when a "build" script exists (e.g. Next.js "next build").

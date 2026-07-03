@@ -225,7 +225,7 @@ export default function ResumeBuilderShell() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [reloadNonce]);
 
   // --------------------------------------------------
@@ -422,7 +422,7 @@ export default function ResumeBuilderShell() {
       window.removeEventListener("beforeunload", onBeforeUnload);
       void flushCurrentResume();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   // --------------------------------------------------
