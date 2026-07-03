@@ -68,6 +68,11 @@ export default function ResumeBuilderShell() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  // Initial-load failure. We must NOT silently fall back to a blank editor with
+  // an empty resumeId, because then onSave / autosave both early-return forever
+  // and the user's work is lost on refresh. Instead surface an error + retry.
+  const [loadError, setLoadError] = useState(false);
+  const [reloadNonce, setReloadNonce] = useState(0);
 
   // Which section should be immediately renamed (newly added)
   const [renamingSectionId, setRenamingSectionId] = useState<string | null>(null);
@@ -120,6 +125,19 @@ export default function ResumeBuilderShell() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
+  // Mirror the live editor state into refs so the pre-switch / unmount flush can
+  // persist the OUTGOING resume without depending on stale closures.
+  const sectionsRef = useRef(sections);
+  const settingsRef = useRef(settings);
+  const resumeIdRef = useRef(resumeId);
+  const resumeTitleRef = useRef(resumeTitle);
+  const isLoadingRef = useRef(isLoading);
+  sectionsRef.current = sections;
+  settingsRef.current = settings;
+  resumeIdRef.current = resumeId;
+  resumeTitleRef.current = resumeTitle;
+  isLoadingRef.current = isLoading;
+
   // --------------------------------------------------
   // Initial load from Supabase
   // --------------------------------------------------
@@ -129,6 +147,7 @@ export default function ResumeBuilderShell() {
     async function init() {
       try {
         setIsLoading(true);
+        setLoadError(false);
 
         const state = await loadOrCreateResumeState();
         if (cancelled) return;
@@ -185,14 +204,11 @@ export default function ResumeBuilderShell() {
         setActiveSectionId(loadedSections[0]?.id ?? "");
       } catch (err) {
         if (process.env.NODE_ENV !== "production") console.error(err);
-        toast.error("Could not load your resume. Working offline with default sections.");
-
-        // Fall back to local defaults so the UI still works
-        const defaults = getDefaultSections();
         if (cancelled) return;
-
-        setSections(defaults);
-        setActiveSectionId(defaults[0]?.id ?? "");
+        // Do NOT drop the user into a blank editor with resumeId="" — every
+        // save would silently no-op. Surface the failure and offer a retry.
+        toast.error("Could not load your resume. Please retry.");
+        setLoadError(true);
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -202,7 +218,8 @@ export default function ResumeBuilderShell() {
     return () => {
       cancelled = true;
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reloadNonce]);
 
   // --------------------------------------------------
   // Drag & drop ordering
@@ -339,11 +356,54 @@ export default function ResumeBuilderShell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sections, settings]);
 
+  // Persist the currently-loaded resume's pending edits before its content is
+  // replaced (switch / new / unmount), reading from refs so it never saves a
+  // stale snapshot. Clears the debounce so it can't fire against the new resume.
+  async function flushCurrentResume() {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+    if (!resumeIdRef.current || isLoadingRef.current) return;
+    try {
+      await saveResumeState({
+        resumeId: resumeIdRef.current,
+        title: resumeTitleRef.current,
+        template: null,
+        settings: settingsRef.current,
+        sections: sectionsRef.current.map((s, idx) => ({
+          id: s.id,
+          type: s.type,
+          label: s.label,
+          mode: s.mode,
+          contentHtml: s.contentHtml,
+          structuredData: s.structuredData,
+          sortOrder: idx,
+        })),
+      });
+    } catch {
+      // Best-effort; the manual Save button remains available.
+    }
+  }
+
+  // Flush pending edits on unmount (client-side nav) and tab close.
+  useEffect(() => {
+    const onBeforeUnload = () => { void flushCurrentResume(); };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      void flushCurrentResume();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // --------------------------------------------------
   // Switch resume (load by id)
   // --------------------------------------------------
   async function switchResume(id: string) {
     if (id === resumeId) return;
+    // Flush the outgoing resume before its sections are replaced.
+    await flushCurrentResume();
     try {
       setIsLoading(true);
       const state = await loadResumeById(id);
@@ -400,6 +460,8 @@ export default function ResumeBuilderShell() {
   // New resume
   // --------------------------------------------------
   async function onNewResume() {
+    // Flush the outgoing resume before we swap in the fresh one.
+    await flushCurrentResume();
     try {
       setIsLoading(true);
       const state = await createResume();
@@ -516,6 +578,28 @@ export default function ResumeBuilderShell() {
     window.addEventListener("afterprint", restore);
     // Fallback timeout in case afterprint doesn't fire
     setTimeout(restore, 5000);
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex h-[calc(100vh-64px)] w-full flex-col items-center justify-center gap-4 px-6 text-center">
+        <div className="max-w-md space-y-2">
+          <h2 className="text-lg font-semibold">We could not load your resume</h2>
+          <p className="text-sm text-muted-foreground">
+            Something went wrong reaching your saved resume. To avoid overwriting
+            your work, we did not open a blank editor. Please retry.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setReloadNonce((n) => n + 1)}
+          disabled={isLoading}
+          className="rounded-md bg-[#9a1a27] px-4 py-2 text-sm font-medium text-white hover:bg-[#7d141f] disabled:opacity-50"
+        >
+          {isLoading ? "Retrying…" : "Retry"}
+        </button>
+      </div>
+    );
   }
 
   return (
