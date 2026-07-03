@@ -6,8 +6,12 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* C15: trimmed from 5 Google families to 3 (Playfair, Source Serif, JetBrains
+     Mono). Geist Sans had no utility usage (body is font-serif) so --font-sans
+     falls back to the system stack; Geist Mono was a redundant second monospace
+     family, so --font-mono reuses JetBrains Mono. */
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains);
   --font-display: var(--font-playfair);
   --font-serif: var(--font-source-serif);
   --font-code: var(--font-jetbrains);

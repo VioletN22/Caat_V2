@@ -23,28 +23,30 @@ export default async function SinglePostPage({ params }: Props) {
   if (error || !row) notFound();
 
   const userIds = [...new Set([row.user_id as string, ...(user ? [user.id] : [])])];
-  // Same RLS reason as enrichPosts — profiles is owner-read-only, so a
-  // direct .from("profiles").in("id", ...) returns nothing for the post
-  // author when the viewer isn't them. See communities_v8 migration.
-  const { data: profiles } = await supabase.rpc("get_public_profiles", { user_ids: userIds });
+  const resumeId = (row.resume_link as string | null) ?? null;
 
-  const profileMap = new Map<string, PostAuthor>(
-    ((profiles ?? []) as PostAuthor[]).map((p) => [p.id, p])
-  );
-
-  const [likedResult, savedResult] = await Promise.all([
+  // C9: these four reads all depend only on the post row (not on each other),
+  // so run them concurrently instead of in sequence.
+  // Profiles goes through get_public_profiles for the same RLS reason as
+  // enrichPosts: profiles is owner-read-only, so a direct .in("id", ...) returns
+  // nothing for the post author when the viewer isn't them (communities_v8).
+  const [profilesResult, likedResult, savedResult, resumeResult] = await Promise.all([
+    supabase.rpc("get_public_profiles", { user_ids: userIds }),
     user
       ? supabase.from("community_likes").select("post_id").eq("user_id", user.id).eq("post_id", postId).maybeSingle()
       : Promise.resolve({ data: null }),
     user
       ? supabase.from("community_saves").select("post_id").eq("user_id", user.id).eq("post_id", postId).maybeSingle()
       : Promise.resolve({ data: null }),
+    resumeId
+      ? supabase.from("resumes").select("title").eq("id", resumeId).single()
+      : Promise.resolve({ data: null }),
   ]);
 
-  const resumeId = (row.resume_link as string | null) ?? null;
-  const { data: resumeRow } = resumeId
-    ? await supabase.from("resumes").select("title").eq("id", resumeId).single()
-    : { data: null };
+  const profileMap = new Map<string, PostAuthor>(
+    ((profilesResult.data ?? []) as PostAuthor[]).map((p) => [p.id, p])
+  );
+  const resumeRow = resumeResult.data;
 
   // B1 — anonymise user_id and null the author when the viewer is not the
   // post owner. Owner still sees their real id so they can edit/delete.

@@ -71,6 +71,51 @@ export async function fetchPostsAction(
 
 // ─── Feed (trending — top 20 by engagement in last 7 days) ───────────────────
 
+// C11: the trending candidate window (300 posts) + scoring is global — the same
+// for every viewer — yet it ran on every tab switch, per user. Cache the scored
+// top candidates in-process for a short TTL; the per-user block filter and
+// enrichment (liked/saved/polls) still run per request against the cached rows.
+// (unstable_cache can't be used here: community_posts is RLS-gated, so the fetch
+// needs the request's authenticated client, not a cookie-less one.)
+const TRENDING_TTL_MS = 120_000;
+const TRENDING_KEEP = 60; // buffer above the 20 shown, so block-filtering rarely underfills
+let trendingCache: { rows: Record<string, unknown>[]; at: number } | null = null;
+
+function hotScore(r: Record<string, unknown>, now: number): number {
+  const likes = (r.likes as { count: number }[] | undefined)?.[0]?.count ?? 0;
+  const comments = (r.comments as { count: number }[] | undefined)?.[0]?.count ?? 0;
+  const ageHours = (now - new Date(r.created_at as string).getTime()) / 3_600_000;
+  // Comments weighted higher than likes; gravity decay (Hacker-News style).
+  return (likes + 2 * comments + 1) / Math.pow(ageHours + 2, 1.5);
+}
+
+async function getTrendingCandidates(
+  supabase: Awaited<ReturnType<typeof createSupabaseServer>>,
+): Promise<Record<string, unknown>[]> {
+  if (trendingCache && Date.now() - trendingCache.at < TRENDING_TTL_MS) {
+    return trendingCache.rows;
+  }
+
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  // Global candidate window (no per-user block filter — applied after the cache).
+  const { data: rows } = await supabase
+    .from("community_posts")
+    .select("*, likes:community_likes(count), comments:community_comments(count)")
+    .eq("is_hidden", false)
+    .is("group_id", null)
+    .gte("created_at", sevenDaysAgo)
+    .order("created_at", { ascending: false })
+    .limit(300);
+
+  const now = Date.now();
+  const scored = [...((rows ?? []) as Record<string, unknown>[])]
+    .sort((a, b) => hotScore(b, now) - hotScore(a, now))
+    .slice(0, TRENDING_KEEP);
+
+  trendingCache = { rows: scored, at: Date.now() };
+  return scored;
+}
+
 export async function fetchTrendingPostsAction(): Promise<{
   posts: CommunityPost[];
 }> {
@@ -78,54 +123,20 @@ export async function fetchTrendingPostsAction(): Promise<{
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const sevenDaysAgo = new Date(
-    Date.now() - 7 * 24 * 60 * 60 * 1000,
-  ).toISOString();
 
-  const blockedIds = await fetchBlockedIds(supabase, user?.id);
+  const [candidates, blockedIds] = await Promise.all([
+    getTrendingCandidates(supabase),
+    fetchBlockedIds(supabase, user?.id),
+  ]);
 
-  // Pull a wide candidate window (not just the 50 most recent) so a highly
-  // engaged post can't be pushed out by sheer recency, then rank by a
-  // time-decayed score so fresh engagement beats stale engagement.
-  let candidateQuery = supabase
-    .from("community_posts")
-    .select(
-      "*, likes:community_likes(count), comments:community_comments(count)",
-    )
-    .eq("is_hidden", false)
-    .is("group_id", null)
-    .gte("created_at", sevenDaysAgo)
-    .order("created_at", { ascending: false })
-    .limit(300);
-  if (blockedIds.length)
-    candidateQuery = candidateQuery.not(
-      "user_id",
-      "in",
-      `(${blockedIds.join(",")})`,
-    );
-  const { data: rows } = await candidateQuery;
+  if (!candidates.length) return { posts: [] };
 
-  if (!rows?.length) return { posts: [] };
-
-  const now = Date.now();
-  const hotScore = (r: Record<string, unknown>) => {
-    const likes = (r.likes as { count: number }[] | undefined)?.[0]?.count ?? 0;
-    const comments =
-      (r.comments as { count: number }[] | undefined)?.[0]?.count ?? 0;
-    const ageHours =
-      (now - new Date(r.created_at as string).getTime()) / 3_600_000;
-    // Comments weighted higher than likes; gravity decay (Hacker-News style).
-    return (likes + 2 * comments + 1) / Math.pow(ageHours + 2, 1.5);
-  };
-  const sorted = [...rows]
-    .sort((a, b) => hotScore(b) - hotScore(a))
+  const blocked = new Set(blockedIds);
+  const sorted = candidates
+    .filter((r) => !blocked.has(r.user_id as string))
     .slice(0, 20);
 
-  const posts = await enrichPosts(
-    supabase,
-    sorted as Record<string, unknown>[],
-    user?.id,
-  );
+  const posts = await enrichPosts(supabase, sorted, user?.id);
   return { posts };
 }
 
