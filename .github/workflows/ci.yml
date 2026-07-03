@@ -172,11 +172,14 @@ jobs:
     name: E2E runtime smoke (production build)
     needs: discover-projects
     runs-on: ubuntu-latest
-    # OFF by default so it never blocks a PR before a CI test-login is set up.
-    # To enable: add a repo VARIABLE (Settings > Secrets and variables >
-    # Actions > Variables) named ENABLE_E2E_SMOKE = true, and make sure the
-    # E2E_TEST_EMAIL / E2E_TEST_PASSWORD secrets point at a working account.
-    if: ${{ vars.ENABLE_E2E_SMOKE == 'true' }}
+    # Runs on every PR into develop/main (G1). It is read-only, so it is safe on
+    # the shared Supabase. It needs a working login: set the repo SECRETS
+    # NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, E2E_TEST_EMAIL,
+    # E2E_TEST_PASSWORD (Settings > Secrets and variables > Actions). The auth
+    # setup FAILS LOUDLY (does not silently skip) if the login does not succeed,
+    # so a missing/wrong credential surfaces as a red check rather than a false
+    # green. The E2E_TEST_* fallbacks below let a fork run it against a locally
+    # seeded account; in this repo the CI secrets should be set.
     # Read-only: loads every critical authenticated route against a real
     # production build and asserts no 5xx. This is the cheap check that catches
     # "build passed but the deployed app 500s" regressions (e.g. the
@@ -188,7 +191,8 @@ jobs:
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-      # Optional — falls back to the seeded test account if unset.
+      # Fall back to the seeded test account if the secrets are unset. If neither
+      # the secret nor the fallback can log in, auth.setup.ts fails the job.
       E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
       E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
       PLAYWRIGHT_BASE_URL: http://localhost:3000
