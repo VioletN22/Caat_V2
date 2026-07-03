@@ -5,11 +5,12 @@ import { createSupabaseServer } from "@/lib/supabase-server";
 import { containsProfanity } from "@/lib/profanity-filter";
 import { gate, ratelimits } from "@/lib/rate-limit";
 import { sanitizeError } from "@/lib/safe-error";
-import { sanitizePostHtml, htmlToText } from "@/lib/sanitize-html";
+import { sanitizePostHtml, htmlToText, looksLikeHtml } from "@/lib/sanitize-html";
 import {
   PostInputSchema,
   CommentInputSchema,
   GroupInputSchema,
+  PrivacySettingsSchema,
 } from "@/lib/schemas/community";
 import type {
   CommunityPost,
@@ -881,11 +882,15 @@ export async function updatePrivacySettingsAction(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not signed in" };
+  // A6 — parse through an allow-list so only the known settings columns reach the
+  // upsert; raw caller input is never spread in.
+  const parsed = PrivacySettingsSchema.safeParse(settings);
+  if (!parsed.success) return { error: "Invalid privacy settings" };
   const { error } = await supabase
     .from("community_profile_settings")
     .upsert({
       user_id: user.id,
-      ...settings,
+      ...parsed.data,
       updated_at: new Date().toISOString(),
     });
   return {
@@ -1265,7 +1270,10 @@ export async function addCommentAction(
     .insert({
       post_id: postId,
       user_id: user.id,
-      content: text,
+      // A7 — comments render as escaped text today, but sanitize any HTML markup on
+      // store so a future switch to HTML rendering can't become stored XSS. Plain
+      // text (the common case) is stored verbatim to avoid entity double-encoding.
+      content: looksLikeHtml(text) ? sanitizePostHtml(text) : text,
       parent_comment_id: parentCommentId ?? null,
     })
     .select("*")
@@ -1361,7 +1369,11 @@ export async function updateCommentAction(
   const editedAt = new Date().toISOString();
   const { error } = await supabase
     .from("community_comments")
-    .update({ content: text, edited_at: editedAt })
+    // A7 — sanitize HTML markup on store (see addCommentAction); plain text verbatim.
+    .update({
+      content: looksLikeHtml(text) ? sanitizePostHtml(text) : text,
+      edited_at: editedAt,
+    })
     .eq("id", commentId)
     .eq("user_id", user.id);
 

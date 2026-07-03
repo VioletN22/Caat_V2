@@ -52,6 +52,17 @@ export const CommentInputSchema = z.object({
   parentCommentId: z.string().uuid().optional(),
 });
 
+// A6 — allow-list for updatePrivacySettingsAction. Fields are optional so partial
+// updates are allowed; unknown keys are stripped, so raw caller input can never be
+// spread into the upsert.
+export const PrivacySettingsSchema = z.object({
+  show_graduation_year: z.boolean().optional(),
+  show_school_name: z.boolean().optional(),
+  show_preferred_countries: z.boolean().optional(),
+  show_target_majors: z.boolean().optional(),
+  pinned_post_id: z.string().uuid().nullable().optional(),
+});
+
 export const GroupInputSchema = z.object({
   name: z.string().trim().min(3).max(50),
   description: z.string().trim().max(500).optional(),
