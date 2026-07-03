@@ -46,7 +46,9 @@ function daysUntil(dateStr: string): number {
   const target = new Date(dateStr.slice(0, 10) + "T00:00:00");
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return Math.ceil((target.getTime() - today.getTime()) / 86_400_000);
+  // Round, not ceil: a DST transition makes the span 23h or 25h, which ceil
+  // turns into an off-by-one day count.
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 function deadlineParts(dateStr: string | null) {
   if (!dateStr) return { num: "—", label: "no deadline set", color: "text-muted-foreground" };
@@ -98,7 +100,16 @@ export default function ApplicationHubClient({ applicationId }: { applicationId:
     setHub({ ...hub, application: { ...hub.application, status } });
     try {
       await updateApplicationStatus(hub.application.id, status);
-      await load();
+      // The write succeeded — clear any stale error and refresh derived data.
+      // A refetch failure must NOT be conflated with an update failure: it
+      // shouldn't roll back the saved status or flip the page into an error.
+      setError(null);
+      try {
+        const data = await fetchApplicationHub(applicationId);
+        setHub(data);
+      } catch {
+        // Keep the optimistic hub; the status was persisted successfully.
+      }
     } catch (e) {
       setHub(prev);
       toast.error(e instanceof Error ? e.message : "Could not update status");
