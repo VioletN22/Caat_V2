@@ -59,11 +59,15 @@ export async function SchoolScholarshipsSection({ schoolId, schoolName }: Props)
   let totalCount = count ?? scholarships.length;
 
   if (scholarships.length === 0) {
-    const normalizedName = normalizeSchoolName(schoolName);
+    // Wrap the value in double quotes so reserved PostgREST `.or()` characters
+    // (commas, parentheses) in a school name like "University of California,
+    // Berkeley" are treated literally instead of splitting the OR expression.
+    // Strip embedded quotes first so they can't break out of the quoting.
+    const normalizedName = normalizeSchoolName(schoolName).replace(/"/g, "");
     const fallback = await supabase
       .from("scholarships")
       .select(SCHOOL_SCHOLARSHIP_COLUMNS, { count: "exact" })
-      .or(`school_name.ilike.%${normalizedName}%,provider_name.ilike.%${normalizedName}%`)
+      .or(`school_name.ilike."%${normalizedName}%",provider_name.ilike."%${normalizedName}%"`)
       .range(0, PREVIEW_LIMIT - 1);
 
     if (!fallback.error) {
@@ -81,8 +85,10 @@ export async function SchoolScholarshipsSection({ schoolId, schoolName }: Props)
 
   const previewing = scholarships.slice(0, PREVIEW_LIMIT);
   const hiddenCount = Math.max(0, totalCount - previewing.length);
-  const filterName = normalizeSchoolName(schoolName);
-  const viewAllHref = `/scholarships?university=${encodeURIComponent(filterName)}`;
+  // B14 — the scholarships page filters universities by EXACT school_name, so
+  // pass the exact name (not the "The "-stripped normalized form) or the
+  // "View all" link lands on an empty result set.
+  const viewAllHref = `/scholarships?university=${encodeURIComponent(schoolName)}`;
 
   return (
     <section className="mt-10">
