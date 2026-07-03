@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { parseLocalDate } from "@/lib/local-date";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,7 +58,9 @@ function deadlineParts(dateStr: string | null) {
 }
 function fmtDate(s: string | null) {
   if (!s) return null;
-  return new Date(s).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+  // Parse the date-only portion in local time so a UTC-midnight parse doesn't
+  // display the previous calendar day for users west of UTC.
+  return parseLocalDate(s.slice(0, 10)).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
 }
 
 export default function ApplicationHubClient({ applicationId }: { applicationId: string }) {

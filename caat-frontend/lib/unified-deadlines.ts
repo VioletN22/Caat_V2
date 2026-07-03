@@ -7,6 +7,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { todayKey } from "@/lib/local-date";
 
 export type DeadlineSource = "app" | "scholarship" | "event";
 
@@ -94,7 +95,9 @@ export async function fetchUnifiedDeadlines(
   supabase: SupabaseClient,
   userId: string
 ): Promise<UnifiedDeadline[]> {
-  const todayISO = new Date().toISOString().split("T")[0];
+  // Local calendar day, not UTC — otherwise users west of UTC drop or keep
+  // deadlines a day early/late when comparing against date-only strings.
+  const todayISO = todayKey();
 
   const [appRes, schRes, evtRes] = await Promise.all([
     supabase
