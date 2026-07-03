@@ -299,8 +299,10 @@ export function CommunityFeedClient({
             key={post.id}
             post={post}
             currentUser={currentUser}
-            initialIsLiked={likedIds.has(post.id)}
-            initialIsSaved={savedIds.has(post.id)}
+            // D7 — prefer the per-post viewer state (correct for every page on
+            // infinite scroll); fall back to the first-page sets when absent.
+            initialIsLiked={post.viewer_has_liked ?? likedIds.has(post.id)}
+            initialIsSaved={post.viewer_has_saved ?? savedIds.has(post.id)}
             onPostDeleted={handlePostDeleted}
             onTopicClick={handleTopicClick}
           />

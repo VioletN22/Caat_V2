@@ -49,7 +49,6 @@ import {
   uploadDocument,
   deleteDocument,
   reuploadDocument,
-  updateDocumentStatus,
   getDocumentSignedUrl,
   DocumentRow,
   DocCategory,
@@ -168,85 +167,32 @@ function FileIcon({ fileName, status }: { fileName: string; status: string }) {
   );
 }
 
-const STATUS_OPTIONS = [
-  {
-    value: "verified",
-    label: "Verified",
-    icon: <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />,
-  },
-  {
-    value: "pending_review",
-    label: "In Review",
-    icon: <Clock className="h-3.5 w-3.5 text-amber-400" />,
-  },
-  {
-    value: "resubmit",
-    label: "Resubmit",
-    icon: <AlertTriangle className="h-3.5 w-3.5 text-[#9a1a27]" />,
-  },
-] as const;
-
-function StatusBadge({
-  status,
-  onStatusChange,
-}: {
-  status: string;
-  onStatusChange: (newStatus: string) => void;
-}) {
+// D4 — document status is system/admin-set, never chosen by the student.
+// This is a read-only display (no dropdown), so a student can't self-verify.
+function StatusBadge({ status }: { status: string }) {
   const mapped = mapStatus(status);
 
-  let badge: React.ReactNode;
   if (mapped === "Verified") {
-    badge = (
-      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-green-600">
+    return (
+      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-400">
         <CheckCircle2 className="h-4 w-4" />
         Verified
       </span>
     );
-  } else if (mapped === "In Review") {
-    badge = (
-      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-500">
+  }
+  if (mapped === "In Review") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-600 dark:text-amber-400">
         <Clock className="h-4 w-4" />
         In Review
       </span>
     );
-  } else {
-    badge = (
-      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9a1a27]">
-        <AlertTriangle className="h-4 w-4" />
-        Resubmit
-      </span>
-    );
   }
-
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button className="rounded px-1 text-left hover:bg-muted transition-colors focus:outline-none">
-          {badge}
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-40">
-        <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Set status
-        </p>
-        <DropdownMenuSeparator />
-        {STATUS_OPTIONS.map((opt) => (
-          <DropdownMenuItem
-            key={opt.value}
-            className="gap-2"
-            disabled={status === opt.value}
-            onClick={() => onStatusChange(opt.value)}
-          >
-            {opt.icon}
-            {opt.label}
-            {status === opt.value && (
-              <CheckCircle2 className="h-3.5 w-3.5 ml-auto text-muted-foreground" />
-            )}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9a1a27] dark:text-[#e5707e]">
+      <AlertTriangle className="h-4 w-4" />
+      Resubmit
+    </span>
   );
 }
 
@@ -557,16 +503,6 @@ export default function DocumentVaultClient({
     }
   }
 
-  async function handleStatusChange(doc: DocumentRow, newStatus: string) {
-    try {
-      const updated = await updateDocumentStatus(doc.id, newStatus);
-      setDocs((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
-      toast.success("Status updated");
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to update status");
-    }
-  }
-
   // Filtering & pagination
   const filteredDocs =
     activeTab === "All Files"
@@ -741,11 +677,8 @@ export default function DocumentVaultClient({
                 />
               </div>
 
-              {/* Status */}
-              <StatusBadge
-                status={doc.status}
-                onStatusChange={(newStatus) => handleStatusChange(doc, newStatus)}
-              />
+              {/* Status — read-only (system-set), see D4 */}
+              <StatusBadge status={doc.status} />
 
               {/* Date */}
               <span className="text-sm text-muted-foreground">

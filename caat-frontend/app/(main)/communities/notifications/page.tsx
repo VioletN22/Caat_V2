@@ -62,7 +62,12 @@ export default async function NotificationsPage() {
               {notifications.map((n) => {
                 const cfg = TYPE_CONFIG[n.type] ?? FALLBACK_CONFIG;
                 const Icon = cfg.icon;
-                const href = n.post_id ? `/communities/${n.post_id}` : n.type === "follow" ? `/communities/profile/${n.actor_name}` : "/communities";
+                // D5 — follow notifications must link by actor id, not name.
+                const href = n.post_id
+                  ? `/communities/${n.post_id}`
+                  : n.type === "follow" && n.actor_id
+                    ? `/communities/profile/${n.actor_id}`
+                    : "/communities";
                 return (
                   <Link
                     key={n.id}

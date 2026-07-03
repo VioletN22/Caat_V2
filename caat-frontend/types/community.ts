@@ -49,6 +49,7 @@ export interface NotificationItem {
     | "join_request"
     | "request_approved"
     | "comment_like";
+  actor_id: string | null;
   actor_name: string;
   actor_avatar: string | null;
   post_id: string | null;
@@ -136,5 +137,9 @@ export interface CommunityPost {
   likes_count: number;
   comments_count: number;
   saves_count: number;
+  /** Whether the requesting viewer has liked/saved this post (D7). Undefined
+   *  when computed without a viewer (e.g. logged-out server render). */
+  viewer_has_liked?: boolean;
+  viewer_has_saved?: boolean;
   author: PostAuthor | null;
 }

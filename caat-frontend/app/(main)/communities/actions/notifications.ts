@@ -67,6 +67,7 @@ export async function fetchNotificationsAction(
   const notifications: NotificationItem[] = rows.map((row) => ({
     id: row.id as string,
     type: row.type as NotificationItem["type"],
+    actor_id: (row.actor_id as string | null) ?? null,
     actor_name: actorMap.get(row.actor_id as string)?.name ?? "Someone",
     actor_avatar: actorMap.get(row.actor_id as string)?.avatar ?? null,
     post_id: (row.post_id as string | null) ?? null,

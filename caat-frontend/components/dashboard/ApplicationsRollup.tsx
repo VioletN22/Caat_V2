@@ -45,7 +45,6 @@ export function ApplicationsRollup() {
 
   useEffect(() => {
     let cancelled = false;
-    setError(false);
     fetchApplications()
       .then((a) => { if (!cancelled) setApps(a); })
       .catch(() => { if (!cancelled) { setError(true); setApps([]); } });
@@ -63,7 +62,7 @@ export function ApplicationsRollup() {
           <ErrorState
             compact
             message="Couldn't load your applications."
-            onRetry={() => { setApps(null); setReloadKey((k) => k + 1); }}
+            onRetry={() => { setError(false); setApps(null); setReloadKey((k) => k + 1); }}
           />
         </CardContent>
       </Card>
