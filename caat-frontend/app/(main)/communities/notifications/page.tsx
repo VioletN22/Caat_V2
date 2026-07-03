@@ -8,7 +8,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { getInitials } from "@/lib/user-utils";
-import { fetchNotificationsAction, markNotificationsReadAction } from "@/app/(main)/communities/actions";
+import { fetchNotificationsAction } from "@/app/(main)/communities/actions";
+import { MarkNotificationsRead } from "./MarkRead";
 import type { NotificationItem } from "@/types/community";
 
 const TYPE_CONFIG: Record<NotificationItem["type"], { icon: React.ElementType; label: string }> = {
@@ -24,10 +25,10 @@ const FALLBACK_CONFIG = { icon: Bell, label: "sent you a notification" };
 
 export default async function NotificationsPage() {
   const { notifications } = await fetchNotificationsAction(50);
-  await markNotificationsReadAction();
 
   return (
     <>
+      <MarkNotificationsRead />
       <header className="flex h-16 shrink-0 items-center gap-2 px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />

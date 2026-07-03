@@ -31,6 +31,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   fetchApplicationHub,
   updateApplicationStatus,
+  updateApplicationDeadline,
   fetchMajorOptions,
   type ApplicationHub,
 } from "./api";
@@ -115,6 +116,20 @@ export default function ApplicationHubClient({ applicationId }: { applicationId:
       toast.error(e instanceof Error ? e.message : "Could not update status");
     } finally {
       setSavingStatus(false);
+    }
+  };
+
+  // M9 — set/clear the application deadline from the hub (was read-only).
+  const onDeadlineChange = async (value: string) => {
+    if (!hub) return;
+    const deadline_at = value || null;
+    const prev = hub;
+    setHub({ ...hub, application: { ...hub.application, deadline_at } });
+    try {
+      await updateApplicationDeadline(hub.application.id, deadline_at);
+    } catch (e) {
+      setHub(prev);
+      toast.error(e instanceof Error ? e.message : "Could not update deadline");
     }
   };
 
@@ -436,8 +451,21 @@ export default function ApplicationHubClient({ applicationId }: { applicationId:
                     <div className="text-xs text-muted-foreground mt-3">{fmtDate(application.deadline_at)}</div>
                   </>
                 ) : (
-                  <div className="text-sm text-muted-foreground">No deadline set</div>
+                  <div className="text-sm text-muted-foreground mb-3">No deadline set</div>
                 )}
+                {/* M9 — make the deadline actionable from the hub. */}
+                <div className="mt-4 flex items-center gap-2">
+                  <label htmlFor="hub-deadline" className="text-xs text-muted-foreground">
+                    {application.deadline_at ? "Change" : "Set"} deadline
+                  </label>
+                  <Input
+                    id="hub-deadline"
+                    type="date"
+                    value={application.deadline_at ?? ""}
+                    onChange={(e) => onDeadlineChange(e.target.value)}
+                    className="h-8 w-auto text-xs"
+                  />
+                </div>
               </CardContent>
             </Card>
 

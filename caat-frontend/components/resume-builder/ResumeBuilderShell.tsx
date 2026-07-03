@@ -286,6 +286,14 @@ export default function ResumeBuilderShell() {
   // Delete section
   // --------------------------------------------------
   function deleteSection(id: string) {
+    // M1 — confirm before removing a section (destructive, loses its content).
+    const target = sections.find((s) => s.id === id);
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(`Delete the "${target?.label ?? "section"}" section? This cannot be undone.`)
+    ) {
+      return;
+    }
     setSections((prev) => {
       const next = prev.filter((s) => s.id !== id);
 
@@ -362,6 +370,19 @@ export default function ResumeBuilderShell() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sections, settings]);
+
+  // M1 — warn on hard close/refresh while a save is still pending in the 2s
+  // autosave window (complements the flush-on-unmount for SPA navigation).
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (autosaveTimerRef.current || isSaving) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isSaving]);
 
   // Persist the currently-loaded resume's pending edits before its content is
   // replaced (switch / new / unmount), reading from refs so it never saves a

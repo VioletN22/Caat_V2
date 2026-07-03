@@ -196,10 +196,20 @@ export default function MajorsClient({
         </p>
 
         {filtered.length === 0 ? (
-          <div className="text-center py-20 text-muted-foreground">
-            {selectedFilter === "Bookmarked"
-              ? "No bookmarked majors yet. Bookmark a major to see it here."
-              : "No majors found. Try adjusting your search or filters."}
+          <div className="flex flex-col items-center gap-3 text-center py-20 text-muted-foreground">
+            {selectedFilter === "Bookmarked" ? (
+              <>
+                <p>No bookmarked majors yet. Bookmark a major to see it here.</p>
+                <Button
+                  className="bg-[#9a1a27] hover:bg-[#7d1520] text-white"
+                  onClick={() => handleFilterChange("All")}
+                >
+                  Browse majors
+                </Button>
+              </>
+            ) : (
+              "No majors found. Try adjusting your search or filters."
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-24">

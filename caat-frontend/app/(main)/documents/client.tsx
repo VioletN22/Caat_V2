@@ -698,8 +698,8 @@ export default function DocumentVaultClient({
               </span>
 
               {/* Action */}
-              <div className="flex justify-end">
-                {doc.status === "resubmit" ? (
+              <div className="flex justify-end items-center gap-1">
+                {doc.status === "resubmit" && (
                   <Button
                     size="sm"
                     onClick={() => openReuploadSheet(doc)}
@@ -708,7 +708,9 @@ export default function DocumentVaultClient({
                   >
                     Fix Now
                   </Button>
-                ) : (
+                )}
+                {/* M10 — resubmit rows keep View/Delete too, not just Fix Now. */}
+                {(
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button

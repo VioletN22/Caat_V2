@@ -153,6 +153,9 @@ export function BookmarkedSchoolsList() {
         <p className="text-sm">
           Browse schools and click the bookmark icon on any school to save it here.
         </p>
+        <Button asChild className="mt-2 bg-[#9a1a27] hover:bg-[#7d1520] text-white">
+          <Link href="/schools">Browse schools</Link>
+        </Button>
       </div>
     );
   }

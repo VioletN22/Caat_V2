@@ -112,6 +112,19 @@ export default function EssaysShell({
   const pendingSaveRef = useRef(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // M1 — warn on hard close/refresh while an essay edit is still within the
+  // autosave window (complements the flush-before-switch/unmount fixes).
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (autosaveTimerRef.current || savingRef.current || pendingSaveRef.current) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
+
   // Persist the outgoing draft's pending edits before its content is replaced,
   // so switching draft/prompt (or navigating) within the autosave window never
   // drops work. Best-effort: updates the drafts list without touching the
