@@ -178,13 +178,13 @@ async function enrichPosts(
     universityIds.length
       ? supabase.from("schools").select("id, name").in("id", universityIds)
       : Promise.resolve({ data: [] as { id: number; name: string }[] }),
+    // A10 — poll tallies come from a SECURITY DEFINER aggregate RPC (counts only,
+    // no voter ids) so the poll_votes SELECT policy can be scoped to the voter
+    // without leaking who voted for what.
     pollPostIds.length
-      ? supabase
-          .from("community_poll_votes")
-          .select("post_id, option_id")
-          .in("post_id", pollPostIds)
+      ? supabase.rpc("get_poll_vote_counts", { post_ids: pollPostIds })
       : Promise.resolve({
-          data: [] as { post_id: string; option_id: string }[],
+          data: [] as { post_id: string; option_id: string; votes: number }[],
         }),
     currentUserId && pollPostIds.length
       ? supabase
@@ -225,10 +225,11 @@ async function enrichPosts(
   for (const v of (pollVotesRes.data ?? []) as {
     post_id: string;
     option_id: string;
+    votes: number;
   }[]) {
     if (!pollCountMap.has(v.post_id)) pollCountMap.set(v.post_id, {});
     const m = pollCountMap.get(v.post_id)!;
-    m[v.option_id] = (m[v.option_id] ?? 0) + 1;
+    m[v.option_id] = Number(v.votes);
   }
   const userVoteMap = new Map(
     ((userVotesRes.data ?? []) as { post_id: string; option_id: string }[]).map(
