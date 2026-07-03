@@ -62,6 +62,15 @@ export function AppSidebar({
   // resolved once server-side and passed in.
   const { user: authUser } = useAuth()
 
+  // NavUser mounts a Radix dropdown; render it only after hydration so it never
+  // SSRs. The sidebar's collapsed-state tooltips make Radix's useId sequence
+  // differ between server and client, which would surface as a hydration
+  // mismatch on the dropdown's id if NavUser were server-rendered. The user is
+  // still resolved without a network call (from AuthContext), so this only
+  // defers the footer avatar by one frame, exactly as before Phase 3.
+  const [mounted, setMounted] = React.useState(false)
+  React.useEffect(() => setMounted(true), [])
+
   const user = authUser
     ? {
         name:
@@ -151,7 +160,7 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter className="border-t border-[#E5E5E5]">
-        {user && <NavUser user={user} />}
+        {mounted && user && <NavUser user={user} />}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
