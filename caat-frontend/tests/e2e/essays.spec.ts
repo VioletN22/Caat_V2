@@ -3,7 +3,7 @@
  *
  * The autosave test used to wrap every assertion in `if (isVisible)`, so it
  * passed green even when no editor/textbox rendered (the test account has no
- * seeded prompt) — a false signal for the exact data-loss path (B4) it was
+ * seeded prompt), a false signal for the exact data-loss path (B4) it was
  * meant to guard. It now SEEDS a real prompt through the "Add custom essay"
  * UI, drives the autosave path with unconditional assertions, and cleans up
  * the seeded essay afterwards. If seeding itself fails, the test FAILS (it
@@ -46,12 +46,12 @@ test.describe("Essays", () => {
       await titleInput.press("Enter");
 
       // Creating a custom essay selects it. With no draft yet, the empty state
-      // offers "New draft" — create one to reveal the editor.
+      // offers "New draft"; create one to reveal the editor.
       const newDraft = page.getByRole("button", { name: /new draft/i }).first();
       await expect(newDraft).toBeVisible({ timeout: 10_000 });
       await newDraft.click();
 
-      // The editor textbox must now be present — assert unconditionally.
+      // The editor textbox must now be present; assert unconditionally.
       const editor = page.getByPlaceholder("Start writing your essay here.");
       await expect(editor).toBeVisible({ timeout: 10_000 });
 
