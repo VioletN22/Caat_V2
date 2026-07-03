@@ -108,6 +108,20 @@ function ScoreEditor({
   const hasSubjects = SUBJECTS_CURRICULA.includes(score.curriculum);
   const hasCumulative = !SUBJECTS_ONLY_CURRICULA.includes(score.curriculum);
 
+  // Custom GPA scale: "custom mode" is on when a GPA score's scale is the
+  // "custom" sentinel OR any free-form value not in the preset list.
+  const gpaScaleValues: string[] = GPA_SCALES.map((s) => s.value);
+  const isCustomScale =
+    score.curriculum === "GPA" &&
+    !!score.score_scale &&
+    !gpaScaleValues.includes(score.score_scale);
+  // Draft buffer for the custom-scale input, kept separate from score_scale so a
+  // keystroke never flips isCustomScale and unmounts the input mid-typing. It is
+  // committed into score_scale on blur.
+  const [customScale, setCustomScale] = useState(
+    isCustomScale && score.score_scale !== "custom" ? score.score_scale! : ""
+  );
+
   return (
     <div className="flex flex-col gap-2 p-3 rounded-lg border border-border bg-muted/30">
       {/* Header row */}
@@ -148,7 +162,7 @@ function ScoreEditor({
       {/* GPA scale selector */}
       {score.curriculum === "GPA" && (
         <Select
-          value={score.score_scale ?? undefined}
+          value={isCustomScale ? "custom" : (score.score_scale ?? undefined)}
           onValueChange={(v) => onChange({ ...score, score_scale: v })}
         >
           <SelectTrigger size="sm" className="h-8 w-full">
@@ -165,12 +179,17 @@ function ScoreEditor({
         </Select>
       )}
 
-      {/* Custom GPA scale input */}
-      {score.curriculum === "GPA" && score.score_scale === "custom" && (
+      {/* Custom GPA scale input — controlled by a draft, committed on blur so
+          typing multiple characters no longer unmounts the field. */}
+      {score.curriculum === "GPA" && isCustomScale && (
         <Input
           placeholder="Enter max score (e.g. 7.0)"
           className="h-8 text-sm"
-          onChange={(e) => onChange({ ...score, score_scale: e.target.value })}
+          value={customScale}
+          onChange={(e) => setCustomScale(e.target.value)}
+          onBlur={() =>
+            onChange({ ...score, score_scale: customScale.trim() || "custom" })
+          }
         />
       )}
 
