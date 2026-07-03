@@ -30,6 +30,10 @@ interface CalendarEvent {
 
 interface EventForm {
   title: string;
+  // The event's own date (B15). Editing keeps this so changing only the title
+  // never moves the event onto whatever day the calendar happens to have
+  // selected. Empty for a new event, which falls back to the selected day.
+  event_date: string;
   description: string;
   time_start: string;
   time_end: string;
@@ -39,6 +43,7 @@ interface EventForm {
 
 const EMPTY_FORM: EventForm = {
   title: "",
+  event_date: "",
   description: "",
   time_start: "",
   time_end: "",
@@ -50,6 +55,7 @@ const EMPTY_FORM: EventForm = {
 function eventToForm(ev: CalendarEvent): EventForm {
   return {
     title: ev.title,
+    event_date: ev.event_date,
     description: ev.description ?? "",
     time_start: ev.time_start ?? "",
     time_end: ev.time_end ?? "",
@@ -161,7 +167,9 @@ export function CalendarWidget() {
 
     const payload = {
       title: form.title.trim(),
-      event_date: toDateKey(date),
+      // B15 — an edit keeps the event's own date; only a new event uses the
+      // currently selected calendar day.
+      event_date: editingId ? form.event_date : toDateKey(date),
       description: form.description.trim() || null,
       time_start: form.time_start || null,
       time_end: form.time_end || null,
