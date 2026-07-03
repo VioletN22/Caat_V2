@@ -50,7 +50,7 @@ export function OnboardingChecklist() {
         {
           id: "profile",
           label: "Complete your profile",
-          description: "Add your majors and preferred countries — this powers all your matches.",
+          description: "Add your majors and preferred countries. This powers all your matches.",
           href: "/profile",
           done: profileDone,
         },

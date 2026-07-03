@@ -145,7 +145,7 @@ export default function ApplicationsClient() {
         setFreshIds(new Set(added.map((a) => a.id)));
         const names = added.map((a) => a.schools?.name ?? "Unknown").join(", ");
         toast.success(
-          `Added ${added.length} school${added.length === 1 ? "" : "s"} as Researching — ${names}`,
+          `Added ${added.length} school${added.length === 1 ? "" : "s"} as Researching: ${names}`,
           { duration: 6000 }
         );
       }
@@ -306,7 +306,7 @@ export default function ApplicationsClient() {
             >
               <Bookmark className="h-4 w-4" />
               Import from Bookmarks
-              <span className="ml-1 inline-flex items-center justify-center text-[10px] font-semibold bg-[#9a1a27] text-white px-1.5 rounded-full leading-none py-0.5">
+              <span className="ml-1 inline-flex items-center justify-center text-[10px] font-semibold bg-[#9a1a27] text-white px-1.5 rounded-md leading-none py-0.5">
                 {unimportedCount}
               </span>
             </Button>
@@ -384,7 +384,7 @@ export default function ApplicationsClient() {
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
-            className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium transition-colors border ${
+            className={`inline-flex items-center rounded-md px-3 py-1 text-sm font-medium transition-colors border ${
               filter === f.key
                 ? "bg-[#9a1a27] text-white border-[#9a1a27] dark:border-[#e06b78]"
                 : "bg-background text-muted-foreground border-border hover:bg-muted"
@@ -529,7 +529,7 @@ function ApplicationCard({
             >
               <SelectTrigger
                 size="sm"
-                className={`h-auto w-auto rounded-full px-3 py-1 text-xs font-medium border-0 gap-1 ${STATUS_CONFIG[app.status].className}`}
+                className={`h-auto w-auto rounded-md px-3 py-1 text-xs font-medium border-0 gap-1 ${STATUS_CONFIG[app.status].className}`}
               >
                 <SelectValue />
               </SelectTrigger>

@@ -224,7 +224,7 @@ export default function MajorsClient({
 
       {compareIds.length >= 2 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
-          <div className="flex items-center gap-3 bg-background border rounded-full px-5 py-2.5 shadow-xl pointer-events-auto">
+          <div className="flex items-center gap-3 bg-background border rounded-lg px-5 py-2.5 shadow-xl pointer-events-auto">
             <span className="text-sm font-medium">
               {compareIds.length} majors selected
             </span>

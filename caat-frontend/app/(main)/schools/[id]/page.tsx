@@ -75,7 +75,7 @@ export default async function SchoolDetailPage({
         <div className="flex items-start justify-between gap-4 mb-6">
           <div className="space-y-1">
             {school.country && (
-              <span className="inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+              <span className="inline-block text-xs font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
                 {school.country}
               </span>
             )}

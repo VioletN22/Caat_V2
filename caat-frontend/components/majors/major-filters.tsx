@@ -56,7 +56,7 @@ export default function MajorFilters({
           Bookmarked
           {bookmarkedCount > 0 && (
             <span
-              className={`text-xs rounded-full px-1.5 py-0.5 font-medium ${
+              className={`text-xs rounded-md px-1.5 py-0.5 font-medium ${
                 selectedFilter === "Bookmarked"
                   ? "bg-white/20 text-white"
                   : "bg-secondary text-secondary-foreground"

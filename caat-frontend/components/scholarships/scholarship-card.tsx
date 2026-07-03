@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bookmark } from "lucide-react";
+import { Bookmark, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -45,8 +45,9 @@ export default function ScholarshipCard({
     <Card className={`flex flex-col h-[420px] overflow-hidden hover:shadow-lg transition-shadow ${matchReason ? "border-l-[3px] border-l-[#9a1a27]" : ""}`}>
       <CardHeader className="pb-3 gap-2">
         {matchReason && (
-          <span className="inline-block self-start bg-[#9a1a27] text-white text-[10px] font-semibold uppercase tracking-wide px-2 py-1 leading-tight">
-            ★ {matchReason}
+          <span className="inline-flex items-center gap-1 self-start bg-[#9a1a27] text-white text-[10px] font-semibold uppercase tracking-wide px-2 py-1 leading-tight">
+            <Sparkles className="h-2.5 w-2.5" aria-hidden />
+            {matchReason}
           </span>
         )}
         {/* University name + bookmark */}
@@ -66,7 +67,7 @@ export default function ScholarshipCard({
         </div>
 
         {statusLabel ? (
-          <span className="inline-block self-start text-[10px] font-mono uppercase tracking-wide px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+          <span className="inline-block self-start text-[10px] font-mono uppercase tracking-wide px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
             {statusLabel}
           </span>
         ) : null}
@@ -86,7 +87,7 @@ export default function ScholarshipCard({
               return (
                 <span
                   key={tag}
-                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide ${color}`}
+                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wide ${color}`}
                 >
                   {tag}
                 </span>

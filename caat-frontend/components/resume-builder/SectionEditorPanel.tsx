@@ -112,7 +112,7 @@ export default function SectionEditorPanel({
           <>
             {supportsGuided && isEmptyHtml(section.contentHtml) && (
               <div className="mb-3 rounded-md border border-dashed bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                Your free-text version is empty — type below, or switch back to{" "}
+                Your free-text version is empty. Type below, or switch back to{" "}
                 <button
                   type="button"
                   onClick={() => setMode("guided")}

@@ -130,7 +130,7 @@ export function BookmarkedSchoolsWidget() {
       >
         {totalCount > DISPLAY_LIMIT
           ? `+${totalCount - DISPLAY_LIMIT} more · View all schools →`
-          : "View all schools →"}
+          : "View all schools"}
       </Link>
     </div>
   );

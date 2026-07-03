@@ -472,7 +472,7 @@ export function CalendarWidget() {
                   <div className="flex items-center gap-1 text-muted-foreground">
                     <Clock className="h-3 w-3 shrink-0" />
                     <span>
-                      {formatTime(ev.time_start) ?? "—"}
+                      {formatTime(ev.time_start) ?? "-"}
                       {ev.time_end ? ` → ${formatTime(ev.time_end)}` : ""}
                     </span>
                   </div>

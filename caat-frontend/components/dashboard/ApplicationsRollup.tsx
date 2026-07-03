@@ -138,7 +138,7 @@ export function ApplicationsRollup() {
                       <span className="font-medium text-sm truncate group-hover:underline">
                         {a.schools?.name ?? "School"}
                       </span>
-                      <span className="text-[10px] font-mono uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">
+                      <span className="text-[10px] font-mono uppercase tracking-wide px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground shrink-0">
                         {STATUS_CONFIG[a.status].label}
                       </span>
                     </div>

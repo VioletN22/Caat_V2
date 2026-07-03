@@ -111,7 +111,7 @@ export function BookmarkedMajorsWidget() {
       >
         {totalCount > DISPLAY_LIMIT
           ? `+${totalCount - DISPLAY_LIMIT} more · View all majors →`
-          : "View all majors →"}
+          : "View all majors"}
       </Link>
     </div>
   );

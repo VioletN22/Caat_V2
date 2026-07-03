@@ -51,7 +51,7 @@ function daysUntil(dateStr: string): number {
   return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 function deadlineParts(dateStr: string | null) {
-  if (!dateStr) return { num: "—", label: "no deadline set", color: "text-muted-foreground" };
+  if (!dateStr) return { num: "-", label: "no deadline set", color: "text-muted-foreground" };
   const d = daysUntil(dateStr);
   const color = d < 0 || d <= 7 ? "text-[#9a1a27] dark:text-[#e06b78]" : d <= 30 ? "text-amber-600 dark:text-amber-400" : "text-green-600";
   const num = d < 0 ? `${Math.abs(d)}d` : d === 0 ? "Today" : `${d}d`;
@@ -338,7 +338,7 @@ export default function ApplicationHubClient({ applicationId }: { applicationId:
                               {s.amount ?? s.provider}
                             </div>
                           </div>
-                          <span className="shrink-0 text-[10px] font-mono uppercase tracking-wide px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                          <span className="shrink-0 text-[10px] font-mono uppercase tracking-wide px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
                             {SCHOLARSHIP_STATUS_LABELS[s.status]}
                           </span>
                         </li>
@@ -524,7 +524,7 @@ function MajorsEditor({
       <div className="flex flex-wrap items-center gap-2 mb-2">
         {country ? <span className="text-sm text-muted-foreground mr-1">{country} · applying for</span> : null}
         {majors.map((m) => (
-          <span key={m} className="inline-flex items-center gap-1.5 text-sm rounded-full bg-muted px-2.5 py-0.5">
+          <span key={m} className="inline-flex items-center gap-1.5 text-sm rounded-md bg-muted px-2.5 py-0.5">
             {m}
             <button onClick={() => remove(m)} className="text-muted-foreground hover:text-foreground">
               <X className="h-3 w-3" />

@@ -27,7 +27,7 @@ export function calcCompletion(
 export function completionHint(pct: number): string {
   if (pct < 50) return "Fill in your personal and academic info to get started.";
   if (pct < 80) return "Add test scores to reach 80%.";
-  if (pct < 100) return "Almost there — add your interests and goals.";
+  if (pct < 100) return "Almost there. Add your interests and goals.";
   return "Your profile is complete!";
 }
 

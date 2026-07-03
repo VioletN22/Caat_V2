@@ -54,7 +54,7 @@ const FUNDING_LABELS: Record<string, string> = {
   tuition: "Tuition Remission",
 };
 const FREQUENCY_OPTIONS = [
-  { value: "", label: "— Select —" },
+  { value: "", label: "Select" },
   { value: "one_time", label: "One-time" },
   { value: "yearly", label: "Yearly" },
   { value: "semester", label: "Per Semester" },
@@ -340,7 +340,7 @@ function ScholarshipFormDialog({
                       onValueChange={(v) => set("frequency", v || null)}
                     >
                       <SelectTrigger id="s-frequency" className="h-9 w-full">
-                        <SelectValue placeholder="— Select —" />
+                        <SelectValue placeholder="Select" />
                       </SelectTrigger>
                       <SelectContent>
                         {FREQUENCY_OPTIONS.filter((o) => o.value).map((o) => (

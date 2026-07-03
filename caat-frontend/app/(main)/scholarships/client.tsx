@@ -624,7 +624,7 @@ export default function ScholarshipsClient({
                   Bookmarked
                   {bookmarkedIds.size > 0 && (
                     <span
-                      className={`text-xs rounded-full px-1.5 py-0.5 font-medium leading-none ${
+                      className={`text-xs rounded-md px-1.5 py-0.5 font-medium leading-none ${
                         showBookmarked
                           ? "bg-primary-foreground/20 text-primary-foreground"
                           : "bg-secondary text-secondary-foreground"

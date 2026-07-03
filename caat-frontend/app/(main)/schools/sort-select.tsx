@@ -10,9 +10,9 @@ import {
 } from "@/components/ui/select";
 
 export const SORT_OPTIONS = [
-  { value: "name_asc", label: "Name (A → Z)" },
-  { value: "name_desc", label: "Name (Z → A)" },
-  { value: "country_asc", label: "Country (A → Z)" },
+  { value: "name_asc", label: "Name (A-Z)" },
+  { value: "name_desc", label: "Name (Z-A)" },
+  { value: "country_asc", label: "Country (A-Z)" },
 ] as const;
 
 export type SortOption = (typeof SORT_OPTIONS)[number]["value"];

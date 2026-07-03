@@ -548,7 +548,7 @@ export async function leaveGroupAction(
     .maybeSingle();
   if (group?.creator_id === user.id)
     return {
-      error: "As the creator you can't leave — delete the community instead.",
+      error: "As the creator you can't leave. Delete the community instead.",
     };
 
   await supabase

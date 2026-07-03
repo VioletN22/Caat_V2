@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Bookmark, School } from "lucide-react";
+import { Bookmark, School, ChevronLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -53,7 +53,7 @@ export function SchoolFilterBar({
     <div className="flex items-center gap-2 flex-wrap">
       <button
         onClick={() => setFilter("All")}
-        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition-colors border
+        className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium transition-colors border
           ${activeFilter === "All"
             ? "bg-[#9a1a27] text-white border-[#9a1a27] dark:border-[#e06b78]"
             : "bg-background text-muted-foreground border-border hover:bg-muted"
@@ -63,7 +63,7 @@ export function SchoolFilterBar({
       </button>
       <button
         onClick={() => setFilter("Bookmarked")}
-        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition-colors border
+        className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium transition-colors border
           ${activeFilter === "Bookmarked"
             ? "bg-[#9a1a27] text-white border-[#9a1a27] dark:border-[#e06b78]"
             : "bg-background text-muted-foreground border-border hover:bg-muted"
@@ -72,7 +72,7 @@ export function SchoolFilterBar({
         <Bookmark className="h-3.5 w-3.5" />
         Bookmarked
         {bookmarkedCount > 0 && (
-          <span className={`ml-0.5 rounded-full px-1.5 py-0 text-xs font-semibold
+          <span className={`ml-0.5 rounded-md px-1.5 py-0 text-xs font-semibold
             ${activeFilter === "Bookmarked" ? "bg-white/20" : "bg-muted-foreground/20"}`}>
             {bookmarkedCount}
           </span>
@@ -177,8 +177,8 @@ export function BookmarkedSchoolsList() {
           </Link>
         ))}
       </div>
-      <Button asChild variant="ghost" size="sm" className="text-xs mt-2">
-        <Link href="/schools">← Back to all schools</Link>
+      <Button asChild variant="ghost" size="sm" className="text-xs mt-2 gap-1.5">
+        <Link href="/schools"><ChevronLeft className="h-3.5 w-3.5" />Back to all schools</Link>
       </Button>
     </div>
   );

@@ -50,7 +50,7 @@ export default function MajorCard({
         {/* Category + bookmark (top right, matches scholarship card) */}
         <div className="flex items-start justify-between gap-2">
           <span
-            className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${categoryColor}`}
+            className={`inline-block text-xs font-medium px-2 py-0.5 rounded-md ${categoryColor}`}
           >
             {major.category}
           </span>
