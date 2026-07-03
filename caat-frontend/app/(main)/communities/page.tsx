@@ -9,7 +9,7 @@ export default async function CommunitiesPage() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const { posts, nextCursor } = await fetchPostsAction();
+  const { posts, nextCursor, error: feedError } = await fetchPostsAction();
   const postIds = posts.map((p) => p.id);
 
   const [likedResult, savedResult, profileResult] = await Promise.all([
@@ -41,6 +41,7 @@ export default async function CommunitiesPage() {
               currentUser={currentUser}
               initialLikedIds={likedIds}
               initialSavedIds={savedIds}
+              initialError={feedError ?? false}
             />
           </main>
 

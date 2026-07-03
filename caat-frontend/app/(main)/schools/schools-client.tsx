@@ -7,6 +7,7 @@ import { Bookmark, School } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ErrorState";
 import { supabase } from "@/lib/supabase/client";
 import { getClientUserId } from "@/lib/current-user";
 
@@ -87,20 +88,32 @@ export function SchoolFilterBar({
 export function BookmarkedSchoolsList() {
   const [schools, setSchools] = useState<BookmarkedSchool[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
     async function load() {
+      setError(false);
       const userId = await getClientUserId();
       if (!userId) {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
         return;
       }
 
-      const { data } = await supabase
+      const { data, error: qErr } = await supabase
         .from("user_bookmarked_schools")
         .select("school_id, schools(id, name, country)")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
+
+      if (cancelled) return;
+      if (qErr) {
+        // D2 — a fetch failure must not read as "no bookmarks".
+        setError(true);
+        setLoading(false);
+        return;
+      }
 
       const items = ((data ?? []) as unknown as BookmarkRow[])
         .map((r) => r.schools)
@@ -110,7 +123,8 @@ export function BookmarkedSchoolsList() {
       setLoading(false);
     }
     load();
-  }, []);
+    return () => { cancelled = true; };
+  }, [reloadKey]);
 
   if (loading) {
     return (
@@ -119,6 +133,15 @@ export function BookmarkedSchoolsList() {
           <Skeleton key={i} className="h-32 rounded-xl" />
         ))}
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <ErrorState
+        message="Couldn't load your bookmarked schools."
+        onRetry={() => { setLoading(true); setReloadKey((k) => k + 1); }}
+      />
     );
   }
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ClipboardList, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ErrorState";
 import { fetchApplications, fetchGlobalReadinessSignals } from "@/app/(main)/applications/api";
 import { STATUS_CONFIG, type ApplicationRow, type ApplicationStatus } from "@/types/applications";
 
@@ -39,11 +40,35 @@ function deadlineLabel(dateStr: string | null) {
 export function ApplicationsRollup() {
   const [apps, setApps] = useState<ApplicationRow[] | null>(null);
   const [signals, setSignals] = useState({ essayDrafted: false, keyDocsUploaded: false });
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    fetchApplications().then(setApps).catch(() => setApps([]));
-    fetchGlobalReadinessSignals().then(setSignals).catch(() => {});
-  }, []);
+    let cancelled = false;
+    setError(false);
+    fetchApplications()
+      .then((a) => { if (!cancelled) setApps(a); })
+      .catch(() => { if (!cancelled) { setError(true); setApps([]); } });
+    fetchGlobalReadinessSignals().then((s) => { if (!cancelled) setSignals(s); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [reloadKey]);
+
+  if (error) {
+    return (
+      <Card className="shadow-sm">
+        <CardHeader className="space-y-0">
+          <CardTitle className="text-base">Your applications</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ErrorState
+            compact
+            message="Couldn't load your applications."
+            onRetry={() => { setApps(null); setReloadKey((k) => k + 1); }}
+          />
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (apps === null) {
     return (
