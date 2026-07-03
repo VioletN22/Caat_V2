@@ -1,21 +1,9 @@
 import { Suspense } from "react";
 import { createServerClient } from "@/lib/supabase/server";
+import { fetchProfileServer } from "@/lib/profile-server";
 import { PageHeader } from "@/components/PageHeader";
 import MajorsClient from "./client";
 import type { FilterView, Major } from "@/types/majors";
-import type { ProfileRow } from "@/types/profile";
-
-async function fetchProfile(): Promise<ProfileRow | null> {
-  const sb = await createServerClient();
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return null;
-  const { data } = await sb
-    .from("profiles")
-    .select("id, first_name, last_name, email, birth_date, phone, linkedin, github, avatar_url, nationality, current_location, school_name, curriculum, graduation_year, target_majors, preferred_countries, activities, default_resume_id")
-    .eq("id", user.id)
-    .maybeSingle();
-  return (data as ProfileRow | null) ?? null;
-}
 
 export default async function MajorsPage({
   searchParams,
@@ -28,7 +16,7 @@ export default async function MajorsPage({
   const sb = await createServerClient();
   const [majorsRes, profile] = await Promise.all([
     sb.from("majors").select("*").order("name"),
-    fetchProfile(),
+    fetchProfileServer(),
   ]);
   const { data: majors, error } = majorsRes;
 

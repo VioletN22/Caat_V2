@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase/client";
+import { PROFILE_COLUMNS } from "@/lib/profile-columns";
 import type {
   ProfileRow,
   StandardisedTestScore,
@@ -25,9 +26,7 @@ export async function fetchProfile(): Promise<ProfileRow> {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select(
-      "id, first_name, last_name, email, birth_date, phone, linkedin, github, avatar_url, nationality, current_location, school_name, curriculum, graduation_year, target_majors, preferred_countries, activities, default_resume_id"
-    )
+    .select(PROFILE_COLUMNS)
     .eq("id", user.id)
     .maybeSingle();
 

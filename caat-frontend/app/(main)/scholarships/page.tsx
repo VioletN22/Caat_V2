@@ -1,21 +1,9 @@
 import { Suspense } from "react";
 import { createServerClient } from "@/lib/supabase/server";
+import { fetchProfileServer } from "@/lib/profile-server";
 import { PageHeader } from "@/components/PageHeader";
 import { ScholarshipRow } from "@/types/scholarships";
-import type { ProfileRow } from "@/types/profile";
 import ScholarshipsClient from "./client";
-
-async function fetchProfile(): Promise<ProfileRow | null> {
-  const sb = await createServerClient();
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return null;
-  const { data } = await sb
-    .from("profiles")
-    .select("id, first_name, last_name, email, birth_date, phone, linkedin, github, avatar_url, nationality, current_location, school_name, curriculum, graduation_year, target_majors, preferred_countries, activities, default_resume_id")
-    .eq("id", user.id)
-    .maybeSingle();
-  return (data as ProfileRow | null) ?? null;
-}
 
 const SCHOLARSHIP_FETCH_BATCH_SIZE = 1000;
 const SCHOLARSHIP_LIST_COLUMNS = `
@@ -57,7 +45,7 @@ async function fetchAllScholarships() {
 export default async function ScholarshipsPage() {
   const [{ data, error }, profile] = await Promise.all([
     fetchAllScholarships(),
-    fetchProfile(),
+    fetchProfileServer(),
   ]);
 
   if (error) {
