@@ -28,18 +28,21 @@ import SchoolBookmarkButton from "./school-bookmark-button";
 import type { ProfileRow } from "@/types/profile";
 import { matchSchool, type MatchResult } from "@/lib/profile-match";
 
-async function fetchProfileAndOfferedMajors(): Promise<{
+type ServerClient = Awaited<ReturnType<typeof createServerClient>>;
+
+async function fetchProfileAndOfferedMajors(
+  sb: ServerClient,
+  userId: string | null,
+): Promise<{
   profile: ProfileRow | null;
   offeredMajorsBySchool: Map<number, string[]>;
 }> {
-  const sb = await createServerClient();
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return { profile: null, offeredMajorsBySchool: new Map() };
+  if (!userId) return { profile: null, offeredMajorsBySchool: new Map() };
 
   const profileRes = await sb
     .from("profiles")
     .select(PROFILE_COLUMNS)
-    .eq("id", user.id)
+    .eq("id", userId)
     .maybeSingle();
   const profile = (profileRes.data as unknown as ProfileRow | null) ?? null;
 
@@ -100,6 +103,11 @@ export default async function SchoolsPage({
   const to = from + itemsPerPage - 1;
 
   const sb = await createServerClient();
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
+  const userId = user?.id ?? null;
+
   let query = sb
     .from("schools")
     .select("*", { count: "exact" })
@@ -131,11 +139,27 @@ export default async function SchoolsPage({
     query = query.order("name", { ascending: true });
   }
 
-  const [schoolsRes, { profile, offeredMajorsBySchool }] = await Promise.all([
-    query,
-    fetchProfileAndOfferedMajors(),
-  ]);
+  const [schoolsRes, { profile, offeredMajorsBySchool }, bookmarkedRes] =
+    await Promise.all([
+      query,
+      fetchProfileAndOfferedMajors(sb, userId),
+      // C2: fetch the whole bookmarked-schools set in ONE query, up front, so
+      // each card gets its state as a prop instead of firing its own
+      // getUser + bookmark query on mount (~48 requests per /schools load).
+      userId
+        ? sb
+            .from("user_bookmarked_schools")
+            .select("school_id")
+            .eq("user_id", userId)
+        : Promise.resolve({ data: null }),
+    ]);
   const { data: schools, count, error } = schoolsRes;
+
+  const bookmarkedSchoolIds = new Set(
+    ((bookmarkedRes.data as { school_id: number }[] | null) ?? []).map(
+      (r) => r.school_id,
+    ),
+  );
 
   if (error) {
     return <div className="p-10 text-[#9a1a27]">Unable to load schools. Please try again later.</div>;
@@ -218,7 +242,11 @@ export default async function SchoolsPage({
                       <CardTitle className="text-xl line-clamp-2 leading-tight">
                         {school.name}
                       </CardTitle>
-                      <SchoolBookmarkButton schoolId={school.id} compact />
+                      <SchoolBookmarkButton
+                        schoolId={school.id}
+                        compact
+                        initialBookmarked={bookmarkedSchoolIds.has(school.id)}
+                      />
                     </div>
                     <CardDescription className="text-base font-medium text-zinc-600 dark:text-zinc-400">
                       {school.country}
