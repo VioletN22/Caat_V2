@@ -11,9 +11,30 @@ import {
   GAP_PX,
   buildOccupied,
   hasConflict,
+  isPlacementValid,
   getGridHeight,
   pixelToCell,
 } from "@/lib/grid";
+
+/**
+ * Responsive column count. The stored layout is authored in COLS (4) columns;
+ * below `lg` we reflow into fewer columns and render a static (non-drag) grid
+ * so the flagship dashboard never overflows on a phone. `null` until measured
+ * on the client — the server/first paint assumes the desktop grid.
+ */
+function useResponsiveCols(): number {
+  const [cols, setCols] = useState<number>(COLS);
+  useEffect(() => {
+    const compute = () => {
+      const w = window.innerWidth;
+      setCols(w < 640 ? 1 : w < 1024 ? 2 : COLS);
+    };
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
+  }, []);
+  return cols;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -96,6 +117,31 @@ export function WidgetGrid({
   const [resize, setResize] = useState<ResizeState | null>(null);
   // Snapped landing zone shown as a ghost while dragging / resizing.
   const [preview, setPreview] = useState<Preview | null>(null);
+  const cols = useResponsiveCols();
+  const interactive = cols === COLS;
+
+  // Keyboard/step resize — grow or shrink a widget by whole cells. Works on
+  // every viewport (the only resize path when the grid is not drag-interactive).
+  const handleResizeStep = useCallback(
+    (instanceId: string, dw: number, dh: number) => {
+      const widget = widgets.find((w) => w.instanceId === instanceId);
+      if (!widget) return;
+      const def = getWidgetById(widget.widgetId);
+      const minW = def?.minW ?? 1;
+      const minH = def?.minH ?? 1;
+      const newW = Math.max(minW, Math.min(COLS - widget.gridX!, widget.gridW! + dw));
+      const newH = Math.max(minH, widget.gridH! + dh);
+      if (newW === widget.gridW! && newH === widget.gridH!) return;
+      const others = widgets
+        .filter((w) => w.gridX !== undefined)
+        .map((w) => ({ id: w.instanceId, x: w.gridX!, y: w.gridY!, w: w.gridW!, h: w.gridH! }));
+      if (!isPlacementValid({ x: widget.gridX!, y: widget.gridY!, w: newW, h: newH }, others, instanceId)) {
+        return;
+      }
+      onResize(instanceId, newW, newH);
+    },
+    [widgets, onResize]
+  );
 
   const getCanvasRect = useCallback(
     () => canvasRef.current?.getBoundingClientRect() ?? new DOMRect(),
@@ -314,6 +360,57 @@ export function WidgetGrid({
   }
 
   const positionedWidgets = widgets.filter((w) => w.gridX !== undefined);
+
+  // ---------------------------------------------------------------------------
+  // Reflow (mobile / tablet): static CSS grid, no drag. Widgets flow in reading
+  // order into `cols` columns, each spanning at most `cols` columns so nothing
+  // clips or overflows the viewport. Controls stay reachable (touch/keyboard).
+  // ---------------------------------------------------------------------------
+  if (!interactive) {
+    const ordered = [...positionedWidgets].sort(
+      (a, b) => a.gridY! - b.gridY! || a.gridX! - b.gridX!
+    );
+    return (
+      <div className="space-y-4">
+        <div
+          className="grid"
+          style={{
+            gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+            gridAutoRows: `${ROW_HEIGHT_PX}px`,
+            gap: `${GAP_PX}px`,
+            gridAutoFlow: "dense",
+          }}
+        >
+          {ordered.map((widget) => (
+            <div
+              key={widget.instanceId}
+              style={{
+                gridColumn: `span ${Math.min(widget.gridW!, cols)}`,
+                gridRow: `span ${widget.gridH!}`,
+                minWidth: 0,
+              }}
+            >
+              <WidgetCard
+                widget={widget}
+                interactive={false}
+                onRemove={onRemove}
+                onResizeStep={(dw, dh) => handleResizeStep(widget.instanceId, dw, dh)}
+              />
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={onOpenStore}
+          className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-muted-foreground/20 py-5 text-sm text-muted-foreground hover:border-muted-foreground/35 hover:text-foreground transition-colors"
+        >
+          <LayoutDashboard className="h-4 w-4" />
+          Add more widgets from the Widget Store
+        </button>
+      </div>
+    );
+  }
+
   const gridRows = getGridHeight(
     positionedWidgets.map((w) => ({ id: w.instanceId, x: w.gridX!, y: w.gridY!, w: w.gridW!, h: w.gridH! }))
   );
@@ -391,6 +488,7 @@ export function WidgetGrid({
               onResizeHandlePointerDown={(e) =>
                 handleResizeHandlePointerDown(widget.instanceId, e)
               }
+              onResizeStep={(dw, dh) => handleResizeStep(widget.instanceId, dw, dh)}
             />
           );
         })}
