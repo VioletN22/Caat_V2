@@ -47,7 +47,10 @@ export default function SkillsGuided({
   value: SkillsValue;
   onChange: (next: SkillsValue, html: string) => void;
 }) {
-  const categories: SkillCategory[] = Array.isArray(value.categories) ? value.categories : [emptyCategory()];
+  // Stable placeholder id (see EducationGuided): create once so the fallback
+  // category's key doesn't churn every render and remount its inputs.
+  const [placeholderCategory] = React.useState(emptyCategory);
+  const categories: SkillCategory[] = Array.isArray(value.categories) ? value.categories : [placeholderCategory];
 
   function update(index: number, patch: Partial<SkillCategory>) {
     const next = categories.map((c, i) => (i === index ? { ...c, ...patch } : c));

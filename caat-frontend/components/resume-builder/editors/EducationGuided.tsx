@@ -72,7 +72,11 @@ export default function EducationGuided({
   value: EducationValue;
   onChange: (next: EducationValue, html: string) => void;
 }) {
-  const entries: EducationEntry[] = Array.isArray(value.entries) ? value.entries : [emptyEntry()];
+  // Stable placeholder id: generating emptyEntry() inline ran crypto.randomUUID
+  // on every render, so the fallback row's key changed each render and remounted
+  // its inputs (losing focus). Create it once.
+  const [placeholderEntry] = React.useState(emptyEntry);
+  const entries: EducationEntry[] = Array.isArray(value.entries) ? value.entries : [placeholderEntry];
 
   function update(index: number, patch: Partial<EducationEntry>) {
     const next = entries.map((e, i) => (i === index ? { ...e, ...patch } : e));

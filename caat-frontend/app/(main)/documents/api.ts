@@ -162,7 +162,11 @@ export async function deleteDocument(doc: DocumentRow): Promise<void> {
     .maybeSingle();
 
   if (dbDoc?.storage_path) {
-    await supabase.storage.from(BUCKET).remove([dbDoc.storage_path]);
+    const { error: rmErr } = await supabase.storage.from(BUCKET).remove([dbDoc.storage_path]);
+    // Non-fatal (the DB row is still deleted), but log so orphaned storage
+    // objects are visible instead of silently accumulating.
+    if (rmErr && process.env.NODE_ENV !== "production")
+      console.error("Failed to remove document from storage:", rmErr.message);
   }
 
   const { error } = await supabase
@@ -240,7 +244,9 @@ export async function reuploadDocument(
   }
 
   // Remove old file after successful DB update using DB-verified path
-  await supabase.storage.from(BUCKET).remove([dbDoc.storage_path]);
+  const { error: oldRmErr } = await supabase.storage.from(BUCKET).remove([dbDoc.storage_path]);
+  if (oldRmErr && process.env.NODE_ENV !== "production")
+    console.error("Failed to remove replaced document from storage:", oldRmErr.message);
 
   return data as DocumentRow;
 }

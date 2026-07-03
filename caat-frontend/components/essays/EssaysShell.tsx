@@ -71,7 +71,11 @@ export default function EssaysShell() {
 
   // School tagging for per-school prompts (null = shared across applications)
   const searchParams = useSearchParams();
-  const urlSchoolId = searchParams.get("school") ? Number(searchParams.get("school")) : null;
+  // Guard against a malformed ?school=abc — Number("abc") is NaN, which would
+  // poison the school_id filter/state.
+  const urlSchoolRaw = searchParams.get("school");
+  const urlSchoolNum = urlSchoolRaw ? Number(urlSchoolRaw) : NaN;
+  const urlSchoolId = Number.isFinite(urlSchoolNum) ? urlSchoolNum : null;
   const [mySchools, setMySchools] = useState<MySchool[]>([]);
   const [tagSchoolId, setTagSchoolId] = useState<number | null>(urlSchoolId);
   const [essayContent, setEssayContent] = useState("");

@@ -431,12 +431,13 @@ export default function DocumentVaultClient() {
   // Opened from a school's hub ("Attach a document for X") — pre-tag + open.
   useEffect(() => {
     const s = searchParams.get("school");
-    if (s) {
+    const parsedSchoolId = s ? Number(s) : NaN;
+    if (s && Number.isFinite(parsedSchoolId)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setReuploadTarget(null);
       setUploadFile(null);
       setUploadCategory("transcripts");
-      setUploadSchoolId(Number(s));
+      setUploadSchoolId(parsedSchoolId);
       setSheetOpen(true);
     }
   }, [searchParams]);
@@ -568,6 +569,12 @@ export default function DocumentVaultClient() {
     (safePage - 1) * PAGE_SIZE,
     safePage * PAGE_SIZE
   );
+
+  // Clamp the page STATE (not just the displayed slice) so switching tabs or
+  // deleting the last item on a page can't strand `page` past the end.
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   // Stats
   const total = docs.length;

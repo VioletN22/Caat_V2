@@ -517,6 +517,9 @@ function UserScholarshipCard({
     setDeleting(true);
     try {
       await onDelete(scholarship.id);
+    } catch {
+      // Surface the failure instead of silently leaving the scholarship in place.
+      toast.error("Failed to remove scholarship. Please try again.");
     } finally {
       setDeleting(false);
       setConfirmDelete(false);

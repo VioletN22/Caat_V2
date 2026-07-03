@@ -14,7 +14,9 @@ function daysUntil(dateISO: string): number {
   const target = new Date(dateISO + "T00:00:00");
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return Math.ceil((target.getTime() - today.getTime()) / 86_400_000);
+  // Round, not ceil: DST makes a day span 23h/25h, and ceil turns that into an
+  // off-by-one day count.
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 
 function dotColor(days: number) {
