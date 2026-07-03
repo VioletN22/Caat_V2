@@ -1733,6 +1733,31 @@ export type Database = {
           last_name: string
         }[]
       }
+      scholarship_universities: { Args: never; Returns: string[] }
+      search_scholarships: {
+        Args: {
+          p_citizenship?: string[]
+          p_domestic_codes?: string[]
+          p_fields?: string[]
+          p_funding?: string[]
+          p_grad_year?: number
+          p_home_country?: string
+          p_levels?: string[]
+          p_limit?: number
+          p_location?: string
+          p_offset?: number
+          p_open_only?: boolean
+          p_pref_countries?: string[]
+          p_restrict_ids?: string[]
+          p_search?: string
+          p_target_majors?: string[]
+          p_universities?: string[]
+        }
+        Returns: {
+          data: Json
+          total_count: number
+        }[]
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
