@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff, ArrowRight, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { supabase } from "@/src/lib/supabaseClient"
+import { supabase } from "@/lib/supabase/client"
 import { preflightAuthAction } from "@/app/auth-actions"
 import { TurnstileWidget, captchaEnabled, type TurnstileInstance } from "@/components/TurnstileWidget"
 

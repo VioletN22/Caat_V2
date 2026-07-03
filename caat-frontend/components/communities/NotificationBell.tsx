@@ -15,7 +15,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInitials } from "@/lib/user-utils";
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
 import { fetchNotificationsAction, markNotificationsReadAction } from "@/app/(main)/communities/actions";
 import type { NotificationItem } from "@/types/community";
 

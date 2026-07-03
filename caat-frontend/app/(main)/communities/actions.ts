@@ -1203,7 +1203,7 @@ export async function fetchCommentsAction(
   );
 
   const allComments: CommunityComment[] = rows.map((row) => ({
-    ...(row as CommunityComment),
+    ...(row as unknown as CommunityComment),
     author: profileMap.get(row.user_id as string) ?? null,
     likes_count: likeCountMap.get(row.id as string) ?? 0,
     is_liked_by_user: userLikedSet.has(row.id as string),
@@ -1343,7 +1343,7 @@ export async function addCommentAction(
 
   return {
     comment: {
-      ...(row as CommunityComment),
+      ...(row as unknown as CommunityComment),
       author: (profile as PostAuthor) ?? null,
       likes_count: 0,
       is_liked_by_user: false,
@@ -1904,7 +1904,7 @@ export async function createGroupAction(input: {
 
   return {
     group: {
-      ...(row as CommunityGroup),
+      ...(row as unknown as CommunityGroup),
       member_count: 1,
       post_count: 0,
       is_member: true,

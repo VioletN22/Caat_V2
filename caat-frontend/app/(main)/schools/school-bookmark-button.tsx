@@ -9,7 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { SCHOOL_BOOKMARK_EVENT } from "./schools-client";
 

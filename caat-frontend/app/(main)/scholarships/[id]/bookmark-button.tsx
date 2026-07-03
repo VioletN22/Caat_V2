@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
 interface Props {

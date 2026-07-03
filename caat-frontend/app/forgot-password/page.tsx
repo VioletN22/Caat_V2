@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
 import { preflightAuthAction } from "@/app/auth-actions";
 import { TurnstileWidget, captchaEnabled, type TurnstileInstance } from "@/components/TurnstileWidget";
 

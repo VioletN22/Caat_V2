@@ -1,5 +1,5 @@
 // components/resume-builder/api.ts
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
 import type {
         ResumeRow,
         ResumeSectionRow,
@@ -10,6 +10,7 @@ import type {
         SectionMode,
 } from "./types";
 import { coerceSettings, DEFAULT_SETTINGS } from "./settings";
+import type { TablesInsert, TablesUpdate } from "@/types/database";
 
 /* ---------------------------
    Small helpers: map DB to UI
@@ -100,7 +101,7 @@ export async function loadResumeById(resumeId: string): Promise<ResumeState | nu
 		title: (resume as ResumeRow).title ?? "Untitled",
 		template: (resume as ResumeRow).template ?? null,
 		settings: coerceSettings((resume as ResumeRow).settings),
-		sections: (sectionRows ?? []).map(rowToState),
+		sections: (((sectionRows ?? []) as unknown as ResumeSectionRow[]).map(rowToState)),
 	};
 }
 
@@ -146,7 +147,7 @@ export async function loadOrCreateResumeState(): Promise<ResumeState> {
 
         // 2) Create if missing
         const resume: ResumeRow =
-                foundResume ??
+                (foundResume as unknown as ResumeRow | null) ??
                 (await (async () => {
                         const { data: created, error: createErr } = await supabase
                                 .from("resumes")
@@ -159,7 +160,7 @@ export async function loadOrCreateResumeState(): Promise<ResumeState> {
                                 .single();
 
                         if (createErr) throw new Error(createErr.message);
-                        return created as ResumeRow;
+                        return created as unknown as ResumeRow;
                 })());
 
         // 3) Load sections ordered by sort_order
@@ -176,7 +177,7 @@ export async function loadOrCreateResumeState(): Promise<ResumeState> {
                 title: resume.title ?? "Main Resume",
                 template: resume.template ?? null,
                 settings: coerceSettings(resume.settings),
-                sections: (sectionRows ?? []).map(rowToState),
+                sections: (((sectionRows ?? []) as unknown as ResumeSectionRow[]).map(rowToState)),
         };
 }
 
@@ -205,7 +206,9 @@ export async function saveResumeState(payload: SaveResumePayload): Promise<void>
         if (payload.settings !== undefined) {
                 const { error: settingsErr } = await supabase
                         .from("resumes")
-                        .update({ settings: payload.settings })
+                        // `settings` is an optional column that may not exist pre-migration,
+                        // so it is not in the generated schema. Cast to write it best-effort.
+                        .update({ settings: payload.settings } as unknown as TablesUpdate<"resumes">)
                         .eq("id", payload.resumeId)
                         .eq("user_id", userId);
                 if (settingsErr && process.env.NODE_ENV !== "production") {
@@ -237,7 +240,7 @@ export async function saveResumeState(payload: SaveResumePayload): Promise<void>
         // 3) Upsert all sections (content + structured_data + sort_order)
         const { error: secErr } = await supabase
                 .from("resume_sections")
-                .upsert(rows, { onConflict: "id" });
+                .upsert(rows as unknown as TablesInsert<"resume_sections">[], { onConflict: "id" });
 
         if (secErr) throw new Error(secErr.message);
 }

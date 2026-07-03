@@ -6,7 +6,7 @@ import { CheckCircle2, Circle, ChevronRight, ChevronDown, AlertCircle, RefreshCw
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { calcCompletion } from "@/lib/profile-utils";
 import type { ProfileRow, StandardisedTestScore } from "@/types/profile";

@@ -1,4 +1,5 @@
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
+import type { TablesInsert } from "@/types/database";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -94,7 +95,7 @@ export async function addDashboardWidget(
   const nextOrder =
     existing && existing.length > 0 ? (existing[0].order as number) + 1 : 0;
 
-  const insertRow: Record<string, unknown> = {
+  const insertRow: TablesInsert<"user_dashboard_widgets"> = {
     user_id: user.id,
     widget_id: widgetId,
     order: nextOrder,

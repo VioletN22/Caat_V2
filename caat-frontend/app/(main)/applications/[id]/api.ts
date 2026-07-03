@@ -1,4 +1,4 @@
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
 import type { ApplicationRow, ApplicationStatus } from "@/types/applications";
 import type { ScholarshipRow } from "@/types/scholarships";
 import type { ProfileRow } from "@/types/profile";

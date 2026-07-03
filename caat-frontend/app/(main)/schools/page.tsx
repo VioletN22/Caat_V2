@@ -1,5 +1,4 @@
-import { supabase } from "@/src/lib/supabaseClient";
-import { createSupabaseServer } from "@/lib/supabase-server";
+import { createServerClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import {
   Card,
@@ -32,7 +31,7 @@ async function fetchProfileAndOfferedMajors(): Promise<{
   profile: ProfileRow | null;
   offeredMajorsBySchool: Map<number, string[]>;
 }> {
-  const sb = await createSupabaseServer();
+  const sb = await createServerClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return { profile: null, offeredMajorsBySchool: new Map() };
 
@@ -99,7 +98,8 @@ export default async function SchoolsPage({
   const from = (currentPage - 1) * itemsPerPage;
   const to = from + itemsPerPage - 1;
 
-  let query = supabase
+  const sb = await createServerClient();
+  let query = sb
     .from("schools")
     .select("*", { count: "exact" })
     // Hide rows explicitly tagged as high_school; null + everything else is visible.

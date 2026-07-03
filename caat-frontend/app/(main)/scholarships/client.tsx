@@ -40,8 +40,8 @@ import {
 } from "@/types/scholarships";
 import type { ProfileRow } from "@/types/profile";
 import { matchScholarship, type MatchResult } from "@/lib/profile-match";
-import { supabase } from "@/src/lib/supabaseClient";
-import { useAuth } from "@/src/context/AuthContext";
+import { supabase } from "@/lib/supabase/client";
+import { useAuth } from "@/components/providers/AuthContext";
 import { toast } from "sonner";
 import {
   fetchBookmarkTracking,

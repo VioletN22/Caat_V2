@@ -7,7 +7,7 @@ import { BookOpen, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
 import type { Major } from "@/types/majors";
 import { CATEGORY_COLORS } from "@/constants/majors";
 

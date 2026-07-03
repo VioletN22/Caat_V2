@@ -1,4 +1,4 @@
-import { supabase } from "@/src/lib/supabaseClient";
+import { createServerClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -102,7 +102,8 @@ export default async function ScholarshipDetailPage({
 }) {
   const { id } = await params;
 
-  const { data, error } = await supabase
+  const sb = await createServerClient();
+  const { data, error } = await sb
     .from("scholarships")
     .select("*")
     .eq("id", id)

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
 import {
   fetchUnifiedDeadlines,
   type UnifiedDeadline,

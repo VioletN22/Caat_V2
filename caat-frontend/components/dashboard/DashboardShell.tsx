@@ -14,7 +14,7 @@ import {
   saveDashboardWidgets,
   type PlacedWidget,
 } from "./api";
-import { useAuth } from "@/src/context/AuthContext";
+import { useAuth } from "@/components/providers/AuthContext";
 import {
   autoLayout,
   findFirstFit,

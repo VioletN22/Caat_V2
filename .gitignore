@@ -52,6 +52,7 @@ Vercel / deployment
 Supabase local (if used later)
 ####################################
 .supabase/
+caat-frontend/supabase/.temp/
 
 ####################################
 Claude files
