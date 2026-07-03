@@ -604,8 +604,8 @@ export default function ResumeBuilderShell() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] w-full">
-      {/* Top bar */}
-      <div className="flex items-center justify-between border-b bg-background px-4 py-3">
+      {/* Top bar — wraps instead of running off-screen on small viewports (D8) */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-background px-4 py-3">
         <div className="flex items-center gap-2">
           {editingResumeTitle ? (
             <input
@@ -720,8 +720,9 @@ export default function ResumeBuilderShell() {
         </div>
       </div>
 
-      {/* Mobile tab bar */}
-      <div className="flex border-b md:hidden">
+      {/* Mobile/tablet tab bar — the 3-panel split needs ~880px of fixed width
+          (360 + 520), so single-panel tabs run up to lg (D8). */}
+      <div className="flex border-b lg:hidden">
         {(["structure", "editor", "preview"] as const).map((tab) => (
           <button
             key={tab}
@@ -740,7 +741,7 @@ export default function ResumeBuilderShell() {
       {/* 3-panel body */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Desktop: flex row with draggable divider */}
-        <div className="hidden md:flex flex-1 min-h-0 overflow-hidden">
+        <div className="hidden lg:flex flex-1 min-h-0 overflow-hidden">
           <div
             className="flex flex-col overflow-hidden shrink-0"
             style={{ width: leftWidth }}
@@ -789,8 +790,8 @@ export default function ResumeBuilderShell() {
           </div>
         </div>
 
-        {/* Mobile: single-panel with tab switching */}
-        <div className="md:hidden flex-1 flex flex-col overflow-hidden">
+        {/* Mobile/tablet: single-panel with tab switching */}
+        <div className="lg:hidden flex-1 flex flex-col overflow-hidden">
           {mobileTab === "structure" && (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
               <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
