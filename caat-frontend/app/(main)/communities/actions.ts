@@ -686,6 +686,9 @@ export async function fetchPostsByUserAction(
       "*, likes:community_likes(count), comments:community_comments(count)",
     )
     .eq("is_hidden", false)
+    // A3 — a profile feed must never surface the user's private-group posts to a
+    // non-member; public posts only (group views gate on canAccessGroup separately).
+    .is("group_id", null)
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(20);
@@ -732,6 +735,9 @@ export async function searchPostsAction(
       "*, likes:community_likes(count), comments:community_comments(count)",
     )
     .eq("is_hidden", false)
+    // A3 — search must not leak private-group post bodies to non-members; restrict
+    // to public posts (group-internal posts are reachable only inside the group).
+    .is("group_id", null)
     .order("created_at", { ascending: false })
     .limit(30);
 
