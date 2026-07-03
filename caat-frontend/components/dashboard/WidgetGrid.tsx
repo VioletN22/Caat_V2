@@ -111,12 +111,17 @@ export function WidgetGrid({
   const widgetsRef = useRef(widgets);
   const onMoveRef = useRef(onMove);
   const onResizeRef = useRef(onResize);
-  dragRef.current = drag;
-  resizeRef.current = resize;
-  previewRef.current = preview;
-  widgetsRef.current = widgets;
-  onMoveRef.current = onMove;
-  onResizeRef.current = onResize;
+  // Sync refs after each render (not during render) so the window-level pointer
+  // handlers read the latest values on the next event, which always fires after
+  // the render commits.
+  useEffect(() => {
+    dragRef.current = drag;
+    resizeRef.current = resize;
+    previewRef.current = preview;
+    widgetsRef.current = widgets;
+    onMoveRef.current = onMove;
+    onResizeRef.current = onResize;
+  });
 
   // ---------------------------------------------------------------------------
   // Geometry: cell width includes its share of the gap so snapping is exact.
