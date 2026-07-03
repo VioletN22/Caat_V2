@@ -33,7 +33,7 @@ function daysUntil(dateStr: string): number {
 function deadlineLabel(dateStr: string | null) {
   if (!dateStr) return { text: "no date", cls: "text-muted-foreground" };
   const d = daysUntil(dateStr);
-  const cls = d < 0 || d <= 7 ? "text-[#9a1a27]" : d <= 30 ? "text-amber-500" : "text-green-600";
+  const cls = d < 0 || d <= 7 ? "text-[#9a1a27] dark:text-[#e06b78]" : d <= 30 ? "text-amber-500" : "text-green-600";
   return { text: d < 0 ? `${Math.abs(d)}d over` : d === 0 ? "today" : `${d}d`, cls };
 }
 
@@ -93,7 +93,7 @@ export function ApplicationsRollup() {
           <div className="flex flex-col items-center text-center gap-2 py-6">
             <ClipboardList className="h-8 w-8 text-muted-foreground/40" />
             <p className="text-sm text-muted-foreground">No applications yet.</p>
-            <Link href="/schools" className="text-sm text-[#9a1a27] hover:underline">
+            <Link href="/schools" className="text-sm text-[#9a1a27] dark:text-[#e06b78] hover:underline">
               Add a school to get started
             </Link>
           </div>
@@ -121,7 +121,7 @@ export function ApplicationsRollup() {
     <Card className="shadow-sm">
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base">Your applications</CardTitle>
-        <Link href="/applications" className="text-sm text-[#9a1a27] hover:underline inline-flex items-center gap-1">
+        <Link href="/applications" className="text-sm text-[#9a1a27] dark:text-[#e06b78] hover:underline inline-flex items-center gap-1">
           See all <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </CardHeader>

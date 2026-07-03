@@ -82,7 +82,7 @@ export function OnboardingChecklist() {
   };
 
   return (
-    <Card className="shadow-sm border-[#9a1a27]/20">
+    <Card className="shadow-sm border-[#9a1a27] dark:border-[#e06b78]/20">
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base">
           Finish setting up
@@ -106,7 +106,7 @@ export function OnboardingChecklist() {
             <li key={s.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
               <div className="flex items-center gap-3 min-w-0">
                 {s.done ? (
-                  <CheckCircle2 className="h-5 w-5 text-[#9a1a27] shrink-0" />
+                  <CheckCircle2 className="h-5 w-5 text-[#9a1a27] dark:text-[#e06b78] shrink-0" />
                 ) : (
                   <Circle className="h-5 w-5 text-muted-foreground/40 shrink-0" />
                 )}
@@ -120,7 +120,7 @@ export function OnboardingChecklist() {
               {!s.done ? (
                 <Link
                   href={s.href}
-                  className="shrink-0 inline-flex items-center gap-1 text-sm text-[#9a1a27] hover:underline"
+                  className="shrink-0 inline-flex items-center gap-1 text-sm text-[#9a1a27] dark:text-[#e06b78] hover:underline"
                 >
                   Go <ArrowRight className="h-3.5 w-3.5" />
                 </Link>

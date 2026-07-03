@@ -112,7 +112,7 @@ export async function SchoolScholarshipsSection({ schoolId, schoolName }: Props)
                 {s.title}
               </CardTitle>
               {s.amount_display ? (
-                <CardDescription className="text-sm font-medium text-[#9a1a27]">
+                <CardDescription className="text-sm font-medium text-[#9a1a27] dark:text-[#e06b78]">
                   {formatAmountDisplay(s)}
                 </CardDescription>
               ) : null}

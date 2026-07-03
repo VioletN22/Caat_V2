@@ -34,7 +34,7 @@ function countdownText(days: number) {
 }
 
 function countdownColor(days: number) {
-  if (days <= 7) return "text-[#9a1a27]";
+  if (days <= 7) return "text-[#9a1a27] dark:text-[#e06b78]";
   if (days <= 30) return "text-amber-500";
   return "text-green-600 dark:text-green-400";
 }

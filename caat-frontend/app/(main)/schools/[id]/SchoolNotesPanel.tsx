@@ -121,10 +121,10 @@ export function SchoolNotesPanel({
   const charCountWarn = remaining < 200;
 
   return (
-    <section className="border-t border-[#E5E5E5] pt-6">
+    <section className="border-t border-border pt-6">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <NotebookPen className="h-4 w-4 text-[#525252]" aria-hidden />
+          <NotebookPen className="h-4 w-4 text-muted-foreground" aria-hidden />
           <h2 className="text-sm font-semibold tracking-tight">My Notes</h2>
           <span className="inline-flex items-center gap-1 text-[10px] font-code uppercase tracking-[0.12em] text-muted-foreground">
             <Lock className="h-3 w-3" aria-hidden />
@@ -145,7 +145,7 @@ export function SchoolNotesPanel({
       <div className="mt-2 flex items-center justify-between gap-3">
         <span
           className={`text-[11px] font-code tabular-nums ${
-            charCountWarn ? "text-[#9a1a27]" : "text-muted-foreground"
+            charCountWarn ? "text-[#9a1a27] dark:text-[#e06b78]" : "text-muted-foreground"
           }`}
         >
           {value.length} / {MAX_LENGTH}
@@ -190,7 +190,7 @@ function SaveIndicator({
   }
   if (state.kind === "error") {
     return (
-      <span className="inline-flex items-center gap-1 text-[11px] text-[#9a1a27]">
+      <span className="inline-flex items-center gap-1 text-[11px] text-[#9a1a27] dark:text-[#e06b78]">
         <AlertCircle className="h-3 w-3" aria-hidden />
         {state.message}
       </span>

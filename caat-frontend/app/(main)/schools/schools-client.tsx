@@ -55,7 +55,7 @@ export function SchoolFilterBar({
         onClick={() => setFilter("All")}
         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition-colors border
           ${activeFilter === "All"
-            ? "bg-[#9a1a27] text-white border-[#9a1a27]"
+            ? "bg-[#9a1a27] text-white border-[#9a1a27] dark:border-[#e06b78]"
             : "bg-background text-muted-foreground border-border hover:bg-muted"
           }`}
       >
@@ -65,7 +65,7 @@ export function SchoolFilterBar({
         onClick={() => setFilter("Bookmarked")}
         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition-colors border
           ${activeFilter === "Bookmarked"
-            ? "bg-[#9a1a27] text-white border-[#9a1a27]"
+            ? "bg-[#9a1a27] text-white border-[#9a1a27] dark:border-[#e06b78]"
             : "bg-background text-muted-foreground border-border hover:bg-muted"
           }`}
       >

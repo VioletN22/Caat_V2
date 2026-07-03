@@ -176,7 +176,7 @@ export default async function SchoolsPage({
   );
 
   if (error) {
-    return <div className="p-10 text-[#9a1a27]">Unable to load schools. Please try again later.</div>;
+    return <div className="p-10 text-[#9a1a27] dark:text-[#e06b78]">Unable to load schools. Please try again later.</div>;
   }
 
   // Compute match per school and sort matched ones to the top within this page.

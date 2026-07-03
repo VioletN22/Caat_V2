@@ -86,8 +86,8 @@ export function AppSidebar({
 
   return (
     <Sidebar {...props}>
-      <SidebarHeader className="py-5 px-6 border-b border-[#E5E5E5]">
-        <Link href="/dashboard" className="inline-flex items-center focus-visible:outline focus-visible:outline-[2px] focus-visible:outline-black focus-visible:outline-offset-2">
+      <SidebarHeader className="py-5 px-6 border-b border-sidebar-border">
+        <Link href="/dashboard" className="inline-flex items-center focus-visible:outline focus-visible:outline-[2px] focus-visible:outline-sidebar-ring focus-visible:outline-offset-2">
           <div className="relative h-8 w-24">
             <Image
               src="/logo.png"
@@ -102,7 +102,7 @@ export function AppSidebar({
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[#525252] uppercase text-[10px] tracking-[0.15em] font-code px-4 mb-1">
+          <SidebarGroupLabel className="text-sidebar-foreground/60 uppercase text-[10px] tracking-[0.15em] font-code px-4 mb-1">
             Tools
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -117,7 +117,7 @@ export function AppSidebar({
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
-                      className="gap-3 px-4 py-2.5 rounded-none text-[#525252] hover:text-black hover:bg-[#F5F5F5] data-[active=true]:bg-[#9a1a27] data-[active=true]:text-white data-[active=true]:hover:bg-[#9a1a27] data-[active=true]:hover:text-white data-[active=true]:font-medium transition-colors duration-100"
+                      className="gap-3 px-4 py-2.5 rounded-none text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent data-[active=true]:bg-[#9a1a27] data-[active=true]:text-white data-[active=true]:hover:bg-[#9a1a27] data-[active=true]:hover:text-white data-[active=true]:font-medium transition-colors duration-100"
                     >
                       <Link href={item.url}>
                         <item.icon className="size-4 shrink-0" strokeWidth={1.5} />
@@ -132,7 +132,7 @@ export function AppSidebar({
         </SidebarGroup>
 
         <SidebarGroup className="mt-2">
-          <SidebarGroupLabel className="text-[#525252] uppercase text-[10px] tracking-[0.15em] font-code px-4 mb-1">
+          <SidebarGroupLabel className="text-sidebar-foreground/60 uppercase text-[10px] tracking-[0.15em] font-code px-4 mb-1">
             Community
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -144,7 +144,7 @@ export function AppSidebar({
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
-                      className="gap-3 px-4 py-2.5 rounded-none text-[#525252] hover:text-black hover:bg-[#F5F5F5] data-[active=true]:bg-[#9a1a27] data-[active=true]:text-white data-[active=true]:hover:bg-[#9a1a27] data-[active=true]:hover:text-white data-[active=true]:font-medium transition-colors duration-100"
+                      className="gap-3 px-4 py-2.5 rounded-none text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent data-[active=true]:bg-[#9a1a27] data-[active=true]:text-white data-[active=true]:hover:bg-[#9a1a27] data-[active=true]:hover:text-white data-[active=true]:font-medium transition-colors duration-100"
                     >
                       <Link href={item.url}>
                         <item.icon className="size-4 shrink-0" strokeWidth={1.5} />
@@ -159,7 +159,7 @@ export function AppSidebar({
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-[#E5E5E5]">
+      <SidebarFooter className="border-t border-sidebar-border">
         {mounted && user && <NavUser user={user} />}
       </SidebarFooter>
       <SidebarRail />

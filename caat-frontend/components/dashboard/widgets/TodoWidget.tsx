@@ -25,7 +25,7 @@ import {
 
 const PRIORITY_LABELS: Record<number, string> = { 1: "High", 2: "Medium", 3: "Low" };
 const PRIORITY_COLORS: Record<number, string> = {
-  1: "text-[#9a1a27]",
+  1: "text-[#9a1a27] dark:text-[#e06b78]",
   2: "text-amber-500",
   3: "text-muted-foreground",
 };
@@ -229,7 +229,7 @@ export function TodoWidget() {
                     {dueLabel && !todo.done && (
                       <span
                         className={`text-xs ${
-                          overdue ? "text-[#9a1a27] font-medium" : "text-muted-foreground"
+                          overdue ? "text-[#9a1a27] dark:text-[#e06b78] font-medium" : "text-muted-foreground"
                         }`}
                       >
                         {dueLabel}

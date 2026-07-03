@@ -80,9 +80,9 @@ function daysUntil(dateStr: string): number {
 
 function deadlineLabel(dateStr: string) {
   const days = daysUntil(dateStr);
-  if (days < 0) return { text: `${Math.abs(days)}d overdue`, color: "text-[#9a1a27]" };
-  if (days === 0) return { text: "Today", color: "text-[#9a1a27]" };
-  if (days <= 7) return { text: `${days}d`, color: "text-[#9a1a27]" };
+  if (days < 0) return { text: `${Math.abs(days)}d overdue`, color: "text-[#9a1a27] dark:text-[#e06b78]" };
+  if (days === 0) return { text: "Today", color: "text-[#9a1a27] dark:text-[#e06b78]" };
+  if (days <= 7) return { text: `${days}d`, color: "text-[#9a1a27] dark:text-[#e06b78]" };
   if (days <= 30) return { text: `${days}d`, color: "text-amber-500" };
   return { text: `${days}d`, color: "text-green-600 dark:text-green-400" };
 }
@@ -314,7 +314,7 @@ export default function ApplicationsClient() {
           <Button
             size="sm"
             onClick={() => setShowSearch(!showSearch)}
-            className="gap-1.5 bg-[#9a1a27] text-white hover:bg-[#7d141f] border-[#9a1a27]"
+            className="gap-1.5 bg-[#9a1a27] text-white hover:bg-[#7d141f] border-[#9a1a27] dark:border-[#e06b78]"
           >
             <Plus className="h-4 w-4" />
             Add School
@@ -386,7 +386,7 @@ export default function ApplicationsClient() {
             onClick={() => setFilter(f.key)}
             className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium transition-colors border ${
               filter === f.key
-                ? "bg-[#9a1a27] text-white border-[#9a1a27]"
+                ? "bg-[#9a1a27] text-white border-[#9a1a27] dark:border-[#e06b78]"
                 : "bg-background text-muted-foreground border-border hover:bg-muted"
             }`}
           >
@@ -495,7 +495,7 @@ function ApplicationCard({
     (SUBMITTED_PLUS.has(app.status) ? 1 : 0);
 
   return (
-    <div className={`rounded-lg border p-4 space-y-3 ${isFresh ? "bg-[#FFF8E1] border-l-[3px] border-l-[#9a1a27]" : "bg-card"}`}>
+    <div className={`rounded-lg border p-4 space-y-3 ${isFresh ? "bg-[#FFF8E1] dark:bg-amber-950/40 border-l-[3px] border-l-[#9a1a27] dark:border-l-[#e06b78]" : "bg-card"}`}>
       {/* Top row: school info + status + actions */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3 min-w-0">
@@ -666,7 +666,7 @@ function ApplicationCard({
         </span>
         <Link
           href={`/applications/${app.id}`}
-          className="font-code text-[11px] text-[#9a1a27] hover:underline whitespace-nowrap inline-flex items-center gap-1"
+          className="font-code text-[11px] text-[#9a1a27] dark:text-[#e06b78] hover:underline whitespace-nowrap inline-flex items-center gap-1"
         >
           open <ArrowRight className="h-3 w-3" />
         </Link>

@@ -133,7 +133,7 @@ export default async function ScholarshipsPage({
 
   if (rpcRes.error) {
     return (
-      <div className="p-10 text-[#9a1a27]">
+      <div className="p-10 text-[#9a1a27] dark:text-[#e06b78]">
         Unable to load scholarships. Please try again later.
       </div>
     );

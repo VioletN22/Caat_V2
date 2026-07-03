@@ -53,7 +53,7 @@ function daysUntil(dateStr: string): number {
 function deadlineParts(dateStr: string | null) {
   if (!dateStr) return { num: "—", label: "no deadline set", color: "text-muted-foreground" };
   const d = daysUntil(dateStr);
-  const color = d < 0 || d <= 7 ? "text-[#9a1a27]" : d <= 30 ? "text-amber-500" : "text-green-600";
+  const color = d < 0 || d <= 7 ? "text-[#9a1a27] dark:text-[#e06b78]" : d <= 30 ? "text-amber-500" : "text-green-600";
   const num = d < 0 ? `${Math.abs(d)}d` : d === 0 ? "Today" : `${d}d`;
   const label = d < 0 ? "overdue" : "until due";
   return { num, label, color };
@@ -143,7 +143,7 @@ export default function ApplicationHubClient({ applicationId }: { applicationId:
       <div className="p-6">
         <div className="max-w-5xl mx-auto py-20 text-center">
           <p className="text-muted-foreground mb-4">{error ?? "Application not found."}</p>
-          <Link href="/applications" className="text-sm text-[#9a1a27] hover:underline">
+          <Link href="/applications" className="text-sm text-[#9a1a27] dark:text-[#e06b78] hover:underline">
             ← Back to applications
           </Link>
         </div>
@@ -223,7 +223,7 @@ export default function ApplicationHubClient({ applicationId }: { applicationId:
                 <CardTitle className="text-base">Essays</CardTitle>
                 <Link
                   href="/essays"
-                  className="text-sm text-[#9a1a27] hover:underline inline-flex items-center gap-1"
+                  className="text-sm text-[#9a1a27] dark:text-[#e06b78] hover:underline inline-flex items-center gap-1"
                 >
                   Open essays <ExternalLink className="h-3.5 w-3.5" />
                 </Link>
@@ -251,7 +251,7 @@ export default function ApplicationHubClient({ applicationId }: { applicationId:
                 ) : null}
                 <Link
                   href={`/essays?school=${schoolId}`}
-                  className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/20 py-2.5 text-sm text-[#9a1a27] hover:bg-muted/40"
+                  className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/20 py-2.5 text-sm text-[#9a1a27] dark:text-[#e06b78] hover:bg-muted/40"
                 >
                   <Plus className="h-4 w-4" /> Start an essay for {schoolName}
                 </Link>
@@ -264,7 +264,7 @@ export default function ApplicationHubClient({ applicationId }: { applicationId:
                 <CardTitle className="text-base">Documents</CardTitle>
                 <Link
                   href="/documents"
-                  className="text-sm text-[#9a1a27] hover:underline inline-flex items-center gap-1"
+                  className="text-sm text-[#9a1a27] dark:text-[#e06b78] hover:underline inline-flex items-center gap-1"
                 >
                   Open documents <ExternalLink className="h-3.5 w-3.5" />
                 </Link>
@@ -304,7 +304,7 @@ export default function ApplicationHubClient({ applicationId }: { applicationId:
                 </ul>
                 <Link
                   href={`/documents?school=${schoolId}`}
-                  className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/20 py-2.5 text-sm text-[#9a1a27] hover:bg-muted/40"
+                  className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/20 py-2.5 text-sm text-[#9a1a27] dark:text-[#e06b78] hover:bg-muted/40"
                 >
                   <Plus className="h-4 w-4" /> Attach a document for {schoolName}
                 </Link>
@@ -317,7 +317,7 @@ export default function ApplicationHubClient({ applicationId }: { applicationId:
                 <CardTitle className="text-base">Scholarships for this school</CardTitle>
                 <Link
                   href="/scholarships"
-                  className="text-sm text-[#9a1a27] hover:underline inline-flex items-center gap-1"
+                  className="text-sm text-[#9a1a27] dark:text-[#e06b78] hover:underline inline-flex items-center gap-1"
                 >
                   Browse all <ExternalLink className="h-3.5 w-3.5" />
                 </Link>
@@ -509,7 +509,7 @@ function MajorsEditor({
         <span>{text || "Your application"}</span>
         <button
           onClick={() => setEditing(true)}
-          className="inline-flex items-center gap-1 text-[#9a1a27] hover:underline ml-1"
+          className="inline-flex items-center gap-1 text-[#9a1a27] dark:text-[#e06b78] hover:underline ml-1"
         >
           <Pencil className="h-3 w-3" />
           {majors.length > 0 ? "edit majors" : "add majors"}
@@ -563,7 +563,7 @@ function MajorsEditor({
           </ul>
         ) : null}
       </div>
-      <button onClick={() => { setEditing(false); setInput(""); }} className="text-xs text-[#9a1a27] hover:underline mt-2">
+      <button onClick={() => { setEditing(false); setInput(""); }} className="text-xs text-[#9a1a27] dark:text-[#e06b78] hover:underline mt-2">
         Done
       </button>
     </div>
@@ -609,7 +609,7 @@ function ReadyItem({ done, children }: { done: boolean; children: React.ReactNod
   return (
     <li className="flex items-center gap-2.5 text-sm">
       {done ? (
-        <CheckCircle2 className="h-[18px] w-[18px] text-[#9a1a27] shrink-0" />
+        <CheckCircle2 className="h-[18px] w-[18px] text-[#9a1a27] dark:text-[#e06b78] shrink-0" />
       ) : (
         <Circle className="h-[18px] w-[18px] text-muted-foreground/40 shrink-0" />
       )}
@@ -622,7 +622,7 @@ function StatusText({ tone, children }: { tone: "green" | "amber" | "maroon"; ch
   const map = {
     green: { cls: "text-green-600", Icon: CheckCircle2 },
     amber: { cls: "text-amber-500", Icon: Clock },
-    maroon: { cls: "text-[#9a1a27]", Icon: AlertTriangle },
+    maroon: { cls: "text-[#9a1a27] dark:text-[#e06b78]", Icon: AlertTriangle },
   } as const;
   const { cls, Icon } = map[tone];
   return (

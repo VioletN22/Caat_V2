@@ -38,7 +38,7 @@ export function ProfileCard({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-          <span className="text-[#9a1a27]">{icon}</span>
+          <span className="text-[#9a1a27] dark:text-[#e06b78]">{icon}</span>
           {title}
         </CardTitle>
         {!hideEditButton && (
