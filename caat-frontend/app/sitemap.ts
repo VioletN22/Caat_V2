@@ -1,17 +1,19 @@
 import type { MetadataRoute } from "next";
+import { getPublicScholarshipSlugs } from "@/lib/public-scholarships";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.mycaat.com";
 
 // Public, crawlable routes only. The authenticated (main) app group is
 // per-user and behind login, so it is excluded here and disallowed in robots.
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
-  const routes: {
+  const staticRoutes: {
     path: string;
     changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"];
     priority: number;
   }[] = [
     { path: "/", changeFrequency: "weekly", priority: 1 },
+    { path: "/scholarship", changeFrequency: "daily", priority: 0.9 },
     { path: "/signup", changeFrequency: "monthly", priority: 0.9 },
     { path: "/login", changeFrequency: "monthly", priority: 0.7 },
     { path: "/help", changeFrequency: "monthly", priority: 0.6 },
@@ -20,10 +22,30 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/terms", changeFrequency: "yearly", priority: 0.4 },
   ];
 
-  return routes.map(({ path, changeFrequency, priority }) => ({
-    url: new URL(path, siteUrl).toString(),
-    lastModified: now,
-    changeFrequency,
-    priority,
-  }));
+  const staticEntries: MetadataRoute.Sitemap = staticRoutes.map(
+    ({ path, changeFrequency, priority }) => ({
+      url: new URL(path, siteUrl).toString(),
+      lastModified: now,
+      changeFrequency,
+      priority,
+    }),
+  );
+
+  // One entry per public scholarship detail page. ~4,200 URLs, well under the
+  // 50k single-sitemap limit, so they ship in one file. If the query fails, the
+  // sitemap still returns the static routes rather than erroring.
+  let scholarshipEntries: MetadataRoute.Sitemap = [];
+  try {
+    const slugs = await getPublicScholarshipSlugs();
+    scholarshipEntries = slugs.map(({ slug, updated_at }) => ({
+      url: new URL(`/scholarship/${slug}`, siteUrl).toString(),
+      lastModified: updated_at ? new Date(updated_at) : now,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    }));
+  } catch {
+    scholarshipEntries = [];
+  }
+
+  return [...staticEntries, ...scholarshipEntries];
 }

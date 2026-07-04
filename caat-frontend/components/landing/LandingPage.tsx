@@ -1290,6 +1290,7 @@ function FinalCTA() {
 
 function Footer() {
   const links = [
+    { label: "Browse Scholarships", href: "/scholarship" },
     { label: "Privacy Policy", href: "/privacy" },
     { label: "Terms of Service", href: "/terms" },
     { label: "Contact Us", href: "/contact" },

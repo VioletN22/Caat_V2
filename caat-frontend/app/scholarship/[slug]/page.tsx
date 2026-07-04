@@ -19,7 +19,10 @@ import {
 } from "@/types/scholarships";
 import { safeHref } from "@/lib/safe-href";
 import { TAG_COLORS } from "@/constants/scholarships";
-import { getPublicScholarshipBySlug } from "@/lib/public-scholarships";
+import {
+  getPublicScholarshipBySlug,
+  getRelatedScholarships,
+} from "@/lib/public-scholarships";
 import { PublicHeader, PublicFooter } from "@/components/public/PublicChrome";
 import { TrackScholarshipCta } from "@/components/public/TrackScholarshipCta";
 
@@ -179,6 +182,7 @@ export default async function PublicScholarshipPage({ params }: Props) {
   const hasAmount =
     (s.amount_value != null || s.amount_display) && amountDisplay !== "See Details";
   const officialUrl = safeHref(s.external_url);
+  const related = await getRelatedScholarships(s.id, s.school_name, s.field_of_study ?? []);
 
   return (
     <div className="min-h-screen flex flex-col bg-white text-black">
@@ -310,6 +314,31 @@ export default async function PublicScholarshipPage({ params }: Props) {
             </p>
             <TrackScholarshipCta slug={slug} scholarshipId={s.id} />
           </section>
+
+          {related.length > 0 && (
+            <section className="mt-12">
+              <h2 className="text-lg font-semibold mb-4 font-serif">
+                Related scholarships
+              </h2>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {related.map((r) => (
+                  <li key={r.id}>
+                    <Link
+                      href={`/scholarship/${r.slug}`}
+                      className="flex flex-col border border-[#E5E5E5] rounded-md p-4 hover:border-black transition-colors duration-100 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-[#9a1a27] focus-visible:outline-offset-2"
+                    >
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-[#9a1a27] mb-1">
+                        {r.provider_name}
+                      </span>
+                      <span className="text-sm font-medium text-black leading-snug">
+                        {r.title}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
       </main>
 
