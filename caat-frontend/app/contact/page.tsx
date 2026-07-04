@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 export const metadata = {
-  title: "Contact Us · CAAT",
+  title: "Contact Us",
   description: "Get in touch with the CAAT team.",
 };
 
