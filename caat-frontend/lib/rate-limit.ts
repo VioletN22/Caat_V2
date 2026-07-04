@@ -55,7 +55,7 @@ export async function gate(
   key: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!limiter) {
-    // A4 — fail closed in real production only. Missing Upstash config in prod
+    // A4: fail closed in real production only. Missing Upstash config in prod
     // must NOT silently disable rate limiting. Gate on VERCEL_ENV (set to
     // "production" only on the true prod deploy), not NODE_ENV, because NODE_ENV
     // is "production" for preview deploys and in CI too, which would otherwise

@@ -13,7 +13,7 @@ export async function verifyTurnstile(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
 
-  // A4 — fail closed in real production only. A missing secret in prod is a
+  // A4: fail closed in real production only. A missing secret in prod is a
   // misconfig that must NOT silently disable CAPTCHA. We gate on VERCEL_ENV
   // (set to "production" only on the true prod deploy), not NODE_ENV, because
   // NODE_ENV is "production" for preview deploys and in CI too, which would

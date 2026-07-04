@@ -10,7 +10,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe("verifyTurnstile — A4 fail-closed in real production", () => {
+describe("verifyTurnstile: A4 fail-closed in real production", () => {
   it("fails closed when the secret is missing in real production (VERCEL_ENV=production)", async () => {
     vi.stubEnv("VERCEL_ENV", "production");
     vi.stubEnv("TURNSTILE_SECRET_KEY", "");
