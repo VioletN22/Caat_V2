@@ -23,9 +23,9 @@ export async function fetchRecommenders(): Promise<RecommenderRow[]> {
 
 export async function addRecommender(fields: {
   name: string;
-  subject?: string;
+  subject?: string | null;
   status: RecommenderStatus;
-  notes?: string;
+  notes?: string | null;
 }): Promise<RecommenderRow> {
   const user = await getUser();
   const { data, error } = await supabase
@@ -41,9 +41,11 @@ export async function updateRecommender(
   id: string,
   patch: {
     name?: string;
-    subject?: string;
+    // B13 — allow null so clearing a field explicitly persists. `undefined`
+    // is stripped by the Supabase client and never clears the column.
+    subject?: string | null;
     status?: RecommenderStatus;
-    notes?: string;
+    notes?: string | null;
   }
 ): Promise<void> {
   const user = await getUser();

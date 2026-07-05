@@ -118,7 +118,9 @@ export default function ProfilePage() {
       await updateProfile(profile.id, {
         first_name: data.firstName,
         last_name: data.lastName,
-        birth_date: data.birthDate,
+        // B8 — birth_date is a `date` column; an empty string is not a valid
+        // date and rejects the whole save. Send null when unset.
+        birth_date: data.birthDate || null,
         nationality: data.nationality,
         current_location: data.currentLocation,
         phone: data.phone || null,
@@ -166,25 +168,27 @@ export default function ProfilePage() {
         } : p
       );
 
-      // Auto-add matching test score entry if not already present
+      // Auto-add matching test score entry if not already present. B16 — this
+      // must be PERSISTED, not just pushed into local state: otherwise it
+      // inflates the completion percentage against a row that isn't in the DB
+      // and vanishes ("ghosts") on the next reload.
       const testCurriculum = CURRICULUM_TO_TEST[data.curriculum];
-      if (testCurriculum) {
-        setScores((prev) => {
-          if (prev.some((s) => s.curriculum === testCurriculum)) return prev;
-          return [
-            ...prev,
-            {
-              id: crypto.randomUUID(),
-              profile_id: profile.id,
-              curriculum: testCurriculum,
-              cumulative_score: null,
-              score_scale: null,
-              subjects: [],
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-          ];
-        });
+      if (testCurriculum && !scores.some((s) => s.curriculum === testCurriculum)) {
+        const nextScores: StandardisedTestScore[] = [
+          ...scores,
+          {
+            id: crypto.randomUUID(),
+            profile_id: profile.id,
+            curriculum: testCurriculum,
+            cumulative_score: null,
+            score_scale: null,
+            subjects: [],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ];
+        setScores(nextScores);
+        await saveTestScores(profile.id, nextScores);
       }
 
       toast.success("Academic profile saved.");

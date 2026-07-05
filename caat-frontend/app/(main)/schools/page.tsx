@@ -141,6 +141,11 @@ export default async function SchoolsPage({
   }
 
   // Compute match per school and sort matched ones to the top within this page.
+  // TODO(B12/C1): this only reorders the current page's slice, so a strongly
+  // matched school on a later page never surfaces on page 1. A correct fix must
+  // sort by match at the query level BEFORE pagination, which depends on
+  // Phase 3's server-side pagination (finding C1). Deferred until C1 lands —
+  // do not half-fix here.
   type SchoolBase = NonNullable<typeof schools>[number];
   type SchoolWithMatch = SchoolBase & { __match: MatchResult };
   const schoolsWithMatch: SchoolWithMatch[] = (schools ?? []).map((sch) => ({

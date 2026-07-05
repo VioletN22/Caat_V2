@@ -249,8 +249,12 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
 
   function switchView(next: "browse" | "mine") {
     setView(next);
-    const params = new URLSearchParams();
+    // Preserve existing filter/search params when toggling the view — rebuilding
+    // the URL from scratch dropped them, silently clearing the user's filters.
+    const params = new URLSearchParams(sp.toString());
     if (next === "mine") params.set("view", "mine");
+    else params.delete("view");
+    params.delete("page");
     router.replace(
       `${pathname}${params.toString() ? `?${params.toString()}` : ""}`,
       {
@@ -303,6 +307,8 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
     }
 
     const isBookmarked = bookmarkedIds.has(id);
+    // Snapshot the tracking entry so we can restore it if the write fails.
+    const prevTrackingEntry = tracking.get(id);
 
     setBookmarkedIds((prev) => {
       const next = new Set(prev);
@@ -344,6 +350,17 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
         }
         return next;
       });
+      // Also roll back the tracking map (was updated optimistically alongside
+      // bookmarkedIds) so the two stay consistent after a failed write.
+      setTracking((prev) => {
+        const next = new Map(prev);
+        if (isBookmarked) {
+          if (prevTrackingEntry) next.set(id, prevTrackingEntry);
+        } else {
+          next.delete(id);
+        }
+        return next;
+      });
       toast.error("Failed to update bookmark. Please try again.");
     }
   }
@@ -372,6 +389,7 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
     setShowBookmarked(false);
     setShowOpenOnly(false);
     setSearchQuery("");
+    setStatusFilter("all");
     setCurrentPage(1);
     router.replace(pathname, { scroll: false });
   }
@@ -385,6 +403,7 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
     selectedUniversities.length > 0 ||
     showBookmarked ||
     showOpenOnly ||
+    statusFilter !== "all" ||
     searchQuery.trim().length > 0;
 
   const filtered = useMemo(() => {
@@ -413,8 +432,11 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
       }
 
       if (
+        // B10 — multiple funding selections widen the results (OR), matching the
+        // other multi-selects; `.every` here narrowed to scholarships that were
+        // every selected type at once, which no scholarship is.
         selectedFunding.length > 0 &&
-        !selectedFunding.every((opt) => FUNDING_MAP[opt]?.(s))
+        !selectedFunding.some((opt) => FUNDING_MAP[opt]?.(s))
       ) {
         return false;
       }
@@ -484,6 +506,12 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
     const clamped = Math.max(1, Math.min(page, totalPages));
     setCurrentPage(clamped);
   }
+
+  // Clamp the page STATE (not just the display) when the result set shrinks or a
+  // stale ?page=N lands past the end, so the grid never renders empty.
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   const pageNumbers = useMemo(() => {
     const pages: (number | "...")[] = [];

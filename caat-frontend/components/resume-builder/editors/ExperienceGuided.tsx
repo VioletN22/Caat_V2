@@ -84,7 +84,10 @@ export default function ExperienceGuided({
   value: ExperienceValue;
   onChange: (next: ExperienceValue, html: string) => void;
 }) {
-  const entries: ExperienceEntry[] = Array.isArray(value.entries) ? value.entries : [emptyEntry()];
+  // Stable placeholder id (see EducationGuided): create once so the fallback
+  // row's key doesn't churn every render and remount its inputs.
+  const [placeholderEntry] = React.useState(emptyEntry);
+  const entries: ExperienceEntry[] = Array.isArray(value.entries) ? value.entries : [placeholderEntry];
 
   function update(index: number, patch: Partial<ExperienceEntry>) {
     const next = entries.map((e, i) => (i === index ? { ...e, ...patch } : e));

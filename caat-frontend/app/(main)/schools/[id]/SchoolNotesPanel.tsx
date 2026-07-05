@@ -36,6 +36,12 @@ export function SchoolNotesPanel({
   const [, startTransition] = useTransition();
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Mirror the latest value / last-saved snapshot into refs so the unload
+  // flush effect can read them without depending on them (see below).
+  const valueRef = useRef(value);
+  const lastSavedRef = useRef(lastSaved);
+  valueRef.current = value;
+  lastSavedRef.current = lastSaved;
 
   // Re-render once a minute so the "Saved 2 mins ago" label stays fresh.
   const [, forceTick] = useState(0);
@@ -82,24 +88,32 @@ export function SchoolNotesPanel({
     runSave(value);
   }
 
-  // Flush any pending debounced save when the user navigates away so the
-  // last few keystrokes aren't lost.
+  // Flush any pending debounced save when the user navigates away so the last
+  // few keystrokes aren't lost. This effect must register EXACTLY ONCE (empty
+  // deps): previously it depended on [value, lastSaved, schoolId], so its
+  // cleanup ran on every keystroke, clearing the just-scheduled debounce (the
+  // debounced save then never ran) and firing a raw save with the *previous*
+  // value, which could land after and clobber a newer one. Reading the current
+  // value/dirty state from refs keeps the debounce intact between keystrokes.
   useEffect(() => {
-    function flushOnUnload() {
+    function flush() {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
         debounceRef.current = null;
       }
-      if (value !== lastSaved) {
-        void saveSchoolNoteAction(schoolId, value);
+      if (valueRef.current !== lastSavedRef.current) {
+        void saveSchoolNoteAction(schoolId, valueRef.current);
       }
     }
-    window.addEventListener("beforeunload", flushOnUnload);
+    window.addEventListener("beforeunload", flush);
     return () => {
-      window.removeEventListener("beforeunload", flushOnUnload);
-      flushOnUnload();
+      window.removeEventListener("beforeunload", flush);
+      // Component unmount (client-side navigation away): JS keeps running, so
+      // the server action still completes and the final edits persist.
+      flush();
     };
-  }, [value, lastSaved, schoolId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const isDirty = value !== lastSaved;
   const isSaving = state.kind === "saving";

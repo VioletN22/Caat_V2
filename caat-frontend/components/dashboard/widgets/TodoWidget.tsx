@@ -103,8 +103,11 @@ export function TodoWidget() {
     try {
       await toggleTodo(id, !current);
     } catch {
-      setTodos((prev) => sortTodos(prev.map((t) => (t.id === id ? { ...t, done: current } : t))));
       toast.error("Failed to update to-do");
+      // Reconcile with the server (like the delete/priority handlers) rather
+      // than rolling back to the stale captured `current`, which under rapid
+      // concurrent toggles could clobber a later successful toggle.
+      load();
     }
   }
 

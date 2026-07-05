@@ -19,8 +19,11 @@ import { PrivacySettingsPanel } from "@/components/communities/PrivacySettingsPa
 import { FollowersSheet } from "@/components/communities/FollowersSheet";
 import { createSupabaseServer } from "@/lib/supabase-server";
 import { getInitials } from "@/lib/user-utils";
-import { fetchCommunityProfileAction } from "@/app/(main)/communities/actions";
-import type { CommunityPost, PostAuthor } from "@/types/community";
+import {
+  fetchCommunityProfileAction,
+  fetchPostsByUserAction,
+} from "@/app/(main)/communities/actions";
+import type { PostAuthor } from "@/types/community";
 
 interface Props {
   params: Promise<{ userId: string }>;
@@ -35,24 +38,14 @@ export default async function CommunityProfilePage({ params }: Props) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Fetch this user's posts
-  const { data: rows } = await supabase
-    .from("community_posts")
-    .select("*, likes:community_likes(count), comments:community_comments(count)")
-    .eq("is_hidden", false)
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(20);
-
-  const author: PostAuthor = {
-    id: profile.id,
-    first_name: profile.first_name,
-    last_name: profile.last_name,
-    avatar_url: profile.avatar_url,
-  };
+  // B2 — route this user's posts through the shared action so anonymity, block
+  // gating, and the private-group filter are applied here too. Previously this
+  // page ran its own query and attached the profile owner's real name/avatar to
+  // every post, de-anonymising their anonymous posts.
+  const { posts } = await fetchPostsByUserAction(userId);
 
   // Fetch liked/saved status for current user on these posts
-  const postIds = (rows ?? []).map((r) => r.id);
+  const postIds = posts.map((p) => p.id);
   const [likedResult, savedResult] = await Promise.all([
     user && postIds.length
       ? supabase.from("community_likes").select("post_id").eq("user_id", user.id).in("post_id", postIds)
@@ -76,23 +69,6 @@ export default async function CommunityProfilePage({ params }: Props) {
     .eq("user_id", userId)
     .maybeSingle();
   const pinnedPostId = (profileSettings?.pinned_post_id as string | null) ?? null;
-
-  const resumeIds = (rows ?? []).map((r) => r.resume_link).filter((id): id is string => !!id);
-  const { data: resumeRows } = resumeIds.length
-    ? await supabase.from("resumes").select("id, title").in("id", resumeIds)
-    : { data: [] };
-  const resumeTitleMap = new Map<string, string>(
-    ((resumeRows ?? []) as { id: string; title: string }[]).map((r) => [r.id, r.title])
-  );
-
-  const posts: CommunityPost[] = (rows ?? []).map((row) => ({
-    ...row,
-    resume_id: (row.resume_link as string | null) ?? null,
-    resume_title: row.resume_link ? (resumeTitleMap.get(row.resume_link) ?? null) : null,
-    likes_count: (row.likes as { count: number }[])[0]?.count ?? 0,
-    comments_count: (row.comments as { count: number }[])[0]?.count ?? 0,
-    author,
-  }));
 
   const displayName = [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "Anonymous";
 

@@ -74,7 +74,9 @@ function daysUntil(dateStr: string): number {
   const target = new Date(dateStr + "T00:00:00");
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return Math.ceil((target.getTime() - today.getTime()) / 86_400_000);
+  // Round, not ceil: a DST transition makes the span 23h or 25h, and ceil turns
+  // a same-count day into an off-by-one. Round keeps the whole-day count stable.
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 
 function deadlineLabel(dateStr: string) {
@@ -102,6 +104,7 @@ export default function ApplicationsClient() {
   >([]);
   const [searching, setSearching] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const addingSchoolRef = useRef(false);
 
   // Delete confirmation
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -183,6 +186,11 @@ export default function ApplicationsClient() {
       toast.info("This school is already in your applications.");
       return;
     }
+    // In-flight guard: a rapid double-click would otherwise fire two
+    // addApplication calls (the apps.some check hasn't updated yet), creating
+    // a duplicate application.
+    if (addingSchoolRef.current) return;
+    addingSchoolRef.current = true;
     try {
       const row = await addApplication(schoolId);
       setApps((prev) => [row, ...prev]);
@@ -192,44 +200,54 @@ export default function ApplicationsClient() {
       toast.success("School added to applications.");
     } catch {
       toast.error("Failed to add school.");
+    } finally {
+      addingSchoolRef.current = false;
     }
   }
 
   async function handleStatusChange(id: string, status: ApplicationStatus) {
-    setApps((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status } : a))
+    const prev = apps;
+    setApps((cur) =>
+      cur.map((a) => (a.id === id ? { ...a, status } : a))
     );
     try {
       await updateApplication(id, { status });
     } catch {
       toast.error("Failed to update status.");
-      // revert
-      const original = await fetchApplications();
-      setApps(original);
+      // Restore the pre-update snapshot instead of refetching: a refetch here
+      // can itself throw (leaving an unhandled rejection) and drop other
+      // in-flight optimistic edits.
+      setApps(prev);
     }
   }
 
   async function handleDeadlineChange(id: string, deadline_at: string) {
     const value = deadline_at || null;
-    setApps((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, deadline_at: value } : a))
+    const prev = apps;
+    setApps((cur) =>
+      cur.map((a) => (a.id === id ? { ...a, deadline_at: value } : a))
     );
     try {
       await updateApplication(id, { deadline_at: value });
     } catch {
       toast.error("Failed to update deadline.");
+      setApps(prev);
     }
   }
 
-  async function handleNotesChange(id: string, notes: string) {
+  async function handleNotesChange(id: string, notes: string): Promise<boolean> {
     const value = notes || null;
-    setApps((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, notes: value } : a))
+    const prev = apps;
+    setApps((cur) =>
+      cur.map((a) => (a.id === id ? { ...a, notes: value } : a))
     );
     try {
       await updateApplication(id, { notes: value });
+      return true;
     } catch {
       toast.error("Failed to update notes.");
+      setApps(prev);
+      return false;
     }
   }
 
@@ -433,7 +451,7 @@ function ApplicationCard({
   app: ApplicationRow;
   onStatusChange: (id: string, status: ApplicationStatus) => void;
   onDeadlineChange: (id: string, deadline: string) => void;
-  onNotesChange: (id: string, notes: string) => void;
+  onNotesChange: (id: string, notes: string) => Promise<boolean>;
   onDelete: (id: string) => void;
   confirmDeleteId: string | null;
   setConfirmDeleteId: (id: string | null) => void;
@@ -449,9 +467,11 @@ function ApplicationCard({
     setLocalNotes(val);
     setNotesSaved(false);
     if (notesTimeout.current) clearTimeout(notesTimeout.current);
-    notesTimeout.current = setTimeout(() => {
-      onNotesChange(app.id, val);
-      setNotesSaved(true);
+    notesTimeout.current = setTimeout(async () => {
+      // B18 — mark Saved only once the write resolves; a failed save must not
+      // display "Saved".
+      const ok = await onNotesChange(app.id, val);
+      setNotesSaved(ok);
     }, 800);
   }
 
@@ -602,10 +622,14 @@ function ApplicationCard({
                   variant="ghost"
                   size="sm"
                   className="h-7 text-xs px-2 text-destructive hover:text-destructive"
-                  onClick={() => {
+                  onClick={async () => {
+                    // Cancel any pending debounced save so it can't fire with
+                    // the old text and re-add the notes we just cleared.
+                    if (notesTimeout.current) clearTimeout(notesTimeout.current);
                     setLocalNotes("");
-                    onNotesChange(app.id, "");
-                    setNotesSaved(true);
+                    setNotesSaved(false);
+                    const ok = await onNotesChange(app.id, "");
+                    setNotesSaved(ok);
                   }}
                 >
                   Clear Notes
@@ -616,10 +640,11 @@ function ApplicationCard({
                 variant="outline"
                 size="sm"
                 className="h-7 text-xs px-3"
-                onClick={() => {
+                onClick={async () => {
                   if (notesTimeout.current) clearTimeout(notesTimeout.current);
-                  onNotesChange(app.id, localNotes);
-                  setNotesSaved(true);
+                  setNotesSaved(false);
+                  const ok = await onNotesChange(app.id, localNotes);
+                  setNotesSaved(ok);
                 }}
               >
                 Save

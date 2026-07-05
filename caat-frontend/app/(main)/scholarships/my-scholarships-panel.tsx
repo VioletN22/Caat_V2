@@ -31,6 +31,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { format, differenceInCalendarDays } from "date-fns";
+import { parseLocalDate } from "@/lib/local-date";
 import {
   fetchUserScholarships,
   addUserScholarship,
@@ -87,7 +88,7 @@ const EMPTY_FORM: UserScholarshipInput = {
 // ---------------------------------------------------------------------------
 function deadlineLabel(deadline_at: string | null): string | null {
   if (!deadline_at) return null;
-  const days = differenceInCalendarDays(new Date(deadline_at), new Date());
+  const days = differenceInCalendarDays(parseLocalDate(deadline_at.slice(0, 10)), new Date());
   if (days < 0) return "Deadline passed";
   if (days === 0) return "Due today";
   if (days === 1) return "Due tomorrow";
@@ -96,7 +97,7 @@ function deadlineLabel(deadline_at: string | null): string | null {
 
 function deadlineColor(deadline_at: string | null): string {
   if (!deadline_at) return "";
-  const days = differenceInCalendarDays(new Date(deadline_at), new Date());
+  const days = differenceInCalendarDays(parseLocalDate(deadline_at.slice(0, 10)), new Date());
   if (days < 0) return "text-[#525252] line-through";
   if (days <= 7) return "font-bold text-black";
   if (days <= 30) return "text-black";
@@ -516,6 +517,9 @@ function UserScholarshipCard({
     setDeleting(true);
     try {
       await onDelete(scholarship.id);
+    } catch {
+      // Surface the failure instead of silently leaving the scholarship in place.
+      toast.error("Failed to remove scholarship. Please try again.");
     } finally {
       setDeleting(false);
       setConfirmDelete(false);
@@ -613,7 +617,7 @@ function UserScholarshipCard({
           <div className="flex items-center gap-1.5 text-sm">
             <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <span className="text-muted-foreground">
-              {format(new Date(scholarship.deadline_at), "MMM d, yyyy")}
+              {format(parseLocalDate(scholarship.deadline_at.slice(0, 10)), "MMM d, yyyy")}
             </span>
             {daysLabel && (
               <span className={`font-medium text-xs ${daysColor}`}>

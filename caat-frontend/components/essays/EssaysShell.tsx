@@ -71,7 +71,11 @@ export default function EssaysShell() {
 
   // School tagging for per-school prompts (null = shared across applications)
   const searchParams = useSearchParams();
-  const urlSchoolId = searchParams.get("school") ? Number(searchParams.get("school")) : null;
+  // Guard against a malformed ?school=abc — Number("abc") is NaN, which would
+  // poison the school_id filter/state.
+  const urlSchoolRaw = searchParams.get("school");
+  const urlSchoolNum = urlSchoolRaw ? Number(urlSchoolRaw) : NaN;
+  const urlSchoolId = Number.isFinite(urlSchoolNum) ? urlSchoolNum : null;
   const [mySchools, setMySchools] = useState<MySchool[]>([]);
   const [tagSchoolId, setTagSchoolId] = useState<number | null>(urlSchoolId);
   const [essayContent, setEssayContent] = useState("");
@@ -88,6 +92,44 @@ export default function EssaysShell() {
 
   const selectedPrompt = prompts?.find((p) => p.id === selectedPromptId) ?? null;
   const selectedCustomPrompt = customPrompts.find((p) => p.id === selectedPromptId) ?? null;
+
+  // Refs mirror the latest editor state so save/flush logic reads current values
+  // (never a stale closure) and so we can flush the outgoing draft before its
+  // content is replaced (draft/prompt switch, new draft, unmount).
+  const essayContentRef = useRef(essayContent);
+  const activeDraftRef = useRef(activeDraft);
+  essayContentRef.current = essayContent;
+  activeDraftRef.current = activeDraft;
+  const savingRef = useRef(false);
+  const pendingSaveRef = useRef(false);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Persist the outgoing draft's pending edits before its content is replaced,
+  // so switching draft/prompt (or navigating) within the autosave window never
+  // drops work. Best-effort: updates the drafts list without touching the
+  // active editor, which is about to change. Declared here (before the effects
+  // that reference it) to avoid a use-before-declaration.
+  const flushPending = useCallback(async () => {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+    const draft = activeDraftRef.current;
+    const content = essayContentRef.current;
+    if (!draft || content === draft.content) return;
+    try {
+      await updateDraft(draft.id, { content });
+      setDrafts((prev) =>
+        prev.map((d) =>
+          d.id === draft.id
+            ? { ...d, content, updated_at: new Date().toISOString() }
+            : d
+        )
+      );
+    } catch {
+      // Non-fatal on switch; the manual Save button and autosave remain.
+    }
+  }, []);
 
   // Load prompts on mount
   useEffect(() => {
@@ -162,8 +204,13 @@ export default function EssaysShell() {
       })
       .finally(() => { if (!cancelled) setDraftsLoading(false); });
 
-    return () => { cancelled = true; };
-  }, [selectedPromptId, isAuthenticated]);
+    return () => {
+      cancelled = true;
+      // Flush the outgoing prompt's active draft before this effect re-runs and
+      // replaces the editor content for the newly selected prompt.
+      void flushPending();
+    };
+  }, [selectedPromptId, isAuthenticated, flushPending]);
 
   // Track auth
   useEffect(() => {
@@ -175,38 +222,59 @@ export default function EssaysShell() {
   }, []);
 
   const handleSave = useCallback(async () => {
-    if (!activeDraft || saving) return;
+    const draft = activeDraftRef.current;
+    if (!draft) return;
+    // If a save is already in flight, don't drop the edits typed since it
+    // started: mark that another save is needed and re-run when it resolves.
+    if (savingRef.current) {
+      pendingSaveRef.current = true;
+      return;
+    }
+    const content = essayContentRef.current;
+    if (content === draft.content) return;
     setSaveError(null);
+    savingRef.current = true;
     setSaving(true);
     try {
-      await updateDraft(activeDraft.id, { content: essayContent });
+      await updateDraft(draft.id, { content });
       setDrafts((prev) =>
         prev.map((d) =>
-          d.id === activeDraft.id
-            ? { ...d, content: essayContent, updated_at: new Date().toISOString() }
+          d.id === draft.id
+            ? { ...d, content, updated_at: new Date().toISOString() }
             : d
         )
       );
       setActiveDraft((prev) =>
-        prev?.id === activeDraft.id
-          ? { ...prev, content: essayContent, updated_at: new Date().toISOString() }
+        prev?.id === draft.id
+          ? { ...prev, content, updated_at: new Date().toISOString() }
           : prev
       );
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save");
     } finally {
+      savingRef.current = false;
       setSaving(false);
+      if (pendingSaveRef.current) {
+        pendingSaveRef.current = false;
+        // Re-run to capture edits made during the in-flight save.
+        void handleSave();
+      }
     }
-  }, [activeDraft, essayContent, saving]);
-
-  const handleSwitchDraft = useCallback((draft: EssayDraft) => {
-    setActiveDraft(draft);
-    setEssayContent(draft.content);
-    setRenamingId(null);
-    if (draft.prompt_id) {
-      setCurrentDraft(draft.id, draft.prompt_id).catch(() => {});
-    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleSwitchDraft = useCallback(
+    async (draft: EssayDraft) => {
+      await flushPending();
+      setActiveDraft(draft);
+      setEssayContent(draft.content);
+      setRenamingId(null);
+      if (draft.prompt_id) {
+        setCurrentDraft(draft.id, draft.prompt_id).catch(() => {});
+      }
+    },
+    [flushPending]
+  );
 
   const startRename = useCallback((draft: EssayDraft) => {
     setRenamingId(draft.id);
@@ -232,6 +300,9 @@ export default function EssaysShell() {
 
   const handleNewDraft = useCallback(async () => {
     if (!selectedPromptId || creatingDraft || !isAuthenticated) return;
+    // Flush the outgoing draft's pending edits before we swap the editor to the
+    // fresh, empty draft.
+    await flushPending();
     const promptSlug = selectedPrompt?.slug ?? `custom-${selectedPromptId}`;
     setCreatingDraft(true);
     setSaveError(null);
@@ -250,7 +321,7 @@ export default function EssaysShell() {
     } finally {
       setCreatingDraft(false);
     }
-  }, [selectedPromptId, selectedPrompt, creatingDraft, isAuthenticated, drafts.length, tagSchoolId]);
+  }, [selectedPromptId, selectedPrompt, creatingDraft, isAuthenticated, drafts.length, tagSchoolId, flushPending]);
 
   // Persist a school tag onto the active draft (or just hold it for the next
   // new draft if none is active yet).
@@ -354,9 +425,8 @@ export default function EssaysShell() {
       ? format(new Date(activeDraft.updated_at), "MMM d, yyyy 'at' h:mm a")
       : "Never";
 
-  // Autosave — fires 2s after the user stops typing
-  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
+  // Autosave — fires 2s after the user stops typing. (autosaveTimerRef is
+  // declared with the other editor refs above.)
   useEffect(() => {
     if (essayContent === activeDraft?.content) return;
     if (!activeDraft || !isAuthenticated) return;
@@ -367,6 +437,17 @@ export default function EssaysShell() {
     return () => { if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [essayContent]);
+
+  // Flush pending edits on unmount (client-side navigation away) and on tab
+  // close, so leaving within the 2s autosave window doesn't lose work.
+  useEffect(() => {
+    const onBeforeUnload = () => { void flushPending(); };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      void flushPending();
+    };
+  }, [flushPending]);
 
   // Shared draft editor card — used for both prompt types
   const draftEditorCard = (

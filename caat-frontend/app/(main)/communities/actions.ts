@@ -990,6 +990,15 @@ export async function fetchCommunityProfileAction(
   };
 }
 
+// B7 — after a like/save/vote write, revalidate the surfaces that render a
+// post so the server-provided base props (which seed useOptimistic in PostCard)
+// refresh. Without this the optimistic like/save/vote snaps back on next render.
+function revalidatePostSurfaces(postId: string) {
+  revalidatePath("/communities");
+  revalidatePath(`/communities/${postId}`);
+  revalidatePath("/communities/saved");
+}
+
 // ─── Likes ───────────────────────────────────────────────────────────────────
 
 export async function toggleLikeAction(
@@ -1017,6 +1026,7 @@ export async function toggleLikeAction(
       .delete()
       .eq("post_id", postId)
       .eq("user_id", user.id);
+    revalidatePostSurfaces(postId);
     return { liked: false, error: null };
   }
 
@@ -1042,6 +1052,7 @@ export async function toggleLikeAction(
         post_id: postId,
       });
   }
+  revalidatePostSurfaces(postId);
   return { liked: true, error: null };
 }
 
@@ -1072,11 +1083,13 @@ export async function toggleSaveAction(
       .delete()
       .eq("post_id", postId)
       .eq("user_id", user.id);
+    revalidatePostSurfaces(postId);
     return { saved: false, error: null };
   }
   await supabase
     .from("community_saves")
     .insert({ post_id: postId, user_id: user.id });
+  revalidatePostSurfaces(postId);
   return { saved: true, error: null };
 }
 
@@ -1120,6 +1133,7 @@ export async function castPollVoteAction(
         { onConflict: "post_id,user_id" },
       );
   }
+  revalidatePostSurfaces(postId);
   return { error: null };
 }
 
