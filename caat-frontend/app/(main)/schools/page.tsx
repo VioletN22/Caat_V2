@@ -28,29 +28,34 @@ import SchoolBookmarkButton from "./school-bookmark-button";
 import type { ProfileRow } from "@/types/profile";
 import { matchSchool, type MatchResult } from "@/lib/profile-match";
 
-async function fetchProfileAndOfferedMajors(): Promise<{
-  profile: ProfileRow | null;
-  offeredMajorsBySchool: Map<number, string[]>;
-}> {
-  const sb = await createServerClient();
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return { profile: null, offeredMajorsBySchool: new Map() };
+type ServerClient = Awaited<ReturnType<typeof createServerClient>>;
 
+async function fetchSchoolsProfile(
+  sb: ServerClient,
+  userId: string | null,
+): Promise<ProfileRow | null> {
+  if (!userId) return null;
   const profileRes = await sb
     .from("profiles")
     .select(PROFILE_COLUMNS)
-    .eq("id", user.id)
+    .eq("id", userId)
     .maybeSingle();
-  const profile = (profileRes.data as unknown as ProfileRow | null) ?? null;
+  return (profileRes.data as unknown as ProfileRow | null) ?? null;
+}
 
-  if (!profile?.target_majors?.length) {
-    return { profile, offeredMajorsBySchool: new Map() };
-  }
-
+// C7: badge the current page's schools with the majors they offer. Fetch only
+// the join rows for the page's school ids (was fetching the entire
+// school_majors table on every /schools view for any user with target_majors).
+async function fetchOfferedMajors(
+  sb: ServerClient,
+  schoolIds: number[],
+): Promise<Map<number, string[]>> {
+  const map = new Map<number, string[]>();
+  if (schoolIds.length === 0) return map;
   const sjRes = await sb
     .from("school_majors")
-    .select("school_id, majors(name)");
-  const map = new Map<number, string[]>();
+    .select("school_id, majors(name)")
+    .in("school_id", schoolIds);
   for (const row of (sjRes.data ?? []) as unknown as {
     school_id: number;
     majors: { name: string } | null;
@@ -60,7 +65,7 @@ async function fetchProfileAndOfferedMajors(): Promise<{
     list.push(row.majors.name);
     map.set(row.school_id, list);
   }
-  return { profile, offeredMajorsBySchool: map };
+  return map;
 }
 
 export default async function SchoolsPage({
@@ -100,9 +105,17 @@ export default async function SchoolsPage({
   const to = from + itemsPerPage - 1;
 
   const sb = await createServerClient();
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
+  const userId = user?.id ?? null;
+
   let query = sb
     .from("schools")
-    .select("*", { count: "exact" })
+    // C12: estimated count avoids a full-table exact count on every view; the
+    // leading-wildcard ilike search can't use a btree index, and a pg_trgm GIN
+    // index on schools.name (migration 20260704120500) backs the search.
+    .select("*", { count: "estimated" })
     // Hide rows explicitly tagged as high_school; null + everything else is visible.
     .or("institution_type.is.null,institution_type.neq.high_school")
     .range(from, to);
@@ -131,11 +144,36 @@ export default async function SchoolsPage({
     query = query.order("name", { ascending: true });
   }
 
-  const [schoolsRes, { profile, offeredMajorsBySchool }] = await Promise.all([
+  const [schoolsRes, profile, bookmarkedRes] = await Promise.all([
     query,
-    fetchProfileAndOfferedMajors(),
+    fetchSchoolsProfile(sb, userId),
+    // C2: fetch the whole bookmarked-schools set in ONE query, up front, so
+    // each card gets its state as a prop instead of firing its own
+    // getUser + bookmark query on mount (~48 requests per /schools load).
+    userId
+      ? sb
+          .from("user_bookmarked_schools")
+          .select("school_id")
+          .eq("user_id", userId)
+      : Promise.resolve({ data: null }),
   ]);
   const { data: schools, count, error } = schoolsRes;
+
+  // C7: only fetch offered majors for the schools on this page (and only when
+  // the user has target majors to match against).
+  const offeredMajorsBySchool =
+    profile?.target_majors?.length && schools?.length
+      ? await fetchOfferedMajors(
+          sb,
+          schools.map((s) => s.id),
+        )
+      : new Map<number, string[]>();
+
+  const bookmarkedSchoolIds = new Set(
+    ((bookmarkedRes.data as { school_id: number }[] | null) ?? []).map(
+      (r) => r.school_id,
+    ),
+  );
 
   if (error) {
     return <div className="p-10 text-[#9a1a27]">Unable to load schools. Please try again later.</div>;
@@ -218,7 +256,11 @@ export default async function SchoolsPage({
                       <CardTitle className="text-xl line-clamp-2 leading-tight">
                         {school.name}
                       </CardTitle>
-                      <SchoolBookmarkButton schoolId={school.id} compact />
+                      <SchoolBookmarkButton
+                        schoolId={school.id}
+                        compact
+                        initialBookmarked={bookmarkedSchoolIds.has(school.id)}
+                      />
                     </div>
                     <CardDescription className="text-base font-medium text-zinc-600 dark:text-zinc-400">
                       {school.country}

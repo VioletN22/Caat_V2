@@ -10,6 +10,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { supabase } from "@/lib/supabase/client";
+import { useAuth } from "@/components/providers/AuthContext";
 import { toast } from "sonner";
 
 type BookmarkTable =
@@ -32,6 +33,13 @@ interface BookmarkButtonProps {
   iconSize?: string;
   /** Called with +1 on bookmark and -1 on un-bookmark, after the write succeeds. */
   onToggle?: (delta: 1 | -1) => void;
+  /**
+   * Initial bookmarked state resolved server-side. When provided, the button
+   * skips its per-mount `getUser()` + per-card bookmark query, which removes the
+   * N+1 request storm on list pages (C2). The signed-in user still comes from
+   * AuthContext (one shared call) so the toggle works.
+   */
+  initialBookmarked?: boolean;
 }
 
 /**
@@ -47,31 +55,33 @@ export default function BookmarkButton({
   compact = false,
   iconSize,
   onToggle,
+  initialBookmarked,
 }: BookmarkButtonProps) {
-  const [isBookmarked, setIsBookmarked] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [isBookmarked, setIsBookmarked] = useState(initialBookmarked ?? false);
+  // The user is resolved once, app-wide, by AuthProvider — no per-card getUser.
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
 
+  // Only fetch the initial bookmark state when the caller did not provide it.
+  // List pages pass `initialBookmarked` (resolved in one server query), so this
+  // effect is skipped there and the N+1 per-card query disappears (C2).
+  const skipInitialFetch = initialBookmarked !== undefined;
   useEffect(() => {
-    async function load() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      setUserId(user.id);
-
-      const { data } = await supabase
-        .from(table)
-        .select(column)
-        .eq("user_id", user.id)
-        .eq(column, id as never)
-        .maybeSingle();
-
-      setIsBookmarked(!!data);
-    }
-
-    load();
-  }, [table, column, id]);
+    if (skipInitialFetch || !userId) return;
+    let active = true;
+    supabase
+      .from(table)
+      .select(column)
+      .eq("user_id", userId)
+      .eq(column, id as never)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (active) setIsBookmarked(!!data);
+      });
+    return () => {
+      active = false;
+    };
+  }, [table, column, id, userId, skipInitialFetch]);
 
   async function handleToggle() {
     if (!userId) {

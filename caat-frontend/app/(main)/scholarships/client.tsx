@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
   Search,
@@ -39,19 +39,17 @@ import {
   formatAmountDisplay,
 } from "@/types/scholarships";
 import type { ProfileRow } from "@/types/profile";
-import { matchScholarship, type MatchResult } from "@/lib/profile-match";
+import { matchScholarship } from "@/lib/profile-match";
 import {
   FUNDING_MAP,
   LEVEL_MAP,
   CITIZENSHIP_MAP,
   FIELD_PATTERNS,
-  matchFieldsForRow,
 } from "@/lib/scholarship-filters";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/AuthContext";
 import { toast } from "sonner";
 import {
-  fetchBookmarkTracking,
   SCHOLARSHIP_STATUS_LABELS,
   type BookmarkTracking,
   type ScholarshipStatus,
@@ -64,14 +62,12 @@ const STATUS_FILTERS: { key: ScholarshipStatusFilter; label: string }[] = [
   { key: "applied", label: "Applied" },
   { key: "outcome", label: "Outcome" },
 ];
-function matchesStatusFilter(f: ScholarshipStatusFilter, status: ScholarshipStatus | undefined): boolean {
-  if (f === "all") return true;
-  if (!status) return false;
-  if (f === "outcome") return status === "awarded" || status === "not_selected";
-  return status === f;
-}
 
-const ITEMS_PER_PAGE = 6;
+// The full universe of Field-of-Study filter labels. The set was previously
+// derived from the whole in-memory table; with server-side filtering the table
+// is no longer shipped, so we offer every known field label and let the query
+// decide what matches.
+const FIELD_LABELS = FIELD_PATTERNS.map((p) => p.label);
 
 function rowToCard(row: ScholarshipRow): Scholarship {
   return {
@@ -92,12 +88,35 @@ function parseArray(val: string | null): string[] {
     .filter(Boolean);
 }
 
-interface Props {
-  scholarships: ScholarshipRow[];
-  profile: ProfileRow | null;
+interface TrackingSeed {
+  scholarship_id: string;
+  status: ScholarshipStatus;
+  school_id: number | null;
 }
 
-export default function ScholarshipsClient({ scholarships, profile }: Props) {
+interface Props {
+  /** One page of scholarships, already filtered, match-sorted and paginated on the server. */
+  rows: ScholarshipRow[];
+  /** Total number of scholarships matching the current filters (for pagination). */
+  totalCount: number;
+  currentPage: number;
+  itemsPerPage: number;
+  profile: ProfileRow | null;
+  initialBookmarkedIds: string[];
+  initialTracking: TrackingSeed[];
+  availableUniversities: string[];
+}
+
+export default function ScholarshipsClient({
+  rows,
+  totalCount,
+  currentPage,
+  itemsPerPage,
+  profile,
+  initialBookmarkedIds,
+  initialTracking,
+  availableUniversities,
+}: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
@@ -105,124 +124,101 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
   const [view, setView] = useState<"browse" | "mine">(
     sp.get("view") === "mine" ? "mine" : "browse",
   );
+
+  // Filter state is driven by the URL (the server reads it back to build the
+  // query). Text inputs keep local state so typing stays responsive and is
+  // debounced into the URL.
   const [searchQuery, setSearchQuery] = useState(sp.get("q") ?? "");
   const [locationQuery, setLocationQuery] = useState(sp.get("location") ?? "");
-  const [selectedFunding, setSelectedFunding] = useState<string[]>(
-    parseArray(sp.get("funding")),
-  );
-  const [selectedLevels, setSelectedLevels] = useState<string[]>(
-    parseArray(sp.get("level")),
-  );
-  const [selectedCitizenships, setSelectedCitizenships] = useState<string[]>(
-    parseArray(sp.get("citizenship")),
-  );
-  const [selectedFields, setSelectedFields] = useState<string[]>(
-    parseArray(sp.get("field")),
-  );
-  const [selectedUniversities, setSelectedUniversities] = useState<string[]>(
-    parseArray(sp.get("university")),
-  );
+  const selectedFunding = parseArray(sp.get("funding"));
+  const selectedLevels = parseArray(sp.get("level"));
+  const selectedCitizenships = parseArray(sp.get("citizenship"));
+  const selectedFields = parseArray(sp.get("field"));
+  const selectedUniversities = parseArray(sp.get("university"));
+  const showBookmarked = sp.get("bookmarked") === "1";
+  const showOpenOnly = sp.get("open") === "1";
+  const statusFilter: ScholarshipStatusFilter =
+    (["interested", "applied", "outcome"] as const).find(
+      (s) => s === sp.get("status"),
+    ) ?? "all";
 
-  // Derive the universe of universities present in the data so the filter
-  // dropdown only shows options that would actually match something.
-  const availableUniversities = useMemo(() => {
-    const set = new Set<string>();
-    for (const s of scholarships) {
-      const name = (s.school_name || s.provider_name || "").trim();
-      if (name) set.add(name);
+  // Bookmark + tracking state seeded from the server so cards render with the
+  // right icons/labels on first paint (no per-card fetch). Optimistic toggles
+  // mutate it locally; navigation re-seeds it from fresh server props.
+  const seededBookmarks = useMemo(
+    () => new Set(initialBookmarkedIds),
+    [initialBookmarkedIds],
+  );
+  const seededTracking = useMemo(() => {
+    const m = new Map<string, BookmarkTracking>();
+    for (const t of initialTracking) {
+      m.set(t.scholarship_id, { status: t.status, school_id: t.school_id });
     }
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [scholarships]);
+    return m;
+  }, [initialTracking]);
 
-  // Pre-compute field-of-study sets per scholarship and the universe of
-  // fields that appear at least once. O(n*patterns) once, instead of on
-  // every filter recompute.
-  const fieldsByRow = useMemo(() => {
-    const map = new Map<string, Set<string>>();
-    for (const s of scholarships) {
-      map.set(s.id, new Set(matchFieldsForRow(s)));
-    }
-    return map;
-  }, [scholarships]);
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(seededBookmarks);
+  const [tracking, setTracking] = useState<Map<string, BookmarkTracking>>(seededTracking);
 
-  const availableFields = useMemo(() => {
-    const set = new Set<string>();
-    for (const f of fieldsByRow.values()) for (const v of f) set.add(v);
-    return FIELD_PATTERNS.map((p) => p.label).filter((l) => set.has(l));
-  }, [fieldsByRow]);
+  // Re-seed local state when the server sends a fresh snapshot (navigation).
+  useEffect(() => {
+    setBookmarkedIds(seededBookmarks);
+  }, [seededBookmarks]);
+  useEffect(() => {
+    setTracking(seededTracking);
+  }, [seededTracking]);
 
-  // Pre-compute profile-match per scholarship so sort+badge are O(1).
-  const matchByRow = useMemo(() => {
-    const map = new Map<string, MatchResult>();
-    for (const s of scholarships) {
-      map.set(s.id, matchScholarship(profile, s));
-    }
-    return map;
-  }, [scholarships, profile]);
-
-  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
-  const [tracking, setTracking] = useState<Map<string, BookmarkTracking>>(new Map());
-  const [statusFilter, setStatusFilter] = useState<ScholarshipStatusFilter>("all");
-  const [showBookmarked, setShowBookmarked] = useState(
-    sp.get("bookmarked") === "1",
-  );
-  const [showOpenOnly, setShowOpenOnly] = useState(sp.get("open") === "1");
   const { user } = useAuth();
   const userId = user?.id ?? null;
-  const [currentPage, setCurrentPage] = useState(Number(sp.get("page")) || 1);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / itemsPerPage));
 
   function switchView(next: "browse" | "mine") {
     setView(next);
-    // Preserve existing filter/search params when toggling the view — rebuilding
-    // the URL from scratch dropped them, silently clearing the user's filters.
     const params = new URLSearchParams(sp.toString());
     if (next === "mine") params.set("view", "mine");
     else params.delete("view");
     params.delete("page");
     router.replace(
       `${pathname}${params.toString() ? `?${params.toString()}` : ""}`,
-      {
-        scroll: false,
-      },
+      { scroll: false },
     );
   }
 
   const pushParams = useCallback(
-    (overrides: Record<string, string | null>) => {
+    (overrides: Record<string, string | null>, opts?: { keepPage?: boolean }) => {
       const params = new URLSearchParams(sp.toString());
       for (const [k, v] of Object.entries(overrides)) {
-        if (v) {
-          params.set(k, v);
-        } else {
-          params.delete(k);
-        }
+        if (v) params.set(k, v);
+        else params.delete(k);
       }
-      params.delete("page");
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      if (!opts?.keepPage) params.delete("page");
+      router.replace(
+        `${pathname}${params.toString() ? `?${params.toString()}` : ""}`,
+        { scroll: false },
+      );
     },
     [router, pathname, sp],
   );
 
+  // Debounce text-input params so a full server refetch doesn't fire on every
+  // keystroke (M2/D6). The controlled input updates immediately; the URL (and
+  // thus the query) updates after the user pauses.
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedPush = useCallback(
+    (key: string, value: string) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        pushParams({ [key]: value.trim() || null });
+      }, 300);
+    },
+    [pushParams],
+  );
   useEffect(() => {
-    if (!userId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setBookmarkedIds(new Set());
-      return;
-    }
-
-    supabase
-      .from("user_bookmarked_scholarships")
-      .select("scholarship_id")
-      .eq("user_id", userId)
-      .then(({ data }) => {
-        if (data)
-          setBookmarkedIds(
-            new Set(data.map((r) => r.scholarship_id as string)),
-          );
-      });
-
-    fetchBookmarkTracking().then(setTracking).catch(() => {});
-  }, [userId]);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   async function handleToggleBookmark(id: string) {
     if (!userId) {
@@ -231,16 +227,12 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
     }
 
     const isBookmarked = bookmarkedIds.has(id);
-    // Snapshot the tracking entry so we can restore it if the write fails.
     const prevTrackingEntry = tracking.get(id);
 
     setBookmarkedIds((prev) => {
       const next = new Set(prev);
-      if (isBookmarked) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (isBookmarked) next.delete(id);
+      else next.add(id);
       return next;
     });
     setTracking((prev) => {
@@ -264,18 +256,18 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
           .upsert({ user_id: userId, scholarship_id: id });
         if (error) throw error;
       }
+      // When the current view is scoped to bookmarks/status, the server-side
+      // set changed, so refresh to reflect the new membership across pages.
+      if (showBookmarked || statusFilter !== "all") {
+        router.refresh();
+      }
     } catch {
       setBookmarkedIds((prev) => {
         const next = new Set(prev);
-        if (isBookmarked) {
-          next.add(id);
-        } else {
-          next.delete(id);
-        }
+        if (isBookmarked) next.add(id);
+        else next.delete(id);
         return next;
       });
-      // Also roll back the tracking map (was updated optimistically alongside
-      // bookmarkedIds) so the two stay consistent after a failed write.
       setTracking((prev) => {
         const next = new Map(prev);
         if (isBookmarked) {
@@ -289,32 +281,20 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
     }
   }
 
-  function toggleMultiFilter<T>(
-    value: T,
-    setter: React.Dispatch<React.SetStateAction<T[]>>,
+  function toggleMultiFilter(
+    value: string,
     paramKey: string,
-    current: T[],
+    current: string[],
   ) {
     const next = current.includes(value)
       ? current.filter((v) => v !== value)
       : [...current, value];
-    setter(next);
-    setCurrentPage(1);
     pushParams({ [paramKey]: next.length > 0 ? next.join(",") : null });
   }
 
   function clearAll() {
     setLocationQuery("");
-    setSelectedFunding([]);
-    setSelectedLevels([]);
-    setSelectedCitizenships([]);
-    setSelectedFields([]);
-    setSelectedUniversities([]);
-    setShowBookmarked(false);
-    setShowOpenOnly(false);
     setSearchQuery("");
-    setStatusFilter("all");
-    setCurrentPage(1);
     router.replace(pathname, { scroll: false });
   }
 
@@ -330,112 +310,10 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
     statusFilter !== "all" ||
     searchQuery.trim().length > 0;
 
-  const filtered = useMemo(() => {
-    const q = searchQuery.toLowerCase();
-
-    return scholarships.filter((s) => {
-      if (showBookmarked && !bookmarkedIds.has(s.id)) return false;
-      if (statusFilter !== "all" && !matchesStatusFilter(statusFilter, tracking.get(s.id)?.status)) return false;
-      if (showOpenOnly && !s.is_active) return false;
-
-      if (
-        q &&
-        !s.title.toLowerCase().includes(q) &&
-        !s.provider_name.toLowerCase().includes(q)
-      ) {
-        return false;
-      }
-
-      if (locationQuery.trim()) {
-        const lq = locationQuery.trim().toLowerCase();
-        const matchesLocation =
-          s.country?.toLowerCase().includes(lq) ||
-          s.school_name?.toLowerCase().includes(lq) ||
-          s.state_region?.toLowerCase().includes(lq);
-        if (!matchesLocation) return false;
-      }
-
-      if (
-        // B10 — multiple funding selections widen the results (OR), matching the
-        // other multi-selects; `.every` here narrowed to scholarships that were
-        // every selected type at once, which no scholarship is.
-        selectedFunding.length > 0 &&
-        !selectedFunding.some((opt) => FUNDING_MAP[opt]?.(s))
-      ) {
-        return false;
-      }
-
-      if (
-        selectedLevels.length > 0 &&
-        !selectedLevels.some((opt) => LEVEL_MAP[opt]?.(s))
-      ) {
-        return false;
-      }
-
-      if (
-        selectedCitizenships.length > 0 &&
-        !selectedCitizenships.some((opt) => CITIZENSHIP_MAP[opt]?.(s))
-      ) {
-        return false;
-      }
-
-      if (selectedFields.length > 0) {
-        const rowFields = fieldsByRow.get(s.id) ?? new Set();
-        if (!selectedFields.some((f) => rowFields.has(f))) return false;
-      }
-
-      if (selectedUniversities.length > 0) {
-        const uni = (s.school_name || s.provider_name || "").trim();
-        if (!selectedUniversities.includes(uni)) return false;
-      }
-
-      return true;
-    });
-  }, [
-    scholarships,
-    searchQuery,
-    locationQuery,
-    selectedFunding,
-    selectedLevels,
-    selectedCitizenships,
-    selectedFields,
-    fieldsByRow,
-    selectedUniversities,
-    showBookmarked,
-    showOpenOnly,
-    bookmarkedIds,
-    statusFilter,
-    tracking,
-  ]);
-
-  // Sort matched items to the top (by descending match score). Within the
-  // matched and unmatched groups, the existing order from `scholarships`
-  // (which is already sorted by is_active/featured/created_at at the DB layer)
-  // is preserved by sort() stability.
-  const sorted = useMemo(() => {
-    return [...filtered].sort((a, b) => {
-      const aScore = matchByRow.get(a.id)?.score ?? 0;
-      const bScore = matchByRow.get(b.id)?.score ?? 0;
-      return bScore - aScore;
-    });
-  }, [filtered, matchByRow]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
-  const paginated = sorted.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE,
-  );
-
   function goToPage(page: number) {
     const clamped = Math.max(1, Math.min(page, totalPages));
-    setCurrentPage(clamped);
+    pushParams({ page: clamped > 1 ? String(clamped) : null }, { keepPage: true });
   }
-
-  // Clamp the page STATE (not just the display) when the result set shrinks or a
-  // stale ?page=N lands past the end, so the grid never renders empty.
-  useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages);
-  }, [currentPage, totalPages]);
 
   const pageNumbers = useMemo(() => {
     const pages: (number | "...")[] = [];
@@ -495,8 +373,7 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
-                    setCurrentPage(1);
-                    pushParams({ q: e.target.value.trim() || null });
+                    debouncedPush("q", e.target.value);
                   }}
                 />
               </div>
@@ -529,10 +406,7 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
                         value={locationQuery}
                         onChange={(e) => {
                           setLocationQuery(e.target.value);
-                          setCurrentPage(1);
-                          pushParams({
-                            location: e.target.value.trim() || null,
-                          });
+                          debouncedPush("location", e.target.value);
                         }}
                         autoFocus
                       />
@@ -574,12 +448,7 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
                         key={opt}
                         checked={selectedLevels.includes(opt)}
                         onCheckedChange={() =>
-                          toggleMultiFilter(
-                            opt,
-                            setSelectedLevels,
-                            "level",
-                            selectedLevels,
-                          )
+                          toggleMultiFilter(opt, "level", selectedLevels)
                         }
                       >
                         {opt}
@@ -611,12 +480,7 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
                         key={opt}
                         checked={selectedFunding.includes(opt)}
                         onCheckedChange={() =>
-                          toggleMultiFilter(
-                            opt,
-                            setSelectedFunding,
-                            "funding",
-                            selectedFunding,
-                          )
+                          toggleMultiFilter(opt, "funding", selectedFunding)
                         }
                       >
                         {opt}
@@ -648,12 +512,7 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
                         key={opt}
                         checked={selectedCitizenships.includes(opt)}
                         onCheckedChange={() =>
-                          toggleMultiFilter(
-                            opt,
-                            setSelectedCitizenships,
-                            "citizenship",
-                            selectedCitizenships,
-                          )
+                          toggleMultiFilter(opt, "citizenship", selectedCitizenships)
                         }
                       >
                         {opt}
@@ -683,22 +542,12 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
                     align="start"
                     className="w-64 max-h-72 overflow-y-auto"
                   >
-                    {availableFields.length === 0 && (
-                      <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                        No fields detected
-                      </div>
-                    )}
-                    {availableFields.map((field) => (
+                    {FIELD_LABELS.map((field) => (
                       <DropdownMenuCheckboxItem
                         key={field}
                         checked={selectedFields.includes(field)}
                         onCheckedChange={() =>
-                          toggleMultiFilter(
-                            field,
-                            setSelectedFields,
-                            "field",
-                            selectedFields,
-                          )
+                          toggleMultiFilter(field, "field", selectedFields)
                         }
                       >
                         {field}
@@ -738,12 +587,7 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
                         key={uni}
                         checked={selectedUniversities.includes(uni)}
                         onCheckedChange={() =>
-                          toggleMultiFilter(
-                            uni,
-                            setSelectedUniversities,
-                            "university",
-                            selectedUniversities,
-                          )
+                          toggleMultiFilter(uni, "university", selectedUniversities)
                         }
                       >
                         {uni}
@@ -757,12 +601,7 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
                   size="sm"
                   variant={showOpenOnly ? "default" : "outline"}
                   className="gap-1.5"
-                  onClick={() => {
-                    const next = !showOpenOnly;
-                    setShowOpenOnly(next);
-                    setCurrentPage(1);
-                    pushParams({ open: next ? "1" : null });
-                  }}
+                  onClick={() => pushParams({ open: showOpenOnly ? null : "1" })}
                 >
                   <CircleDot
                     className={`h-3.5 w-3.5 ${showOpenOnly ? "fill-current" : ""}`}
@@ -775,12 +614,9 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
                   size="sm"
                   variant={showBookmarked ? "default" : "outline"}
                   className="gap-1.5"
-                  onClick={() => {
-                    const next = !showBookmarked;
-                    setShowBookmarked(next);
-                    setCurrentPage(1);
-                    pushParams({ bookmarked: next ? "1" : null });
-                  }}
+                  onClick={() =>
+                    pushParams({ bookmarked: showBookmarked ? null : "1" })
+                  }
                 >
                   <Bookmark
                     className={`h-3.5 w-3.5 ${showBookmarked ? "fill-current" : ""}`}
@@ -799,17 +635,16 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
                   )}
                 </Button>
 
-                {/* Status filter tabs (item 5) */}
+                {/* Status filter tabs */}
                 <span className="mx-1 h-5 w-px bg-border" aria-hidden />
                 {STATUS_FILTERS.map((f) => (
                   <Button
                     key={f.key}
                     size="sm"
                     variant={statusFilter === f.key ? "default" : "outline"}
-                    onClick={() => {
-                      setStatusFilter(f.key);
-                      setCurrentPage(1);
-                    }}
+                    onClick={() =>
+                      pushParams({ status: f.key === "all" ? null : f.key })
+                    }
                   >
                     {f.label}
                   </Button>
@@ -831,27 +666,30 @@ export default function ScholarshipsClient({ scholarships, profile }: Props) {
 
             {/* Results count */}
             <p className="text-sm text-muted-foreground mb-6">
-              {filtered.length} scholarship{filtered.length !== 1 ? "s" : ""}
+              {totalCount} scholarship{totalCount !== 1 ? "s" : ""}
               {hasActiveFilters ? " matching your filters" : ""}
             </p>
 
             {/* Scholarship grid */}
-            {paginated.length > 0 ? (
+            {rows.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-                {paginated.map((row) => (
-                  <ScholarshipCard
-                    key={row.id}
-                    scholarship={rowToCard(row)}
-                    isBookmarked={bookmarkedIds.has(row.id)}
-                    onToggleBookmark={handleToggleBookmark}
-                    matchReason={matchByRow.get(row.id)?.reason ?? null}
-                    statusLabel={
-                      bookmarkedIds.has(row.id) && tracking.get(row.id)
-                        ? SCHOLARSHIP_STATUS_LABELS[tracking.get(row.id)!.status]
-                        : null
-                    }
-                  />
-                ))}
+                {rows.map((row) => {
+                  const match = matchScholarship(profile, row);
+                  return (
+                    <ScholarshipCard
+                      key={row.id}
+                      scholarship={rowToCard(row)}
+                      isBookmarked={bookmarkedIds.has(row.id)}
+                      onToggleBookmark={handleToggleBookmark}
+                      matchReason={match.reason}
+                      statusLabel={
+                        bookmarkedIds.has(row.id) && tracking.get(row.id)
+                          ? SCHOLARSHIP_STATUS_LABELS[tracking.get(row.id)!.status]
+                          : null
+                      }
+                    />
+                  );
+                })}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">

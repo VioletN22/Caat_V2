@@ -13,8 +13,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import RichTextEditor from "@/components/RichTextEditor";
-import { postBodyHtml, htmlToText } from "@/lib/sanitize-html";
+import dynamic from "next/dynamic";
+import { postBodyHtml, htmlToText } from "@/lib/html-text";
+
+// The tiptap editor (StarterKit + 5 extensions) is only needed while editing a
+// post, so keep it out of the /communities feed bundle and load it on demand (C4).
+const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), {
+  ssr: false,
+  loading: () => (
+    <div className="min-h-24 rounded-md border border-input bg-muted/30" />
+  ),
+});
 import { getInitials } from "@/lib/user-utils";
 import { cn } from "@/lib/utils";
 import {
@@ -159,9 +168,11 @@ export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved, on
   function handleEditSave() {
     if (!htmlToText(editContent).trim() || editContent === displayContent) { setIsEditing(false); return; }
     startTransition(async () => {
-      const { error } = await updatePostAction(post.id, editContent);
+      const { error, content: sanitized } = await updatePostAction(post.id, editContent);
       if (error) { toast.error(error); return; }
-      setDisplayContent(editContent);
+      // Render the server-sanitized HTML (postBodyHtml no longer sanitizes on
+      // the client), falling back to the editor output if none came back.
+      setDisplayContent(sanitized ?? editContent);
       setDisplayEditedAt(new Date().toISOString());
       setIsEditing(false);
       toast.success("Post updated.");

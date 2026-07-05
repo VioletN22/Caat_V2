@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CheckCircle2, Circle, X, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase/client";
+import { getClientUserId } from "@/lib/current-user";
 
 /**
  * Dashboard onboarding card (roadmap item 7). Guides a new student through the
@@ -33,15 +34,13 @@ export function OnboardingChecklist() {
     setDismissed(typeof window !== "undefined" && localStorage.getItem(DISMISS_KEY) === "1");
 
     (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+      const userId = await getClientUserId();
+      if (!userId) return;
 
       const [profileRes, appsRes, scholRes] = await Promise.all([
-        supabase.from("profiles").select("target_majors, preferred_countries").eq("id", user.id).maybeSingle(),
-        supabase.from("user_school_applications").select("id", { count: "exact", head: true }).eq("user_id", user.id),
-        supabase.from("user_bookmarked_scholarships").select("scholarship_id", { count: "exact", head: true }).eq("user_id", user.id),
+        supabase.from("profiles").select("target_majors, preferred_countries").eq("id", userId).maybeSingle(),
+        supabase.from("user_school_applications").select("id", { count: "exact", head: true }).eq("user_id", userId),
+        supabase.from("user_bookmarked_scholarships").select("scholarship_id", { count: "exact", head: true }).eq("user_id", userId),
       ]);
 
       const p = profileRes.data as { target_majors: string[] | null; preferred_countries: string[] | null } | null;

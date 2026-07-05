@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/lib/supabase/client";
+import { getClientUserId } from "@/lib/current-user";
 import {
   fetchUnifiedDeadlines,
   type UnifiedDeadline,
@@ -61,9 +62,9 @@ export function UpcomingDeadlinesWidget() {
   useEffect(() => {
     async function load() {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const all = await fetchUnifiedDeadlines(supabase, user.id);
+        const userId = await getClientUserId();
+        if (!userId) return;
+        const all = await fetchUnifiedDeadlines(supabase, userId);
         setItems(all.slice(0, DISPLAY_LIMIT));
       } catch {
         // Silently fail — widget is non-critical

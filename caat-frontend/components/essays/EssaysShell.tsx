@@ -51,10 +51,16 @@ import { supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-export default function EssaysShell() {
-  const [prompts, setPrompts] = useState<EssayPrompt[] | null>(null);
+export default function EssaysShell({
+  initialPrompts,
+}: {
+  /** Global essay prompt list resolved on the server (C8) for an instant first paint. */
+  initialPrompts?: EssayPrompt[] | null;
+}) {
+  const hasInitialPrompts = initialPrompts != null;
+  const [prompts, setPrompts] = useState<EssayPrompt[] | null>(initialPrompts ?? null);
   const [promptsError, setPromptsError] = useState<string | null>(null);
-  const [promptsLoading, setPromptsLoading] = useState(true);
+  const [promptsLoading, setPromptsLoading] = useState(!hasInitialPrompts);
 
   const [customPrompts, setCustomPrompts] = useState<CustomEssayPrompt[]>([]);
   const [creatingCustomPrompt, setCreatingCustomPrompt] = useState(false);
@@ -64,7 +70,9 @@ export default function EssaysShell() {
   const [renameCustomValue, setRenameCustomValue] = useState("");
   const [confirmDeleteCustomId, setConfirmDeleteCustomId] = useState<string | null>(null);
 
-  const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
+  const [selectedPromptId, setSelectedPromptId] = useState<string | null>(
+    initialPrompts?.[0]?.id ?? null,
+  );
   const [drafts, setDrafts] = useState<EssayDraft[]>([]);
   const [draftsLoading, setDraftsLoading] = useState(false);
   const [activeDraft, setActiveDraft] = useState<EssayDraft | null>(null);
@@ -133,6 +141,9 @@ export default function EssaysShell() {
 
   // Load prompts on mount
   useEffect(() => {
+    // First-paint prompt list came from the server; skip the client fetch then.
+    if (hasInitialPrompts) return;
+
     let cancelled = false;
 
     async function load() {

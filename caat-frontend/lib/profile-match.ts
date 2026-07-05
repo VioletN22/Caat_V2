@@ -188,6 +188,52 @@ export function matchScholarship(
   return { score, reason };
 }
 
+/**
+ * Profile-derived scalars for the `search_scholarships` RPC (C1/B12). The RPC
+ * does the per-row scoring in Postgres, but the profile-only derivations that
+ * need the alias tables above (country normalisation, nationality -> home
+ * country, domestic codes) are computed here so those tables stay the single
+ * source of truth. Keep in sync with `matchScholarship`.
+ */
+export interface ScholarshipMatchParams {
+  targetMajors: string[]; // lowercased, empties dropped
+  prefCountries: string[]; // alias-normalised + lowercased
+  homeCountry: string | null;
+  domesticCodes: string[];
+  gradYear: number | null;
+}
+
+export function scholarshipMatchParams(
+  profile: ProfileRow | null
+): ScholarshipMatchParams {
+  if (!profile) {
+    return {
+      targetMajors: [],
+      prefCountries: [],
+      homeCountry: null,
+      domesticCodes: [],
+      gradYear: null,
+    };
+  }
+  const targetMajors = (profile.target_majors ?? [])
+    .filter((m): m is string => Boolean(m))
+    .map((m) => m.toLowerCase());
+  const prefCountries = (profile.preferred_countries ?? [])
+    .filter((c): c is string => Boolean(c))
+    .map((c) => normaliseCountry(c));
+  const homeCountry = profile.nationality
+    ? NATIONALITY_TO_COUNTRY[profile.nationality] ?? null
+    : null;
+  const domesticCodes = homeCountry ? DOMESTIC_CODES[homeCountry] ?? [] : [];
+  return {
+    targetMajors,
+    prefCountries,
+    homeCountry,
+    domesticCodes,
+    gradYear: profile.graduation_year ?? null,
+  };
+}
+
 // ─── School match ────────────────────────────────────────────────────────────
 
 export interface SchoolForMatch {

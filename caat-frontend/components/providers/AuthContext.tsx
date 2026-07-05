@@ -19,16 +19,30 @@ const AuthContext = createContext<AuthContextValue>({
   loading: true,
 });
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+export function AuthProvider({
+  children,
+  initialUser,
+}: {
+  children: React.ReactNode;
+  /**
+   * User resolved once on the server (C5). When provided, the provider seeds
+   * from it and skips the client-side getUser() round trip that every (main)
+   * navigation used to fire; onAuthStateChange still keeps it in sync.
+   */
+  initialUser?: User | null;
+}) {
+  const hasInitial = initialUser !== undefined;
+  const [user, setUser] = useState<User | null>(initialUser ?? null);
+  const [loading, setLoading] = useState(!hasInitial);
 
   useEffect(() => {
-    // Resolve the initial user once.
-    supabase.auth.getUser().then(({ data: { user: u } }) => {
-      setUser(u ?? null);
-      setLoading(false);
-    });
+    // Only resolve the user over the network when the server did not seed it.
+    if (!hasInitial) {
+      supabase.auth.getUser().then(({ data: { user: u } }) => {
+        setUser(u ?? null);
+        setLoading(false);
+      });
+    }
 
     // Keep state in sync whenever the session changes (sign in / sign out /
     // token refresh).
@@ -39,6 +53,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     return () => listener.subscription.unsubscribe();
+    // hasInitial is derived from the initialUser prop, which is fixed for the
+    // provider's lifetime; this effect intentionally runs once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

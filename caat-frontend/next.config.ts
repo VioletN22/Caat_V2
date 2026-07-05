@@ -48,6 +48,12 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   turbopack: {},
+  // C16 — allow next/image to optimize the YouTube thumbnail on the landing demo.
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "i.ytimg.com" },
+    ],
+  },
   // H4 — Prevent source maps from being served to browsers in production,
   // which would expose original source code and internal logic.
   productionBrowserSourceMaps: false,

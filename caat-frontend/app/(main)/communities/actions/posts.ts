@@ -223,7 +223,7 @@ export async function createPostAction(input: {
 export async function updatePostAction(
   postId: string,
   content: string,
-): Promise<{ error: string | null }> {
+): Promise<{ error: string | null; content?: string }> {
   const supabase = await createSupabaseServer();
   const {
     data: { user },
@@ -257,6 +257,9 @@ export async function updatePostAction(
 
   return {
     error: error ? sanitizeError(error, "Could not update post.") : null,
+    // Return the server-sanitized HTML so the client renders the trusted
+    // version optimistically without re-running sanitize-html in the browser (C4).
+    content: error ? undefined : sanitized,
   };
 }
 

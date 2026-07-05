@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/lib/supabase/client";
+import { getClientUserId } from "@/lib/current-user";
 
 interface BookmarkedSchool {
   id: number;
@@ -89,10 +90,8 @@ export function BookmarkedSchoolsList() {
 
   useEffect(() => {
     async function load() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
+      const userId = await getClientUserId();
+      if (!userId) {
         setLoading(false);
         return;
       }
@@ -100,7 +99,7 @@ export function BookmarkedSchoolsList() {
       const { data } = await supabase
         .from("user_bookmarked_schools")
         .select("school_id, schools(id, name, country)")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .order("created_at", { ascending: false });
 
       const items = ((data ?? []) as unknown as BookmarkRow[])
@@ -172,15 +171,13 @@ export function useBookmarkedSchoolCount() {
 
   useEffect(() => {
     async function load() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+      const userId = await getClientUserId();
+      if (!userId) return;
 
       const { count: c } = await supabase
         .from("user_bookmarked_schools")
         .select("school_id", { count: "exact", head: true })
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
 
       setCount(c ?? 0);
     }

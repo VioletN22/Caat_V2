@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { Play } from "lucide-react";
 
 const YT_VIDEO_ID = "ESIc6o3kMpk";
@@ -49,12 +50,12 @@ export function DemoPlayer() {
       aria-label="Play CAAT product demo"
       className="group relative aspect-video w-full overflow-hidden bg-black focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-[#9a1a27] focus-visible:outline-offset-[3px]"
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <Image
         src={THUMB_SRC}
         alt=""
-        className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-        loading="lazy"
+        fill
+        sizes="(max-width: 768px) 100vw, 768px"
+        className="object-cover transition-transform duration-300 group-hover:scale-105"
       />
       <span className="absolute inset-0 bg-black/20 transition-colors group-hover:bg-black/10" />
       <span className="absolute inset-0 flex items-center justify-center">

@@ -395,9 +395,15 @@ function FileDropZone({
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
-export default function DocumentVaultClient() {
-  const [docs, setDocs] = useState<DocumentRow[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function DocumentVaultClient({
+  initialDocs,
+}: {
+  /** Documents list resolved on the server (C8) for an instant first paint. */
+  initialDocs?: DocumentRow[] | null;
+}) {
+  const hasInitialDocs = initialDocs != null;
+  const [docs, setDocs] = useState<DocumentRow[]>(initialDocs ?? []);
+  const [loading, setLoading] = useState(!hasInitialDocs);
   const [activeTab, setActiveTab] = useState<Tab>("All Files");
   const [page, setPage] = useState(1);
 
@@ -423,9 +429,13 @@ export default function DocumentVaultClient() {
   const reuploadInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/immutability
-    loadDocs();
+    // First-paint list came from the server; only fetch it here when it didn't.
+    if (!hasInitialDocs) {
+      // eslint-disable-next-line react-hooks/immutability
+      loadDocs();
+    }
     fetchMySchools().then(setMySchools).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Opened from a school's hub ("Attach a document for X") — pre-tag + open.

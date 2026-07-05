@@ -9,8 +9,17 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import RichTextEditor from "@/components/RichTextEditor";
-import { htmlToText } from "@/lib/sanitize-html";
+import dynamic from "next/dynamic";
+import { htmlToText } from "@/lib/html-text";
+
+// Load the tiptap editor only when the composer is expanded, so it stays out
+// of the initial /communities feed bundle (C4).
+const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), {
+  ssr: false,
+  loading: () => (
+    <div className="min-h-24 rounded-md border border-input bg-muted/30" />
+  ),
+});
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
