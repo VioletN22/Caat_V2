@@ -22,11 +22,52 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.mycaat.com";
+const siteDescription =
+  "CAAT is the College Application Assistance Tool for Australian students. Compare 10,000+ universities, track applications and UAC deadlines, draft essays, match scholarships to your profile, and build an admissions-ready resume, all in one place.";
+
 export const metadata: Metadata = {
-  title: "CAAT",
-  description: "CAAT — College Application Assistance Tool. Track schools, essays, scholarships, and documents all in one place.",
-  icons: {
-    icon: "/logo.png",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "CAAT: College Application Assistance Tool",
+    template: "%s | CAAT",
+  },
+  description: siteDescription,
+  applicationName: "CAAT",
+  keywords: [
+    "university applications",
+    "Australian universities",
+    "UAC",
+    "ATAR",
+    "scholarships",
+    "college essays",
+    "admissions resume",
+  ],
+  openGraph: {
+    type: "website",
+    siteName: "CAAT",
+    url: siteUrl,
+    title: "CAAT: College Application Assistance Tool",
+    description: siteDescription,
+    locale: "en_AU",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "CAAT: College Application Assistance Tool",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CAAT: College Application Assistance Tool",
+    description: siteDescription,
+    images: ["/opengraph-image"],
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 };
 

@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { SignupForm } from "@/components/signup-form";
+
+export const metadata: Metadata = {
+  title: "Sign up",
+  description: "Create your free CAAT account to compare universities, track applications, and match scholarships to your profile.",
+};
 
 export default function SignupPage() {
   return (

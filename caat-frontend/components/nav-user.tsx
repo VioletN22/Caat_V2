@@ -9,6 +9,7 @@ import {
   IconDotsVertical,
   IconLogout,
   IconMoon,
+  IconSettings,
   IconSun,
   IconUser,
 } from "@tabler/icons-react"
@@ -101,6 +102,12 @@ export function NavUser({
                 <Link href="/profile">
                   <IconUser />
                   My Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/settings">
+                  <IconSettings />
+                  Settings
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>

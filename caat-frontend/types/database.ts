@@ -1702,6 +1702,10 @@ export type Database = {
         Args: { p_group_id: string; p_user_id: string }
         Returns: boolean
       }
+      delete_own_account: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       get_community_profile_extended: {
         Args: { target_id: string }
         Returns: {

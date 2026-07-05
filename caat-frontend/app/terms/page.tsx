@@ -4,7 +4,7 @@ import Image from "next/image";
 const LAST_UPDATED = "April 2026";
 
 export const metadata = {
-  title: "Terms of Service — CAAT",
+  title: "Terms of Service",
   description: "Terms of Service for CAAT, the College Application Assistance Tool.",
 };
 

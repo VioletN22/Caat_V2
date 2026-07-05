@@ -1,7 +1,13 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { LoginForm } from "@/components/login-form";
+
+export const metadata: Metadata = {
+  title: "Log in",
+  description: "Log in to CAAT to manage your university applications, essays, scholarships, and documents.",
+};
 
 export default function LoginPage() {
   return (

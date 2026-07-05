@@ -55,10 +55,12 @@ export async function gate(
   key: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!limiter) {
-    // A4 — fail closed in production. Missing Upstash config in prod must NOT
-    // silently disable rate limiting; only dev/preview keeps the permissive no-op.
-    // (Task 3's native CAPTCHA is the primary auth-abuse control; this is a net.)
-    if (process.env.NODE_ENV === "production" && !redisConfigured) {
+    // A4: fail closed in real production only. Missing Upstash config in prod
+    // must NOT silently disable rate limiting. Gate on VERCEL_ENV (set to
+    // "production" only on the true prod deploy), not NODE_ENV, because NODE_ENV
+    // is "production" for preview deploys and in CI too, which would otherwise
+    // fail-close login there and break the e2e smoke.
+    if (process.env.VERCEL_ENV === "production" && !redisConfigured) {
       return { ok: false, error: "Rate limiting is not configured" };
     }
     return { ok: true };
