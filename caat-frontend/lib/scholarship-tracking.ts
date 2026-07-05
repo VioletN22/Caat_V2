@@ -1,5 +1,5 @@
 // (data layer — see fetch/set functions below)
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
 
 /**
  * Roadmap item 5: a status lifecycle + optional school link for the

@@ -52,7 +52,7 @@ export default async function SinglePostPage({ params }: Props) {
   const isOwnPost = !!user && user.id === row.user_id;
   const exposedUserId = isAnon && !isOwnPost ? `anon:${row.id}` : (row.user_id as string);
   const post: CommunityPost = {
-    ...row,
+    ...(row as unknown as CommunityPost),
     user_id: exposedUserId,
     resume_id: resumeId,
     resume_title: (resumeRow as { title: string } | null)?.title ?? null,

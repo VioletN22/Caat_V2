@@ -1,4 +1,5 @@
-import { supabase } from "@/src/lib/supabaseClient";
+import { createServerClient } from "@/lib/supabase/server";
+import type { Major } from "@/types/majors";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -30,15 +31,20 @@ export default async function MajorDetailPage({
 }) {
   const { id } = await params;
 
-  const { data: major, error } = await supabase
+  const sb = await createServerClient();
+  const { data: majorRow, error } = await sb
     .from("majors")
     .select("*")
     .eq("id", id)
     .single();
 
-  if (error || !major) {
+  if (error || !majorRow) {
     notFound();
   }
+
+  const major = majorRow as unknown as Major & {
+    degree_lengths: DegreeLengths | null;
+  };
 
   return (
     <>

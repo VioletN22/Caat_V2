@@ -1,4 +1,5 @@
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
+import { sanitizeError } from "@/lib/safe-error";
 import type { RecommenderRow, RecommenderStatus } from "@/types/profile";
 
 async function getUser() {
@@ -17,7 +18,7 @@ export async function fetchRecommenders(): Promise<RecommenderRow[]> {
     .select("*")
     .eq("user_id", user.id)
     .order("created_at", { ascending: true });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
   return (data ?? []) as RecommenderRow[];
 }
 
@@ -33,7 +34,7 @@ export async function addRecommender(fields: {
     .insert({ user_id: user.id, ...fields })
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
   return data as RecommenderRow;
 }
 
@@ -54,7 +55,7 @@ export async function updateRecommender(
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq("id", id)
     .eq("user_id", user.id);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
 }
 
 export async function deleteRecommender(id: string): Promise<void> {
@@ -64,5 +65,5 @@ export async function deleteRecommender(id: string): Promise<void> {
     .delete()
     .eq("id", id)
     .eq("user_id", user.id);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
 }

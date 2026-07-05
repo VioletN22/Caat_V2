@@ -47,7 +47,7 @@ import {
   type EssayDraft,
   type CustomEssayPrompt,
 } from "./api";
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 

@@ -20,7 +20,7 @@ import {
 import type { ResumeSection } from "@/components/resume-builder/types";
 import ResumePreviewPanel from "@/components/resume-builder/ResumePreviewPanel";
 import { fetchActivities, updateActivities, setDefaultResumeId } from "@/app/(main)/profile/api";
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
 const ACTIVITY_EXAMPLES = [

@@ -1,22 +1,9 @@
 import { Suspense } from "react";
-import { supabase } from "@/src/lib/supabaseClient";
-import { createSupabaseServer } from "@/lib/supabase-server";
+import { createServerClient } from "@/lib/supabase/server";
+import { fetchProfileServer } from "@/lib/profile-server";
 import { PageHeader } from "@/components/PageHeader";
 import { ScholarshipRow } from "@/types/scholarships";
-import type { ProfileRow } from "@/types/profile";
 import ScholarshipsClient from "./client";
-
-async function fetchProfile(): Promise<ProfileRow | null> {
-  const sb = await createSupabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return null;
-  const { data } = await sb
-    .from("profiles")
-    .select("id, first_name, last_name, email, birth_date, phone, linkedin, github, avatar_url, nationality, current_location, school_name, curriculum, graduation_year, target_majors, preferred_countries, activities, default_resume_id")
-    .eq("id", user.id)
-    .maybeSingle();
-  return (data as ProfileRow | null) ?? null;
-}
 
 const SCHOLARSHIP_FETCH_BATCH_SIZE = 1000;
 const SCHOLARSHIP_LIST_COLUMNS = `
@@ -31,11 +18,12 @@ const SCHOLARSHIP_LIST_COLUMNS = `
 `;
 
 async function fetchAllScholarships() {
+  const sb = await createServerClient();
   const rows: ScholarshipRow[] = [];
 
   for (let from = 0; ; from += SCHOLARSHIP_FETCH_BATCH_SIZE) {
     const to = from + SCHOLARSHIP_FETCH_BATCH_SIZE - 1;
-    const { data, error } = await supabase
+    const { data, error } = await sb
       .from("scholarships")
       .select(SCHOLARSHIP_LIST_COLUMNS)
       .order("is_active", { ascending: false })
@@ -57,7 +45,7 @@ async function fetchAllScholarships() {
 export default async function ScholarshipsPage() {
   const [{ data, error }, profile] = await Promise.all([
     fetchAllScholarships(),
-    fetchProfile(),
+    fetchProfileServer(),
   ]);
 
   if (error) {

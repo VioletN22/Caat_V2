@@ -7,7 +7,6 @@ import {
   Plus,
   Trash2,
   ExternalLink,
-  ChevronDown,
   ClipboardList,
   Bookmark,
   ArrowRight,
@@ -174,6 +173,7 @@ export default function ApplicationsClient() {
         setSearchResults(results);
       } catch {
         setSearchResults([]);
+        toast.error("School search failed. Please try again.");
       } finally {
         setSearching(false);
       }

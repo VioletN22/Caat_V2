@@ -33,7 +33,7 @@ import {
   SidebarGroupLabel
 } from "@/components/ui/sidebar"
 import { NavUser } from "./nav-user"
-import { supabase } from "@/src/lib/supabaseClient"
+import { supabase } from "@/lib/supabase/client"
 
 const tools = [
   { title: "Dashboard", icon: LayoutDashboard, url: "/dashboard" },

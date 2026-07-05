@@ -1,22 +1,9 @@
 import { Suspense } from "react";
-import { supabase } from "@/src/lib/supabaseClient";
-import { createSupabaseServer } from "@/lib/supabase-server";
+import { createServerClient } from "@/lib/supabase/server";
+import { fetchProfileServer } from "@/lib/profile-server";
 import { PageHeader } from "@/components/PageHeader";
 import MajorsClient from "./client";
-import type { FilterView } from "@/types/majors";
-import type { ProfileRow } from "@/types/profile";
-
-async function fetchProfile(): Promise<ProfileRow | null> {
-  const sb = await createSupabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return null;
-  const { data } = await sb
-    .from("profiles")
-    .select("id, first_name, last_name, email, birth_date, phone, linkedin, github, avatar_url, nationality, current_location, school_name, curriculum, graduation_year, target_majors, preferred_countries, activities, default_resume_id")
-    .eq("id", user.id)
-    .maybeSingle();
-  return (data as ProfileRow | null) ?? null;
-}
+import type { FilterView, Major } from "@/types/majors";
 
 export default async function MajorsPage({
   searchParams,
@@ -26,9 +13,10 @@ export default async function MajorsPage({
   const params = await searchParams;
   const initialFilter = (params.category ?? "All") as FilterView;
 
+  const sb = await createServerClient();
   const [majorsRes, profile] = await Promise.all([
-    supabase.from("majors").select("*").order("name"),
-    fetchProfile(),
+    sb.from("majors").select("*").order("name"),
+    fetchProfileServer(),
   ]);
   const { data: majors, error } = majorsRes;
 
@@ -40,7 +28,7 @@ export default async function MajorsPage({
     <>
       <PageHeader title="Majors" />
       <Suspense>
-        <MajorsClient majors={majors ?? []} initialFilter={initialFilter} profile={profile} />
+        <MajorsClient majors={(majors ?? []) as unknown as Major[]} initialFilter={initialFilter} profile={profile} />
       </Suspense>
     </>
   );

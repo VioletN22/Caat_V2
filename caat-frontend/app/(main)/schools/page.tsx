@@ -1,5 +1,5 @@
-import { supabase } from "@/src/lib/supabaseClient";
-import { createSupabaseServer } from "@/lib/supabase-server";
+import { createServerClient } from "@/lib/supabase/server";
+import { PROFILE_COLUMNS } from "@/lib/profile-columns";
 import Link from "next/link";
 import {
   Card,
@@ -32,16 +32,16 @@ async function fetchProfileAndOfferedMajors(): Promise<{
   profile: ProfileRow | null;
   offeredMajorsBySchool: Map<number, string[]>;
 }> {
-  const sb = await createSupabaseServer();
+  const sb = await createServerClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return { profile: null, offeredMajorsBySchool: new Map() };
 
   const profileRes = await sb
     .from("profiles")
-    .select("id, first_name, last_name, email, birth_date, phone, linkedin, github, avatar_url, nationality, current_location, school_name, curriculum, graduation_year, target_majors, preferred_countries, activities, default_resume_id")
+    .select(PROFILE_COLUMNS)
     .eq("id", user.id)
     .maybeSingle();
-  const profile = (profileRes.data as ProfileRow | null) ?? null;
+  const profile = (profileRes.data as unknown as ProfileRow | null) ?? null;
 
   if (!profile?.target_majors?.length) {
     return { profile, offeredMajorsBySchool: new Map() };
@@ -99,7 +99,8 @@ export default async function SchoolsPage({
   const from = (currentPage - 1) * itemsPerPage;
   const to = from + itemsPerPage - 1;
 
-  let query = supabase
+  const sb = await createServerClient();
+  let query = sb
     .from("schools")
     .select("*", { count: "exact" })
     // Hide rows explicitly tagged as high_school; null + everything else is visible.

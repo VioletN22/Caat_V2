@@ -1,4 +1,5 @@
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
+import { sanitizeError } from "@/lib/safe-error";
 import { sanitizeFileName } from "@/lib/document-utils";
 
 const ALLOWED_MIME_TYPES = new Set(["application/pdf", "image/jpeg", "image/png"]);
@@ -53,7 +54,7 @@ export async function fetchDocuments(): Promise<DocumentRow[]> {
     .eq("user_id", user.id)
     .order("uploaded_at", { ascending: false });
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
   return (data ?? []) as DocumentRow[];
 }
 
@@ -99,7 +100,7 @@ export async function uploadDocument(
     .from(BUCKET)
     .upload(storagePath, file, { contentType: file.type });
 
-  if (storageError) throw new Error(storageError.message);
+  if (storageError) throw new Error(sanitizeError(storageError));
 
   const { data, error } = await supabase
     .from("documents")
@@ -117,7 +118,7 @@ export async function uploadDocument(
 
   if (error) {
     await supabase.storage.from(BUCKET).remove([storagePath]);
-    throw new Error(error.message);
+    throw new Error(sanitizeError(error));
   }
 
   return data as DocumentRow;
@@ -141,7 +142,7 @@ export async function updateDocumentStatus(
     .select()
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
   return data as DocumentRow;
 }
 
@@ -175,7 +176,7 @@ export async function deleteDocument(doc: DocumentRow): Promise<void> {
     .eq("id", doc.id)
     .eq("user_id", user.id);
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
 }
 
 export async function reuploadDocument(
@@ -218,7 +219,7 @@ export async function reuploadDocument(
     .from(BUCKET)
     .upload(newStoragePath, newFile, { contentType: newFile.type });
 
-  if (storageError) throw new Error(storageError.message);
+  if (storageError) throw new Error(sanitizeError(storageError));
 
   const { data, error } = await supabase
     .from("documents")
@@ -240,7 +241,7 @@ export async function reuploadDocument(
 
   if (error) {
     await supabase.storage.from(BUCKET).remove([newStoragePath]);
-    throw new Error(error.message);
+    throw new Error(sanitizeError(error));
   }
 
   // Remove old file after successful DB update using DB-verified path

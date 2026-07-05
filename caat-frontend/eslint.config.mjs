@@ -20,6 +20,24 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-require-imports": "off",
     },
   },
+  // Ban the removed src/ Supabase client. Use lib/supabase/{server,client}.
+  {
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@/src/lib/supabaseClient",
+              message:
+                "Import getBrowserClient() from @/lib/supabase/client (client components) or createServerClient() from @/lib/supabase/server (server).",
+            },
+          ],
+          patterns: ["@/src/*", "@/src"],
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;
