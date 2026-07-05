@@ -5,11 +5,12 @@ import { createSupabaseServer } from "@/lib/supabase-server";
 import { containsProfanity } from "@/lib/profanity-filter";
 import { gate, ratelimits } from "@/lib/rate-limit";
 import { sanitizeError } from "@/lib/safe-error";
-import { sanitizePostHtml, htmlToText } from "@/lib/sanitize-html";
+import { sanitizePostHtml, htmlToText, looksLikeHtml } from "@/lib/sanitize-html";
 import {
   PostInputSchema,
   CommentInputSchema,
   GroupInputSchema,
+  PrivacySettingsSchema,
 } from "@/lib/schemas/community";
 import type {
   CommunityPost,
@@ -178,13 +179,13 @@ async function enrichPosts(
     universityIds.length
       ? supabase.from("schools").select("id, name").in("id", universityIds)
       : Promise.resolve({ data: [] as { id: number; name: string }[] }),
+    // A10 — poll tallies come from a SECURITY DEFINER aggregate RPC (counts only,
+    // no voter ids) so the poll_votes SELECT policy can be scoped to the voter
+    // without leaking who voted for what.
     pollPostIds.length
-      ? supabase
-          .from("community_poll_votes")
-          .select("post_id, option_id")
-          .in("post_id", pollPostIds)
+      ? supabase.rpc("get_poll_vote_counts", { post_ids: pollPostIds })
       : Promise.resolve({
-          data: [] as { post_id: string; option_id: string }[],
+          data: [] as { post_id: string; option_id: string; votes: number }[],
         }),
     currentUserId && pollPostIds.length
       ? supabase
@@ -225,10 +226,11 @@ async function enrichPosts(
   for (const v of (pollVotesRes.data ?? []) as {
     post_id: string;
     option_id: string;
+    votes: number;
   }[]) {
     if (!pollCountMap.has(v.post_id)) pollCountMap.set(v.post_id, {});
     const m = pollCountMap.get(v.post_id)!;
-    m[v.option_id] = (m[v.option_id] ?? 0) + 1;
+    m[v.option_id] = Number(v.votes);
   }
   const userVoteMap = new Map(
     ((userVotesRes.data ?? []) as { post_id: string; option_id: string }[]).map(
@@ -686,6 +688,9 @@ export async function fetchPostsByUserAction(
       "*, likes:community_likes(count), comments:community_comments(count)",
     )
     .eq("is_hidden", false)
+    // A3 — a profile feed must never surface the user's private-group posts to a
+    // non-member; public posts only (group views gate on canAccessGroup separately).
+    .is("group_id", null)
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(20);
@@ -732,6 +737,9 @@ export async function searchPostsAction(
       "*, likes:community_likes(count), comments:community_comments(count)",
     )
     .eq("is_hidden", false)
+    // A3 — search must not leak private-group post bodies to non-members; restrict
+    // to public posts (group-internal posts are reachable only inside the group).
+    .is("group_id", null)
     .order("created_at", { ascending: false })
     .limit(30);
 
@@ -874,11 +882,15 @@ export async function updatePrivacySettingsAction(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not signed in" };
+  // A6 — parse through an allow-list so only the known settings columns reach the
+  // upsert; raw caller input is never spread in.
+  const parsed = PrivacySettingsSchema.safeParse(settings);
+  if (!parsed.success) return { error: "Invalid privacy settings" };
   const { error } = await supabase
     .from("community_profile_settings")
     .upsert({
       user_id: user.id,
-      ...settings,
+      ...parsed.data,
       updated_at: new Date().toISOString(),
     });
   return {
@@ -1258,7 +1270,10 @@ export async function addCommentAction(
     .insert({
       post_id: postId,
       user_id: user.id,
-      content: text,
+      // A7 — comments render as escaped text today, but sanitize any HTML markup on
+      // store so a future switch to HTML rendering can't become stored XSS. Plain
+      // text (the common case) is stored verbatim to avoid entity double-encoding.
+      content: looksLikeHtml(text) ? sanitizePostHtml(text) : text,
       parent_comment_id: parentCommentId ?? null,
     })
     .select("*")
@@ -1354,7 +1369,11 @@ export async function updateCommentAction(
   const editedAt = new Date().toISOString();
   const { error } = await supabase
     .from("community_comments")
-    .update({ content: text, edited_at: editedAt })
+    // A7 — sanitize HTML markup on store (see addCommentAction); plain text verbatim.
+    .update({
+      content: looksLikeHtml(text) ? sanitizePostHtml(text) : text,
+      edited_at: editedAt,
+    })
     .eq("id", commentId)
     .eq("user_id", user.id);
 

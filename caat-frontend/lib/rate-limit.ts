@@ -54,7 +54,15 @@ export async function gate(
   limiter: Ratelimit | null,
   key: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!limiter) return { ok: true };
+  if (!limiter) {
+    // A4 — fail closed in production. Missing Upstash config in prod must NOT
+    // silently disable rate limiting; only dev/preview keeps the permissive no-op.
+    // (Task 3's native CAPTCHA is the primary auth-abuse control; this is a net.)
+    if (process.env.NODE_ENV === "production" && !redisConfigured) {
+      return { ok: false, error: "Rate limiting is not configured" };
+    }
+    return { ok: true };
+  }
   const { success, reset } = await limiter.limit(key);
   if (success) return { ok: true };
   const retryIn = Math.max(1, Math.ceil((reset - Date.now()) / 1000));

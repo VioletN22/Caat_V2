@@ -228,6 +228,9 @@ export async function reuploadDocument(
       uploaded_at: new Date().toISOString(),
     })
     .eq("id", doc.id)
+    // A9 — scope the write to the owner, matching every other write in this file
+    // (defense in depth on top of the ownership-verified fetch + RLS above).
+    .eq("user_id", user.id)
     .select()
     .single();
 
