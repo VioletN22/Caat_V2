@@ -148,6 +148,8 @@ export async function enrichPosts(
     pollVotesRes,
     userVotesRes,
     savesRes,
+    viewerLikesRes,
+    viewerSavesRes,
   ] = await Promise.all([
     // Profiles RLS restricts SELECT to the row owner, so a direct
     // .from("profiles") read returns nothing for posts authored by anyone
@@ -179,7 +181,30 @@ export async function enrichPosts(
           data: [] as { post_id: string; option_id: string }[],
         }),
     supabase.from("community_saves").select("post_id").in("post_id", postIds),
+    // D7 — per-viewer like/save so every loaded post (not just the first page)
+    // renders with the correct like/save state on infinite scroll.
+    currentUserId
+      ? supabase
+          .from("community_likes")
+          .select("post_id")
+          .eq("user_id", currentUserId)
+          .in("post_id", postIds)
+      : Promise.resolve({ data: [] as { post_id: string }[] }),
+    currentUserId
+      ? supabase
+          .from("community_saves")
+          .select("post_id")
+          .eq("user_id", currentUserId)
+          .in("post_id", postIds)
+      : Promise.resolve({ data: [] as { post_id: string }[] }),
   ]);
+
+  const viewerLiked = new Set(
+    ((viewerLikesRes.data ?? []) as { post_id: string }[]).map((r) => r.post_id),
+  );
+  const viewerSaved = new Set(
+    ((viewerSavesRes.data ?? []) as { post_id: string }[]).map((r) => r.post_id),
+  );
 
   type ProfileRow = {
     id: string;
@@ -274,6 +299,8 @@ export async function enrichPosts(
       comments_count:
         (row.comments as { count: number }[] | undefined)?.[0]?.count ?? 0,
       saves_count: savesCountMap.get(row.id as string) ?? 0,
+      viewer_has_liked: currentUserId ? viewerLiked.has(row.id as string) : undefined,
+      viewer_has_saved: currentUserId ? viewerSaved.has(row.id as string) : undefined,
       author,
     };
   });

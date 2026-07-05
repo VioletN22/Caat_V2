@@ -189,7 +189,7 @@ export function RecommendersCard() {
                       )}
                     </div>
                     <span
-                      className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_CONFIG[row.status].className}`}
+                      className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-md ${STATUS_CONFIG[row.status].className}`}
                     >
                       {STATUS_CONFIG[row.status].label}
                     </span>

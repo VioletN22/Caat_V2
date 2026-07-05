@@ -119,6 +119,7 @@ export default function BookmarkButton({
       size="icon"
       variant={isBookmarked ? "default" : "outline"}
       onClick={handleToggle}
+      aria-pressed={isBookmarked}
       aria-label={isBookmarked ? "Remove bookmark" : `Bookmark ${label}`}
       className={compact ? "h-8 w-8" : undefined}
     >

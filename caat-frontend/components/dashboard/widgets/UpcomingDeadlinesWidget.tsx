@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ErrorState";
 import { supabase } from "@/lib/supabase/client";
 import { getClientUserId } from "@/lib/current-user";
 import {
@@ -33,8 +34,8 @@ function countdownText(days: number) {
 }
 
 function countdownColor(days: number) {
-  if (days <= 7) return "text-[#9a1a27]";
-  if (days <= 30) return "text-amber-500";
+  if (days <= 7) return "text-[#9a1a27] dark:text-[#e06b78]";
+  if (days <= 30) return "text-amber-600 dark:text-amber-400";
   return "text-green-600 dark:text-green-400";
 }
 
@@ -58,22 +59,28 @@ const DISPLAY_LIMIT = 8;
 export function UpcomingDeadlinesWidget() {
   const [items, setItems] = useState<UnifiedDeadline[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
     async function load() {
+      setError(false);
       try {
         const userId = await getClientUserId();
         if (!userId) return;
         const all = await fetchUnifiedDeadlines(supabase, userId);
-        setItems(all.slice(0, DISPLAY_LIMIT));
+        if (!cancelled) setItems(all.slice(0, DISPLAY_LIMIT));
       } catch {
-        // Silently fail — widget is non-critical
+        // D2 — a real failure shows an error+retry, not a "no deadlines" empty.
+        if (!cancelled) setError(true);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     load();
-  }, []);
+    return () => { cancelled = true; };
+  }, [reloadKey]);
 
   if (loading) {
     return (
@@ -82,6 +89,16 @@ export function UpcomingDeadlinesWidget() {
           <Skeleton key={i} className="h-8 w-full rounded" />
         ))}
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <ErrorState
+        compact
+        message="Couldn't load your deadlines."
+        onRetry={() => { setLoading(true); setReloadKey((k) => k + 1); }}
+      />
     );
   }
 

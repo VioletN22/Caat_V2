@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Bookmark, School } from "lucide-react";
+import { Bookmark, School, ChevronLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ErrorState";
 import { supabase } from "@/lib/supabase/client";
 import { getClientUserId } from "@/lib/current-user";
 
@@ -52,9 +53,9 @@ export function SchoolFilterBar({
     <div className="flex items-center gap-2 flex-wrap">
       <button
         onClick={() => setFilter("All")}
-        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition-colors border
+        className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium transition-colors border
           ${activeFilter === "All"
-            ? "bg-[#9a1a27] text-white border-[#9a1a27]"
+            ? "bg-[#9a1a27] text-white border-[#9a1a27] dark:border-[#e06b78]"
             : "bg-background text-muted-foreground border-border hover:bg-muted"
           }`}
       >
@@ -62,16 +63,16 @@ export function SchoolFilterBar({
       </button>
       <button
         onClick={() => setFilter("Bookmarked")}
-        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition-colors border
+        className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium transition-colors border
           ${activeFilter === "Bookmarked"
-            ? "bg-[#9a1a27] text-white border-[#9a1a27]"
+            ? "bg-[#9a1a27] text-white border-[#9a1a27] dark:border-[#e06b78]"
             : "bg-background text-muted-foreground border-border hover:bg-muted"
           }`}
       >
         <Bookmark className="h-3.5 w-3.5" />
         Bookmarked
         {bookmarkedCount > 0 && (
-          <span className={`ml-0.5 rounded-full px-1.5 py-0 text-xs font-semibold
+          <span className={`ml-0.5 rounded-md px-1.5 py-0 text-xs font-semibold
             ${activeFilter === "Bookmarked" ? "bg-white/20" : "bg-muted-foreground/20"}`}>
             {bookmarkedCount}
           </span>
@@ -87,20 +88,32 @@ export function SchoolFilterBar({
 export function BookmarkedSchoolsList() {
   const [schools, setSchools] = useState<BookmarkedSchool[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
     async function load() {
+      setError(false);
       const userId = await getClientUserId();
       if (!userId) {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
         return;
       }
 
-      const { data } = await supabase
+      const { data, error: qErr } = await supabase
         .from("user_bookmarked_schools")
         .select("school_id, schools(id, name, country)")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
+
+      if (cancelled) return;
+      if (qErr) {
+        // D2 — a fetch failure must not read as "no bookmarks".
+        setError(true);
+        setLoading(false);
+        return;
+      }
 
       const items = ((data ?? []) as unknown as BookmarkRow[])
         .map((r) => r.schools)
@@ -110,7 +123,8 @@ export function BookmarkedSchoolsList() {
       setLoading(false);
     }
     load();
-  }, []);
+    return () => { cancelled = true; };
+  }, [reloadKey]);
 
   if (loading) {
     return (
@@ -122,6 +136,15 @@ export function BookmarkedSchoolsList() {
     );
   }
 
+  if (error) {
+    return (
+      <ErrorState
+        message="Couldn't load your bookmarked schools."
+        onRetry={() => { setLoading(true); setReloadKey((k) => k + 1); }}
+      />
+    );
+  }
+
   if (schools.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3 text-muted-foreground">
@@ -130,6 +153,9 @@ export function BookmarkedSchoolsList() {
         <p className="text-sm">
           Browse schools and click the bookmark icon on any school to save it here.
         </p>
+        <Button asChild className="mt-2 bg-[#9a1a27] hover:bg-[#7d1520] text-white">
+          <Link href="/schools">Browse schools</Link>
+        </Button>
       </div>
     );
   }
@@ -154,8 +180,8 @@ export function BookmarkedSchoolsList() {
           </Link>
         ))}
       </div>
-      <Button asChild variant="ghost" size="sm" className="text-xs mt-2">
-        <Link href="/schools">← Back to all schools</Link>
+      <Button asChild variant="ghost" size="sm" className="text-xs mt-2 gap-1.5">
+        <Link href="/schools"><ChevronLeft className="h-3.5 w-3.5" />Back to all schools</Link>
       </Button>
     </div>
   );

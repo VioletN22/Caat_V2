@@ -54,7 +54,7 @@ const FUNDING_LABELS: Record<string, string> = {
   tuition: "Tuition Remission",
 };
 const FREQUENCY_OPTIONS = [
-  { value: "", label: "— Select —" },
+  { value: "", label: "Select" },
   { value: "one_time", label: "One-time" },
   { value: "yearly", label: "Yearly" },
   { value: "semester", label: "Per Semester" },
@@ -98,10 +98,10 @@ function deadlineLabel(deadline_at: string | null): string | null {
 function deadlineColor(deadline_at: string | null): string {
   if (!deadline_at) return "";
   const days = differenceInCalendarDays(parseLocalDate(deadline_at.slice(0, 10)), new Date());
-  if (days < 0) return "text-[#525252] line-through";
-  if (days <= 7) return "font-bold text-black";
-  if (days <= 30) return "text-black";
-  return "text-[#525252]";
+  if (days < 0) return "text-muted-foreground line-through";
+  if (days <= 7) return "font-bold text-foreground";
+  if (days <= 30) return "text-foreground";
+  return "text-muted-foreground";
 }
 
 function toggleArray<T>(arr: T[], item: T): T[] {
@@ -213,7 +213,7 @@ function ScholarshipFormDialog({
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         {/* Centering wrapper: offset by sidebar width (16rem) on md+ so the dialog is centred in the content area, not the full viewport */}
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:pl-[16rem] pointer-events-none">
-        <Dialog.Content className="pointer-events-auto w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-background border border-black data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+        <Dialog.Content className="pointer-events-auto w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-background border border-foreground/70 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
           <Dialog.Title className="sr-only">
             {isEdit ? "Edit Scholarship" : "Add Scholarship"}
           </Dialog.Title>
@@ -235,7 +235,7 @@ function ScholarshipFormDialog({
             <div className="px-6 py-5 space-y-5">
               {/* Required section */}
               <div className="space-y-4">
-                <p className="text-[11px] font-code tracking-[0.15em] uppercase text-[#525252]">
+                <p className="text-[11px] font-code tracking-[0.15em] uppercase text-muted-foreground">
                   Required
                 </p>
 
@@ -278,7 +278,7 @@ function ScholarshipFormDialog({
 
               {/* Optional section */}
               <div className="space-y-4">
-                <p className="text-[11px] font-code tracking-[0.15em] uppercase text-[#525252]">
+                <p className="text-[11px] font-code tracking-[0.15em] uppercase text-muted-foreground">
                   Optional — fill in what you know
                 </p>
 
@@ -340,7 +340,7 @@ function ScholarshipFormDialog({
                       onValueChange={(v) => set("frequency", v || null)}
                     >
                       <SelectTrigger id="s-frequency" className="h-9 w-full">
-                        <SelectValue placeholder="— Select —" />
+                        <SelectValue placeholder="Select" />
                       </SelectTrigger>
                       <SelectContent>
                         {FREQUENCY_OPTIONS.filter((o) => o.value).map((o) => (
@@ -534,7 +534,7 @@ function UserScholarshipCard({
       <CardHeader className="pb-3 gap-2">
         {/* Provider + actions */}
         <div className="flex items-start justify-between gap-2">
-          <span className="text-[10px] font-code tracking-[0.12em] uppercase text-[#525252] leading-tight">
+          <span className="text-[10px] font-code tracking-[0.12em] uppercase text-muted-foreground leading-tight">
             {scholarship.provider_name}
           </span>
           <div className="flex items-center gap-1 shrink-0">
@@ -549,14 +549,14 @@ function UserScholarshipCard({
             {confirmDelete ? (
               <div className="flex items-center gap-1">
                 <button
-                  className="h-7 px-2 text-xs font-medium text-destructive hover:bg-[#F5F5F5] transition-colors"
+                  className="h-7 px-2 text-xs font-medium text-destructive hover:bg-muted transition-colors"
                   disabled={deleting}
                   onClick={handleDelete}
                 >
                   {deleting ? "…" : "Delete"}
                 </button>
                 <button
-                  className="h-7 px-2 text-xs font-medium text-[#525252] hover:bg-[#F5F5F5] transition-colors"
+                  className="h-7 px-2 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors"
                   onClick={() => setConfirmDelete(false)}
                 >
                   Cancel
@@ -587,7 +587,7 @@ function UserScholarshipCard({
             {scholarship.funding_type.map((t) => (
               <span
                 key={t}
-                className="text-[10px] font-code tracking-[0.08em] uppercase border border-black px-2 py-0.5"
+                className="text-[10px] font-code tracking-[0.08em] uppercase border border-foreground/70 px-2 py-0.5"
               >
                 {FUNDING_LABELS[t] ?? t}
               </span>
@@ -595,7 +595,7 @@ function UserScholarshipCard({
             {scholarship.study_level.map((l) => (
               <span
                 key={l}
-                className="text-[10px] font-code tracking-[0.08em] uppercase border border-[#E5E5E5] text-[#525252] px-2 py-0.5"
+                className="text-[10px] font-code tracking-[0.08em] uppercase border border-border text-muted-foreground px-2 py-0.5"
               >
                 {l}
               </span>
@@ -652,7 +652,7 @@ function UserScholarshipCard({
           </Button>
         ) : (
           <Button
-            className="w-full bg-transparent text-[#9a1a27] border border-[#9a1a27] hover:bg-[#9a1a27] hover:text-white font-code tracking-[0.1em] uppercase text-[11px] transition-colors duration-100"
+            className="w-full bg-transparent text-[#9a1a27] dark:text-[#e06b78] border border-[#9a1a27] dark:border-[#e06b78] hover:bg-[#9a1a27] hover:text-white font-code tracking-[0.1em] uppercase text-[11px] transition-colors duration-100"
             onClick={() => onEdit(scholarship)}
           >
             <Pencil className="h-3.5 w-3.5 mr-1.5" />
@@ -708,7 +708,7 @@ export default function MyScholarshipsPanel() {
   return (
     <div className="space-y-6">
       {/* Panel header */}
-      <div className="flex items-center justify-between pb-6 border-b border-[#E5E5E5]">
+      <div className="flex items-center justify-between pb-6 border-b border-border">
         <div>
           <h2 className="text-xl font-bold">My Scholarships</h2>
           <p className="text-sm text-muted-foreground mt-1">
@@ -734,8 +734,8 @@ export default function MyScholarshipsPanel() {
           ))}
         </div>
       ) : scholarships.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center gap-6 border border-[#E5E5E5]">
-          <BookOpen className="h-8 w-8 text-[#525252]" strokeWidth={1.5} />
+        <div className="flex flex-col items-center justify-center py-24 text-center gap-6 border border-border">
+          <BookOpen className="h-8 w-8 text-muted-foreground" strokeWidth={1.5} />
           <div>
             <p className="text-base font-bold">
               No scholarships added yet
@@ -746,7 +746,7 @@ export default function MyScholarshipsPanel() {
           </div>
           <Button
             onClick={openAdd}
-            className="gap-2 bg-transparent text-[#9a1a27] border border-[#9a1a27] hover:bg-[#9a1a27] hover:text-white font-code tracking-[0.1em] uppercase text-[11px] transition-colors duration-100"
+            className="gap-2 bg-transparent text-[#9a1a27] dark:text-[#e06b78] border border-[#9a1a27] dark:border-[#e06b78] hover:bg-[#9a1a27] hover:text-white font-code tracking-[0.1em] uppercase text-[11px] transition-colors duration-100"
           >
             <Plus className="h-4 w-4" strokeWidth={1.5} />
             Add your first scholarship

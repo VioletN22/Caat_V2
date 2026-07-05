@@ -231,7 +231,7 @@ export function CalendarWidget() {
   }
 
   return (
-    <div className="flex gap-4">
+    <div className="flex flex-col sm:flex-row gap-4">
       {/* Left: calendar + form */}
       <div className="flex flex-col gap-3 shrink-0">
         <Calendar
@@ -395,8 +395,8 @@ export function CalendarWidget() {
         )}
       </div>
 
-      {/* Divider */}
-      <div className="w-px bg-border shrink-0" />
+      {/* Divider — vertical on wide, horizontal when stacked */}
+      <div className="h-px w-full sm:h-auto sm:w-px bg-border shrink-0" />
 
       {/* Right: events panel */}
       <div className="flex-1 flex flex-col gap-2 min-w-0 overflow-hidden">
@@ -472,7 +472,7 @@ export function CalendarWidget() {
                   <div className="flex items-center gap-1 text-muted-foreground">
                     <Clock className="h-3 w-3 shrink-0" />
                     <span>
-                      {formatTime(ev.time_start) ?? "—"}
+                      {formatTime(ev.time_start) ?? "-"}
                       {ev.time_end ? ` → ${formatTime(ev.time_end)}` : ""}
                     </span>
                   </div>

@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import {
   DndContext,
   PointerSensor,
+  KeyboardSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -14,6 +15,7 @@ import {
 import {
   SortableContext,
   verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
   arrayMove,
 } from "@dnd-kit/sortable";
 
@@ -123,7 +125,12 @@ export default function ResumeBuilderShell() {
     return sections.find((s) => s.id === activeSectionId) ?? sections[0];
   }, [sections, activeSectionId]);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  // M11 — keyboard DnD as well as pointer: Tab to a section handle, Space to
+  // pick up, arrow keys to reorder, Space to drop.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   // Mirror the live editor state into refs so the pre-switch / unmount flush can
   // persist the OUTGOING resume without depending on stale closures.
@@ -279,6 +286,14 @@ export default function ResumeBuilderShell() {
   // Delete section
   // --------------------------------------------------
   function deleteSection(id: string) {
+    // M1 — confirm before removing a section (destructive, loses its content).
+    const target = sections.find((s) => s.id === id);
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(`Delete the "${target?.label ?? "section"}" section? This cannot be undone.`)
+    ) {
+      return;
+    }
     setSections((prev) => {
       const next = prev.filter((s) => s.id !== id);
 
@@ -355,6 +370,19 @@ export default function ResumeBuilderShell() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sections, settings]);
+
+  // M1 — warn on hard close/refresh while a save is still pending in the 2s
+  // autosave window (complements the flush-on-unmount for SPA navigation).
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (autosaveTimerRef.current || isSaving) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isSaving]);
 
   // Persist the currently-loaded resume's pending edits before its content is
   // replaced (switch / new / unmount), reading from refs so it never saves a
@@ -604,8 +632,8 @@ export default function ResumeBuilderShell() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] w-full">
-      {/* Top bar */}
-      <div className="flex items-center justify-between border-b bg-background px-4 py-3">
+      {/* Top bar — wraps instead of running off-screen on small viewports (D8) */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-background px-4 py-3">
         <div className="flex items-center gap-2">
           {editingResumeTitle ? (
             <input
@@ -720,8 +748,9 @@ export default function ResumeBuilderShell() {
         </div>
       </div>
 
-      {/* Mobile tab bar */}
-      <div className="flex border-b md:hidden">
+      {/* Mobile/tablet tab bar — the 3-panel split needs ~880px of fixed width
+          (360 + 520), so single-panel tabs run up to lg (D8). */}
+      <div className="flex border-b lg:hidden">
         {(["structure", "editor", "preview"] as const).map((tab) => (
           <button
             key={tab}
@@ -740,7 +769,7 @@ export default function ResumeBuilderShell() {
       {/* 3-panel body */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Desktop: flex row with draggable divider */}
-        <div className="hidden md:flex flex-1 min-h-0 overflow-hidden">
+        <div className="hidden lg:flex flex-1 min-h-0 overflow-hidden">
           <div
             className="flex flex-col overflow-hidden shrink-0"
             style={{ width: leftWidth }}
@@ -789,8 +818,8 @@ export default function ResumeBuilderShell() {
           </div>
         </div>
 
-        {/* Mobile: single-panel with tab switching */}
-        <div className="md:hidden flex-1 flex flex-col overflow-hidden">
+        {/* Mobile/tablet: single-panel with tab switching */}
+        <div className="lg:hidden flex-1 flex flex-col overflow-hidden">
           {mobileTab === "structure" && (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
               <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>

@@ -331,27 +331,27 @@ export default function ScholarshipsClient({
     <div className="p-6">
       <main className="max-w-5xl mx-auto">
         {/* View switcher */}
-        <div className="flex items-center border border-black mb-6 w-fit">
+        <div className="flex items-center border border-foreground/70 mb-6 w-fit">
           <button
             onClick={() => switchView("browse")}
             className={`px-5 py-2 text-[11px] tracking-[0.1em] uppercase font-code transition-colors duration-100 focus-visible:outline focus-visible:outline-[2px] focus-visible:outline-[#9a1a27] focus-visible:outline-offset-[-2px] ${
               view === "browse"
                 ? "bg-[#9a1a27] text-white"
-                : "text-[#525252] hover:text-black"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Browse
           </button>
           <button
             onClick={() => switchView("mine")}
-            className={`flex items-center gap-1.5 px-5 py-2 text-[11px] tracking-[0.1em] uppercase font-code border-l border-black transition-colors duration-100 focus-visible:outline focus-visible:outline-[2px] focus-visible:outline-[#9a1a27] focus-visible:outline-offset-[-2px] ${
+            className={`flex items-center gap-1.5 px-5 py-2 text-[11px] tracking-[0.1em] uppercase font-code border-l border-foreground/70 transition-colors duration-100 focus-visible:outline focus-visible:outline-[2px] focus-visible:outline-[#9a1a27] focus-visible:outline-offset-[-2px] ${
               view === "mine"
                 ? "bg-[#9a1a27] text-white"
-                : "text-[#525252] hover:text-black"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <Star
-              className={`h-3 w-3 ${view === "mine" ? "fill-white text-white" : "text-[#525252]"}`}
+              className={`h-3 w-3 ${view === "mine" ? "fill-white text-white" : "text-muted-foreground"}`}
             />
             My Scholarships
           </button>
@@ -624,7 +624,7 @@ export default function ScholarshipsClient({
                   Bookmarked
                   {bookmarkedIds.size > 0 && (
                     <span
-                      className={`text-xs rounded-full px-1.5 py-0.5 font-medium leading-none ${
+                      className={`text-xs rounded-md px-1.5 py-0.5 font-medium leading-none ${
                         showBookmarked
                           ? "bg-primary-foreground/20 text-primary-foreground"
                           : "bg-secondary text-secondary-foreground"

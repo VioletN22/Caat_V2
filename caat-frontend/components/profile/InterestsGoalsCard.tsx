@@ -31,7 +31,7 @@ function TagList({
       {items.map((item, i) => (
         <span
           key={item}
-          className="inline-flex items-center gap-1 text-xs font-medium bg-secondary text-secondary-foreground px-2.5 py-1 rounded-full"
+          className="inline-flex items-center gap-1 text-xs font-medium bg-secondary text-secondary-foreground px-2.5 py-1 rounded-md"
         >
           {onRemove && (
             <button

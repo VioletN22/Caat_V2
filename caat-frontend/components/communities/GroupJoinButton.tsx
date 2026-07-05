@@ -24,24 +24,52 @@ export function GroupJoinButton({
   const [isMember, setIsMember] = useState(initialIsMember);
   const [hasRequested, setHasRequested] = useState(initialHasRequested);
   const [confirming, setConfirming] = useState(false);
+  const [confirmingLeave, setConfirmingLeave] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   if (isOwner) return null;
 
-  // Already a member — show leave button
+  // Already a member — show leave button (M1: confirm before leaving)
   if (isMember) {
+    if (confirmingLeave) {
+      return (
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-muted-foreground mr-1">Leave?</span>
+          <Button
+            size="icon"
+            variant="destructive"
+            className="size-7"
+            disabled={isPending}
+            onClick={() => {
+              setConfirmingLeave(false);
+              startTransition(async () => {
+                setIsMember(false);
+                const { error } = await leaveGroupAction(groupId);
+                if (error) { toast.error(error); setIsMember(true); }
+              });
+            }}
+            aria-label="Confirm leave community"
+          >
+            <Check className="size-3.5" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="size-7"
+            onClick={() => setConfirmingLeave(false)}
+            aria-label="Cancel"
+          >
+            <X className="size-3.5" />
+          </Button>
+        </div>
+      );
+    }
     return (
       <Button
         size="sm"
         variant="outline"
         disabled={isPending}
-        onClick={() => {
-          startTransition(async () => {
-            setIsMember(false);
-            const { error } = await leaveGroupAction(groupId);
-            if (error) { toast.error(error); setIsMember(true); }
-          });
-        }}
+        onClick={() => setConfirmingLeave(true)}
         className="min-w-[90px]"
       >
         Joined

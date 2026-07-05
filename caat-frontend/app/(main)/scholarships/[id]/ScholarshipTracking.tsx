@@ -110,7 +110,7 @@ export default function ScholarshipTracking({ scholarshipId }: { scholarshipId: 
         {tracked ? (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={untrack} className="text-[#9a1a27] focus:text-[#9a1a27]">
+            <DropdownMenuItem onSelect={untrack} className="text-[#9a1a27] dark:text-[#e06b78] focus:text-[#9a1a27]">
               Remove from saved
             </DropdownMenuItem>
           </>

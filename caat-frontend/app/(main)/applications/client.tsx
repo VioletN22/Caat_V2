@@ -80,10 +80,10 @@ function daysUntil(dateStr: string): number {
 
 function deadlineLabel(dateStr: string) {
   const days = daysUntil(dateStr);
-  if (days < 0) return { text: `${Math.abs(days)}d overdue`, color: "text-[#9a1a27]" };
-  if (days === 0) return { text: "Today", color: "text-[#9a1a27]" };
-  if (days <= 7) return { text: `${days}d`, color: "text-[#9a1a27]" };
-  if (days <= 30) return { text: `${days}d`, color: "text-amber-500" };
+  if (days < 0) return { text: `${Math.abs(days)}d overdue`, color: "text-[#9a1a27] dark:text-[#e06b78]" };
+  if (days === 0) return { text: "Today", color: "text-[#9a1a27] dark:text-[#e06b78]" };
+  if (days <= 7) return { text: `${days}d`, color: "text-[#9a1a27] dark:text-[#e06b78]" };
+  if (days <= 30) return { text: `${days}d`, color: "text-amber-600 dark:text-amber-400" };
   return { text: `${days}d`, color: "text-green-600 dark:text-green-400" };
 }
 
@@ -145,7 +145,7 @@ export default function ApplicationsClient() {
         setFreshIds(new Set(added.map((a) => a.id)));
         const names = added.map((a) => a.schools?.name ?? "Unknown").join(", ");
         toast.success(
-          `Added ${added.length} school${added.length === 1 ? "" : "s"} as Researching — ${names}`,
+          `Added ${added.length} school${added.length === 1 ? "" : "s"} as Researching: ${names}`,
           { duration: 6000 }
         );
       }
@@ -306,7 +306,7 @@ export default function ApplicationsClient() {
             >
               <Bookmark className="h-4 w-4" />
               Import from Bookmarks
-              <span className="ml-1 inline-flex items-center justify-center text-[10px] font-semibold bg-[#9a1a27] text-white px-1.5 rounded-full leading-none py-0.5">
+              <span className="ml-1 inline-flex items-center justify-center text-[10px] font-semibold bg-[#9a1a27] text-white px-1.5 rounded-md leading-none py-0.5">
                 {unimportedCount}
               </span>
             </Button>
@@ -314,7 +314,7 @@ export default function ApplicationsClient() {
           <Button
             size="sm"
             onClick={() => setShowSearch(!showSearch)}
-            className="gap-1.5 bg-[#9a1a27] text-white hover:bg-[#7d141f] border-[#9a1a27]"
+            className="gap-1.5 bg-[#9a1a27] text-white hover:bg-[#7d141f] border-[#9a1a27] dark:border-[#e06b78]"
           >
             <Plus className="h-4 w-4" />
             Add School
@@ -384,9 +384,9 @@ export default function ApplicationsClient() {
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
-            className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium transition-colors border ${
+            className={`inline-flex items-center rounded-md px-3 py-1 text-sm font-medium transition-colors border ${
               filter === f.key
-                ? "bg-[#9a1a27] text-white border-[#9a1a27]"
+                ? "bg-[#9a1a27] text-white border-[#9a1a27] dark:border-[#e06b78]"
                 : "bg-background text-muted-foreground border-border hover:bg-muted"
             }`}
           >
@@ -495,7 +495,7 @@ function ApplicationCard({
     (SUBMITTED_PLUS.has(app.status) ? 1 : 0);
 
   return (
-    <div className={`rounded-lg border p-4 space-y-3 ${isFresh ? "bg-[#FFF8E1] border-l-[3px] border-l-[#9a1a27]" : "bg-card"}`}>
+    <div className={`rounded-lg border p-4 space-y-3 ${isFresh ? "bg-[#FFF8E1] dark:bg-amber-950/40 border-l-[3px] border-l-[#9a1a27] dark:border-l-[#e06b78]" : "bg-card"}`}>
       {/* Top row: school info + status + actions */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3 min-w-0">
@@ -529,7 +529,7 @@ function ApplicationCard({
             >
               <SelectTrigger
                 size="sm"
-                className={`h-auto w-auto rounded-full px-3 py-1 text-xs font-medium border-0 gap-1 ${STATUS_CONFIG[app.status].className}`}
+                className={`h-auto w-auto rounded-md px-3 py-1 text-xs font-medium border-0 gap-1 ${STATUS_CONFIG[app.status].className}`}
               >
                 <SelectValue />
               </SelectTrigger>
@@ -550,6 +550,7 @@ function ApplicationCard({
             onChange={(e) => onDeadlineChange(app.id, e.target.value)}
             className="h-7 rounded-md border border-input bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
             title="Application deadline"
+            aria-label={`Application deadline for ${schoolName}`}
           />
 
           {/* Deadline countdown */}
@@ -666,7 +667,7 @@ function ApplicationCard({
         </span>
         <Link
           href={`/applications/${app.id}`}
-          className="font-code text-[11px] text-[#9a1a27] hover:underline whitespace-nowrap inline-flex items-center gap-1"
+          className="font-code text-[11px] text-[#9a1a27] dark:text-[#e06b78] hover:underline whitespace-nowrap inline-flex items-center gap-1"
         >
           open <ArrowRight className="h-3 w-3" />
         </Link>

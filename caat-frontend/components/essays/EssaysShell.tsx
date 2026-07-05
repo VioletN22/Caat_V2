@@ -112,6 +112,19 @@ export default function EssaysShell({
   const pendingSaveRef = useRef(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // M1 — warn on hard close/refresh while an essay edit is still within the
+  // autosave window (complements the flush-before-switch/unmount fixes).
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (autosaveTimerRef.current || savingRef.current || pendingSaveRef.current) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
+
   // Persist the outgoing draft's pending edits before its content is replaced,
   // so switching draft/prompt (or navigating) within the autosave window never
   // drops work. Best-effort: updates the drafts list without touching the
@@ -523,7 +536,7 @@ export default function EssaysShell({
                                 className={cn(
                                   "flex min-w-0 flex-1 items-center gap-2 rounded px-1.5 py-1.5 text-left text-sm transition-colors",
                                   activeDraft?.id === draft.id
-                                    ? "bg-[#9a1a27]/10 text-[#9a1a27]"
+                                    ? "bg-[#9a1a27]/10 text-[#9a1a27] dark:text-[#e06b78]"
                                     : "hover:bg-muted/60"
                                 )}
                               >
@@ -671,7 +684,7 @@ export default function EssaysShell({
         <Card className="h-fit rounded-xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <FileText className="h-4 w-4 text-[#9a1a27]" />
+              <FileText className="h-4 w-4 text-[#9a1a27] dark:text-[#e06b78]" />
               Essay prompts
             </CardTitle>
             <CardDescription>
@@ -690,7 +703,7 @@ export default function EssaysShell({
                   className={cn(
                     "flex w-full items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
                     selectedPromptId === prompt.id
-                      ? "border-[#9a1a27] bg-[#9a1a27] text-white"
+                      ? "border-[#9a1a27] dark:border-[#e06b78] bg-[#9a1a27] text-white"
                       : "border-transparent hover:bg-muted/50"
                   )}
                 >
@@ -718,7 +731,7 @@ export default function EssaysShell({
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-6 w-6 text-[#9a1a27] hover:text-[#7d141f] hover:bg-[#9a1a27]/10"
+                    className="h-6 w-6 text-[#9a1a27] dark:text-[#e06b78] hover:text-[#7d141f] hover:bg-[#9a1a27]/10"
                     onClick={() => { setCreatingCustomPrompt(true); setNewCustomTitle(""); }}
                     aria-label="Add custom essay"
                   >
@@ -786,7 +799,7 @@ export default function EssaysShell({
                           className={cn(
                             "flex min-w-0 flex-1 items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
                             selectedPromptId === cp.id
-                              ? "border-[#9a1a27] bg-[#9a1a27] text-white"
+                              ? "border-[#9a1a27] dark:border-[#e06b78] bg-[#9a1a27] text-white"
                               : "border-transparent hover:bg-muted/50"
                           )}
                         >
@@ -875,7 +888,7 @@ export default function EssaysShell({
                         size="sm"
                         className="flex items-center gap-2 text-muted-foreground"
                       >
-                        <Lightbulb className="h-4 w-4 text-[#9a1a27]" />
+                        <Lightbulb className="h-4 w-4 text-[#9a1a27] dark:text-[#e06b78]" />
                         Tips & guidance
                         <ChevronDown className="h-4 w-4" />
                       </Button>

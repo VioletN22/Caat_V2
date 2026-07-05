@@ -25,8 +25,8 @@ import {
 
 const PRIORITY_LABELS: Record<number, string> = { 1: "High", 2: "Medium", 3: "Low" };
 const PRIORITY_COLORS: Record<number, string> = {
-  1: "text-[#9a1a27]",
-  2: "text-amber-500",
+  1: "text-[#9a1a27] dark:text-[#e06b78]",
+  2: "text-amber-600 dark:text-amber-400",
   3: "text-muted-foreground",
 };
 
@@ -229,7 +229,7 @@ export function TodoWidget() {
                     {dueLabel && !todo.done && (
                       <span
                         className={`text-xs ${
-                          overdue ? "text-[#9a1a27] font-medium" : "text-muted-foreground"
+                          overdue ? "text-[#9a1a27] dark:text-[#e06b78] font-medium" : "text-muted-foreground"
                         }`}
                       >
                         {dueLabel}
@@ -264,8 +264,9 @@ export function TodoWidget() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-destructive"
                     onClick={() => handleDelete(todo.id)}
+                    aria-label={`Delete to-do: ${todo.text}`}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>

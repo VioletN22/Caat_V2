@@ -10,7 +10,7 @@ import { fetchBlockedIds, enrichPosts } from "./_shared";
 export async function fetchPostsAction(
   cursor?: string,
   followingOnly?: boolean,
-): Promise<{ posts: CommunityPost[]; nextCursor: string | null }> {
+): Promise<{ posts: CommunityPost[]; nextCursor: string | null; error?: boolean }> {
   const supabase = await createSupabaseServer();
   const {
     data: { user },
@@ -53,7 +53,10 @@ export async function fetchPostsAction(
     query = query.not("user_id", "in", `(${blockedIds.join(",")})`);
 
   const { data: rows, error } = await query;
-  if (error || !rows) return { posts: [], nextCursor: null };
+  // D2 — a genuine fetch failure must signal an error (not look like an empty
+  // feed). An empty-but-successful result stays a normal empty state.
+  if (error) return { posts: [], nextCursor: null, error: true };
+  if (!rows) return { posts: [], nextCursor: null };
 
   const posts = await enrichPosts(
     supabase,
@@ -98,7 +101,7 @@ async function getTrendingCandidates(
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   // Global candidate window (no per-user block filter — applied after the cache).
-  const { data: rows } = await supabase
+  const { data: rows, error } = await supabase
     .from("community_posts")
     .select("*, likes:community_likes(count), comments:community_comments(count)")
     .eq("is_hidden", false)
@@ -106,6 +109,9 @@ async function getTrendingCandidates(
     .gte("created_at", sevenDaysAgo)
     .order("created_at", { ascending: false })
     .limit(300);
+
+  // D2 — surface a real failure so the caller can show an error, not "empty".
+  if (error) throw error;
 
   const now = Date.now();
   const scored = [...((rows ?? []) as Record<string, unknown>[])]
@@ -118,16 +124,23 @@ async function getTrendingCandidates(
 
 export async function fetchTrendingPostsAction(): Promise<{
   posts: CommunityPost[];
+  error?: boolean;
 }> {
   const supabase = await createSupabaseServer();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [candidates, blockedIds] = await Promise.all([
-    getTrendingCandidates(supabase),
-    fetchBlockedIds(supabase, user?.id),
-  ]);
+  let candidates: Record<string, unknown>[];
+  let blockedIds: string[];
+  try {
+    [candidates, blockedIds] = await Promise.all([
+      getTrendingCandidates(supabase),
+      fetchBlockedIds(supabase, user?.id),
+    ]);
+  } catch {
+    return { posts: [], error: true };
+  }
 
   if (!candidates.length) return { posts: [] };
 
@@ -199,7 +212,7 @@ export async function fetchPostsByUserAction(
 export async function searchPostsAction(
   query: string,
   topicFilter?: TopicTag,
-): Promise<{ posts: CommunityPost[] }> {
+): Promise<{ posts: CommunityPost[]; error?: boolean }> {
   if (!query.trim() && !topicFilter) return { posts: [] };
   const supabase = await createSupabaseServer();
   const {
@@ -230,7 +243,8 @@ export async function searchPostsAction(
   if (blockedIds.length)
     q = q.not("user_id", "in", `(${blockedIds.join(",")})`);
 
-  const { data: rows } = await q;
+  const { data: rows, error } = await q;
+  if (error) return { posts: [], error: true };
   if (!rows?.length) return { posts: [] };
   const posts = await enrichPosts(
     supabase,

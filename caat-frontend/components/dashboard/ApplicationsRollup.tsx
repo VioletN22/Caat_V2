@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ClipboardList, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ErrorState";
 import { fetchApplications, fetchGlobalReadinessSignals } from "@/app/(main)/applications/api";
 import { STATUS_CONFIG, type ApplicationRow, type ApplicationStatus } from "@/types/applications";
 
@@ -32,18 +33,41 @@ function daysUntil(dateStr: string): number {
 function deadlineLabel(dateStr: string | null) {
   if (!dateStr) return { text: "no date", cls: "text-muted-foreground" };
   const d = daysUntil(dateStr);
-  const cls = d < 0 || d <= 7 ? "text-[#9a1a27]" : d <= 30 ? "text-amber-500" : "text-green-600";
+  const cls = d < 0 || d <= 7 ? "text-[#9a1a27] dark:text-[#e06b78]" : d <= 30 ? "text-amber-600 dark:text-amber-400" : "text-green-600";
   return { text: d < 0 ? `${Math.abs(d)}d over` : d === 0 ? "today" : `${d}d`, cls };
 }
 
 export function ApplicationsRollup() {
   const [apps, setApps] = useState<ApplicationRow[] | null>(null);
   const [signals, setSignals] = useState({ essayDrafted: false, keyDocsUploaded: false });
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    fetchApplications().then(setApps).catch(() => setApps([]));
-    fetchGlobalReadinessSignals().then(setSignals).catch(() => {});
-  }, []);
+    let cancelled = false;
+    fetchApplications()
+      .then((a) => { if (!cancelled) setApps(a); })
+      .catch(() => { if (!cancelled) { setError(true); setApps([]); } });
+    fetchGlobalReadinessSignals().then((s) => { if (!cancelled) setSignals(s); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [reloadKey]);
+
+  if (error) {
+    return (
+      <Card className="shadow-sm">
+        <CardHeader className="space-y-0">
+          <CardTitle className="text-base">Your applications</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ErrorState
+            compact
+            message="Couldn't load your applications."
+            onRetry={() => { setError(false); setApps(null); setReloadKey((k) => k + 1); }}
+          />
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (apps === null) {
     return (
@@ -69,7 +93,7 @@ export function ApplicationsRollup() {
           <div className="flex flex-col items-center text-center gap-2 py-6">
             <ClipboardList className="h-8 w-8 text-muted-foreground/40" />
             <p className="text-sm text-muted-foreground">No applications yet.</p>
-            <Link href="/schools" className="text-sm text-[#9a1a27] hover:underline">
+            <Link href="/schools" className="text-sm text-[#9a1a27] dark:text-[#e06b78] hover:underline">
               Add a school to get started
             </Link>
           </div>
@@ -97,7 +121,7 @@ export function ApplicationsRollup() {
     <Card className="shadow-sm">
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base">Your applications</CardTitle>
-        <Link href="/applications" className="text-sm text-[#9a1a27] hover:underline inline-flex items-center gap-1">
+        <Link href="/applications" className="text-sm text-[#9a1a27] dark:text-[#e06b78] hover:underline inline-flex items-center gap-1">
           See all <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </CardHeader>
@@ -114,7 +138,7 @@ export function ApplicationsRollup() {
                       <span className="font-medium text-sm truncate group-hover:underline">
                         {a.schools?.name ?? "School"}
                       </span>
-                      <span className="text-[10px] font-mono uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">
+                      <span className="text-[10px] font-mono uppercase tracking-wide px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground shrink-0">
                         {STATUS_CONFIG[a.status].label}
                       </span>
                     </div>

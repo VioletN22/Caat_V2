@@ -36,7 +36,7 @@ export default function CountrySelect({ defaultValue }: { defaultValue: string }
   return (
     <div className="w-full md:w-[200px]">
       <Select defaultValue={defaultValue || "__all__"} onValueChange={handleValueChange}>
-        <SelectTrigger className="w-full">
+        <SelectTrigger className="w-full" aria-label="Filter by country">
           <SelectValue placeholder="All Countries" />
         </SelectTrigger>
         <SelectContent>

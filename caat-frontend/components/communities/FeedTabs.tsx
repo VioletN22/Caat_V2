@@ -17,15 +17,17 @@ const TABS: { id: FeedTab; label: string }[] = [
 
 export function FeedTabs({ activeTab, onTabChange }: FeedTabsProps) {
   return (
-    <div className="flex gap-1 border-b mb-4">
+    <div className="flex gap-1 border-b mb-4" role="tablist" aria-label="Feed">
       {TABS.map((tab) => (
         <button
           key={tab.id}
+          role="tab"
+          aria-selected={activeTab === tab.id}
           onClick={() => onTabChange(tab.id)}
           className={cn(
             "px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px",
             activeTab === tab.id
-              ? "border-[#9a1a27] text-[#9a1a27]"
+              ? "border-[#9a1a27] dark:border-[#e06b78] text-[#9a1a27] dark:text-[#e06b78]"
               : "border-transparent text-muted-foreground hover:text-foreground"
           )}
         >
