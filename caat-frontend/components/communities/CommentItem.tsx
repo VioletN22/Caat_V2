@@ -145,7 +145,7 @@ export function CommentItem({ comment, currentUser, isReply = false, onReplyAdde
               <button
                 className={cn(
                   "flex items-center gap-1 text-[11px] transition-colors",
-                  likeOptimistic.isLiked ? "text-[#9a1a27] hover:text-[#9a1a27]" : "text-muted-foreground hover:text-foreground"
+                  likeOptimistic.isLiked ? "text-[#9a1a27] dark:text-[#e06b78] hover:text-[#9a1a27]" : "text-muted-foreground hover:text-foreground"
                 )}
                 onClick={handleLike}
               >
@@ -167,7 +167,7 @@ export function CommentItem({ comment, currentUser, isReply = false, onReplyAdde
                   {confirmingDelete ? (
                     <span className="ml-2 text-[11px] text-muted-foreground">
                       Delete?
-                      <button className="ml-1 text-[#9a1a27] hover:underline" onClick={confirmDelete} disabled={isPending}>Yes</button>
+                      <button className="ml-1 text-[#9a1a27] dark:text-[#e06b78] hover:underline" onClick={confirmDelete} disabled={isPending}>Yes</button>
                       <button className="ml-1 hover:underline" onClick={() => setConfirmingDelete(false)}>No</button>
                     </span>
                   ) : (

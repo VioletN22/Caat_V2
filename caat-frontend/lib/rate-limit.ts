@@ -54,7 +54,17 @@ export async function gate(
   limiter: Ratelimit | null,
   key: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!limiter) return { ok: true };
+  if (!limiter) {
+    // A4: fail closed in real production only. Missing Upstash config in prod
+    // must NOT silently disable rate limiting. Gate on VERCEL_ENV (set to
+    // "production" only on the true prod deploy), not NODE_ENV, because NODE_ENV
+    // is "production" for preview deploys and in CI too, which would otherwise
+    // fail-close login there and break the e2e smoke.
+    if (process.env.VERCEL_ENV === "production" && !redisConfigured) {
+      return { ok: false, error: "Rate limiting is not configured" };
+    }
+    return { ok: true };
+  }
   const { success, reset } = await limiter.limit(key);
   if (success) return { ok: true };
   const retryIn = Math.max(1, Math.ceil((reset - Date.now()) / 1000));

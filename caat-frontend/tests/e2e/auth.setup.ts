@@ -8,8 +8,11 @@ import path from "path";
 
 const AUTH_FILE = path.join(__dirname, ".auth/user.json");
 
-const TEST_EMAIL = process.env.E2E_TEST_EMAIL ?? "test@gmail.com";
-const TEST_PASSWORD = process.env.E2E_TEST_PASSWORD ?? "testtest123";
+// Use `||` (not `??`) so an empty-string env falls back to the seeded account.
+// GitHub Actions substitutes an unset secret as "" (not undefined), and `??`
+// would keep that empty string, filling the login form blank and failing.
+const TEST_EMAIL = process.env.E2E_TEST_EMAIL || "test@gmail.com";
+const TEST_PASSWORD = process.env.E2E_TEST_PASSWORD || "testtest123";
 
 setup("authenticate", async ({ page }) => {
   await page.goto("/login");

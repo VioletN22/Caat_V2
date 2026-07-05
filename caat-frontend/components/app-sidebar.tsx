@@ -33,7 +33,7 @@ import {
   SidebarGroupLabel
 } from "@/components/ui/sidebar"
 import { NavUser } from "./nav-user"
-import { supabase } from "@/src/lib/supabaseClient"
+import { useAuth } from "@/components/providers/AuthContext"
 
 const tools = [
   { title: "Dashboard", icon: LayoutDashboard, url: "/dashboard" },
@@ -52,66 +52,42 @@ const community = [
   { title: "Saved Posts",  icon: Bookmark, url: "/communities/saved" },
 ]
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  initialAvatarUrl = null,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & { initialAvatarUrl?: string | null }) {
   const pathname = usePathname()
-  const [user, setUser] = React.useState<{ name: string; email: string; avatar: string } | null>(null)
+  // C5: read the already-resolved user from AuthContext instead of firing this
+  // sidebar's own getUser() + profile fetch on every navigation. The avatar is
+  // resolved once server-side and passed in.
+  const { user: authUser } = useAuth()
 
-  React.useEffect(() => {
-    const loadUser = async () => {
-      const { data: { user: authUser } } = await supabase.auth.getUser()
-      if (authUser) {
-        const name =
+  // NavUser mounts a Radix dropdown; render it only after hydration so it never
+  // SSRs. The sidebar's collapsed-state tooltips make Radix's useId sequence
+  // differ between server and client, which would surface as a hydration
+  // mismatch on the dropdown's id if NavUser were server-rendered. The user is
+  // still resolved without a network call (from AuthContext), so this only
+  // defers the footer avatar by one frame, exactly as before Phase 3.
+  const [mounted, setMounted] = React.useState(false)
+  React.useEffect(() => setMounted(true), [])
+
+  const user = authUser
+    ? {
+        name:
           authUser.user_metadata?.full_name ||
           authUser.user_metadata?.name ||
           authUser.email?.split("@")[0] ||
-          "User"
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("avatar_url")
-          .eq("id", authUser.id)
-          .single()
-        setUser({
-          name,
-          email: authUser.email ?? "",
-          avatar: profileData?.avatar_url ?? authUser.user_metadata?.avatar_url ?? "",
-        })
+          "User",
+        email: authUser.email ?? "",
+        avatar:
+          initialAvatarUrl ?? authUser.user_metadata?.avatar_url ?? "",
       }
-    }
-
-    loadUser()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        const authUser = session.user
-        const name =
-          authUser.user_metadata?.full_name ||
-          authUser.user_metadata?.name ||
-          authUser.email?.split("@")[0] ||
-          "User"
-        supabase
-          .from("profiles")
-          .select("avatar_url")
-          .eq("id", authUser.id)
-          .single()
-          .then(({ data: profileData }) => {
-            setUser({
-              name,
-              email: authUser.email ?? "",
-              avatar: profileData?.avatar_url ?? authUser.user_metadata?.avatar_url ?? "",
-            })
-          })
-      } else {
-        setUser(null)
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
+    : null
 
   return (
     <Sidebar {...props}>
-      <SidebarHeader className="py-5 px-6 border-b border-[#E5E5E5]">
-        <Link href="/dashboard" className="inline-flex items-center focus-visible:outline focus-visible:outline-[2px] focus-visible:outline-black focus-visible:outline-offset-2">
+      <SidebarHeader className="py-5 px-6 border-b border-sidebar-border">
+        <Link href="/dashboard" className="inline-flex items-center focus-visible:outline focus-visible:outline-[2px] focus-visible:outline-sidebar-ring focus-visible:outline-offset-2">
           <div className="relative h-8 w-24">
             <Image
               src="/logo.png"
@@ -126,7 +102,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[#525252] uppercase text-[10px] tracking-[0.15em] font-code px-4 mb-1">
+          <SidebarGroupLabel className="text-sidebar-foreground/60 uppercase text-[10px] tracking-[0.15em] font-code px-4 mb-1">
             Tools
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -141,7 +117,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
-                      className="gap-3 px-4 py-2.5 rounded-none text-[#525252] hover:text-black hover:bg-[#F5F5F5] data-[active=true]:bg-[#9a1a27] data-[active=true]:text-white data-[active=true]:hover:bg-[#9a1a27] data-[active=true]:hover:text-white data-[active=true]:font-medium transition-colors duration-100"
+                      className="gap-3 px-4 py-2.5 rounded-none text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent data-[active=true]:bg-[#9a1a27] data-[active=true]:text-white data-[active=true]:hover:bg-[#9a1a27] data-[active=true]:hover:text-white data-[active=true]:font-medium transition-colors duration-100"
                     >
                       <Link href={item.url}>
                         <item.icon className="size-4 shrink-0" strokeWidth={1.5} />
@@ -156,7 +132,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
 
         <SidebarGroup className="mt-2">
-          <SidebarGroupLabel className="text-[#525252] uppercase text-[10px] tracking-[0.15em] font-code px-4 mb-1">
+          <SidebarGroupLabel className="text-sidebar-foreground/60 uppercase text-[10px] tracking-[0.15em] font-code px-4 mb-1">
             Community
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -168,7 +144,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
-                      className="gap-3 px-4 py-2.5 rounded-none text-[#525252] hover:text-black hover:bg-[#F5F5F5] data-[active=true]:bg-[#9a1a27] data-[active=true]:text-white data-[active=true]:hover:bg-[#9a1a27] data-[active=true]:hover:text-white data-[active=true]:font-medium transition-colors duration-100"
+                      className="gap-3 px-4 py-2.5 rounded-none text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent data-[active=true]:bg-[#9a1a27] data-[active=true]:text-white data-[active=true]:hover:bg-[#9a1a27] data-[active=true]:hover:text-white data-[active=true]:font-medium transition-colors duration-100"
                     >
                       <Link href={item.url}>
                         <item.icon className="size-4 shrink-0" strokeWidth={1.5} />
@@ -183,8 +159,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-[#E5E5E5]">
-        {user && <NavUser user={user} />}
+      <SidebarFooter className="border-t border-sidebar-border">
+        {mounted && user && <NavUser user={user} />}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

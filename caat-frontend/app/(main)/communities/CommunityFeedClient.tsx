@@ -13,6 +13,7 @@ import { CreatePostForm } from "@/components/communities/CreatePostForm";
 import { FeedTabs } from "@/components/communities/FeedTabs";
 import type { FeedTab } from "@/components/communities/FeedTabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ErrorState";
 import {
   fetchPostsAction, fetchTrendingPostsAction, searchPostsAction, fetchRecommendedUsersAction,
 } from "./actions";
@@ -25,6 +26,8 @@ interface CommunityFeedClientProps {
   currentUser: PostAuthor | null;
   initialLikedIds: string[];
   initialSavedIds: string[];
+  /** True when the server's first-paint feed fetch failed (D2). */
+  initialError?: boolean;
 }
 
 function PostSkeleton() {
@@ -50,6 +53,7 @@ export function CommunityFeedClient({
   currentUser,
   initialLikedIds,
   initialSavedIds,
+  initialError = false,
 }: CommunityFeedClientProps) {
   const [activeTab, setActiveTab] = useState<FeedTab>("all");
   const [posts, setPosts] = useState<CommunityPost[]>(initialPosts);
@@ -58,12 +62,17 @@ export function CommunityFeedClient({
   const [savedIds] = useState<Set<string>>(new Set(initialSavedIds));
   const [isTabLoading, setIsTabLoading] = useState(false);
   const [isPending, startTransition] = useTransition();
+  // D2/D3 — a genuine fetch failure shows an error+retry, not an empty feed
+  // or a permanently stuck skeleton.
+  const [feedError, setFeedError] = useState(initialError);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
   const [topicFilter, setTopicFilter] = useState<TopicTag | "all">("all");
   const [searchResults, setSearchResults] = useState<CommunityPost[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState(false);
+  const [searchNonce, setSearchNonce] = useState(0);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Recommended users (for following empty state)
@@ -84,45 +93,75 @@ export function CommunityFeedClient({
         return;
       }
       setIsSearching(true);
-      const { posts: results } = await searchPostsAction(
-        searchQuery.trim() || "",
-        topicFilter !== "all" ? topicFilter : undefined
-      );
-      setSearchResults(results);
+      setSearchError(false);
+      try {
+        const { posts: results, error } = await searchPostsAction(
+          searchQuery.trim() || "",
+          topicFilter !== "all" ? topicFilter : undefined
+        );
+        if (error) {
+          setSearchError(true);
+          setSearchResults([]);
+        } else {
+          setSearchResults(results);
+        }
+      } catch {
+        setSearchError(true);
+        setSearchResults([]);
+      }
       setIsSearching(false);
     }, inactive ? 0 : 350);
     return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
-  }, [searchQuery, topicFilter]);
+  }, [searchQuery, topicFilter, searchNonce]);
 
   // Infinite scroll
   useEffect(() => {
     if (!inView || !cursor || isPending || isSearchActive) return;
     startTransition(async () => {
-      const { posts: newPosts, nextCursor } = await fetchPostsAction(cursor, activeTab === "following");
+      const { posts: newPosts, nextCursor, error } = await fetchPostsAction(cursor, activeTab === "following");
+      if (error) {
+        // Stop the loader; keep already-loaded posts. Scrolling again retries.
+        setCursor(null);
+        return;
+      }
       setPosts((prev) => [...prev, ...newPosts]);
       setCursor(nextCursor);
     });
   }, [inView, cursor, isPending, activeTab, isSearchActive]);
 
+  async function loadTab(tab: FeedTab) {
+    // D3 — wrap the tab-switch fetch so a throw surfaces an error+retry state
+    // instead of leaving the feed stuck on skeletons forever.
+    setIsTabLoading(true);
+    setFeedError(false);
+    setPosts([]);
+    setCursor(null);
+    try {
+      if (tab === "trending") {
+        const { posts: fresh, error } = await fetchTrendingPostsAction();
+        if (error) { setFeedError(true); return; }
+        setPosts(fresh);
+        setCursor(null);
+      } else {
+        const { posts: fresh, nextCursor, error } = await fetchPostsAction(undefined, tab === "following");
+        if (error) { setFeedError(true); return; }
+        setPosts(fresh);
+        setCursor(nextCursor);
+        if (tab === "following" && fresh.length === 0) {
+          fetchRecommendedUsersAction().then(({ users }) => setRecommendedUsers(users)).catch(() => {});
+        }
+      }
+    } catch {
+      setFeedError(true);
+    } finally {
+      setIsTabLoading(false);
+    }
+  }
+
   async function handleTabChange(tab: FeedTab) {
     if (tab === activeTab) return;
     setActiveTab(tab);
-    setIsTabLoading(true);
-    setPosts([]);
-    setCursor(null);
-    if (tab === "trending") {
-      const { posts: fresh } = await fetchTrendingPostsAction();
-      setPosts(fresh);
-      setCursor(null);
-    } else {
-      const { posts: fresh, nextCursor } = await fetchPostsAction(undefined, tab === "following");
-      setPosts(fresh);
-      setCursor(nextCursor);
-      if (tab === "following" && fresh.length === 0) {
-        fetchRecommendedUsersAction().then(({ users }) => setRecommendedUsers(users));
-      }
-    }
-    setIsTabLoading(false);
+    await loadTab(tab);
   }
 
   function handleTopicClick(topic: TopicTag) {
@@ -204,6 +243,16 @@ export function CommunityFeedClient({
       {/* Feed */}
       {isTabLoading || isSearching ? (
         <div className="space-y-4"><PostSkeleton /><PostSkeleton /></div>
+      ) : isSearchActive && searchError ? (
+        <ErrorState
+          message="Couldn't run that search. Please try again."
+          onRetry={() => setSearchNonce((n) => n + 1)}
+        />
+      ) : !isSearchActive && feedError ? (
+        <ErrorState
+          message="Couldn't load the feed. Check your connection and try again."
+          onRetry={() => loadTab(activeTab)}
+        />
       ) : showEmpty ? (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
           {isSearchActive ? (
@@ -250,8 +299,10 @@ export function CommunityFeedClient({
             key={post.id}
             post={post}
             currentUser={currentUser}
-            initialIsLiked={likedIds.has(post.id)}
-            initialIsSaved={savedIds.has(post.id)}
+            // D7 — prefer the per-post viewer state (correct for every page on
+            // infinite scroll); fall back to the first-page sets when absent.
+            initialIsLiked={post.viewer_has_liked ?? likedIds.has(post.id)}
+            initialIsSaved={post.viewer_has_saved ?? savedIds.has(post.id)}
             onPostDeleted={handlePostDeleted}
             onTopicClick={handleTopicClick}
           />

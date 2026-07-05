@@ -158,7 +158,7 @@ function Hero() {
             </p>
           </div>
 
-          {/* Right: Dashboard preview — mirrors real /dashboard layout */}
+          {/* Right: Dashboard preview - mirrors real /dashboard layout */}
           <div className="hidden lg:flex items-center justify-center relative">
             {/* Shadow layer (offset duplicate) */}
             <div
@@ -192,7 +192,7 @@ function Hero() {
 
               {/* Mockup body */}
               <div className="p-5 space-y-4">
-                {/* Greeting — matches DashboardShell */}
+                {/* Greeting - matches DashboardShell */}
                 <div>
                   <div className="font-display font-bold text-base text-black">
                     Good evening, Alex!
@@ -202,7 +202,7 @@ function Hero() {
                   </div>
                 </div>
 
-                {/* Application Readiness — matches ApplicationReadiness component */}
+                {/* Application Readiness - matches ApplicationReadiness component */}
                 <div className="border border-black p-3.5">
                   <div className="flex items-center justify-between mb-2">
                     <div className="text-[11px] tracking-[0.12em] uppercase font-code font-bold">
@@ -269,7 +269,7 @@ function Hero() {
                   </div>
                 </div>
 
-                {/* Upcoming Deadlines — matches UpcomingDeadlinesWidget */}
+                {/* Upcoming Deadlines - matches UpcomingDeadlinesWidget */}
                 <div className="border border-black p-3.5">
                   <div className="text-[11px] tracking-[0.12em] uppercase font-code font-bold mb-2.5">
                     Upcoming Deadlines
@@ -359,7 +359,7 @@ function DemoVideo() {
           </h2>
         </div>
 
-        {/* video player — youtube first (CDN), supabase mp4 fallback if the embed fails */}
+        {/* video player - youtube first (CDN), supabase mp4 fallback if the embed fails */}
         <div className="relative border-2 border-black bg-black shadow-[12px_12px_0_0_rgba(154,26,39,1)]">
           <DemoPlayer />
         </div>
@@ -404,7 +404,7 @@ function FeaturesGrid() {
       icon: <Award size={20} strokeWidth={1.5} />,
       title: "Scholarship Finder",
       description:
-        "AI-powered matching surfaces scholarships tailored to your profile, field of study, and background. Track applications and deadlines in one place.",
+        "Scholarships matched to your profile, field of study, and background surface first. Track applications and deadlines in one place.",
       previewImage: "/feature-previews/scholarship-finder.png",
     },
     {
@@ -567,10 +567,10 @@ function ProductShowcase() {
               ))}
             </div>
 
-            {/* Divider — full-bleed hairline rule between sub-features */}
+            {/* Divider - full-bleed hairline rule between sub-features */}
             <div className="-mx-8 lg:-mx-10 h-px bg-black my-10" aria-hidden />
 
-            {/* School Search — mirrors /schools page */}
+            {/* School Search - mirrors /schools page */}
             <p className="text-[10px] tracking-[0.18em] uppercase text-[#525252] mb-5 font-code">
               School Search
             </p>
@@ -649,7 +649,7 @@ function ProductShowcase() {
             </div>
           </div>
 
-          {/* Resume Builder — matches the white card theme of the rest of the section */}
+          {/* Resume Builder - matches the white card theme of the rest of the section */}
           <div className="p-8 lg:p-10 bg-white text-black">
             <p className="text-[10px] tracking-[0.18em] uppercase text-[#525252] mb-7 font-code">
               Resume Builder
@@ -657,11 +657,11 @@ function ProductShowcase() {
 
             <p className="text-lg mb-8 leading-relaxed font-serif text-[#525252]">
               Guided sections walk you through every detail. The live A4 preview
-              updates as you type — print-ready, the way admissions offices
+              updates as you type, print-ready, the way admissions offices
               expect.
             </p>
 
-            {/* Section nav — mirrors DocumentStructurePanel */}
+            {/* Section nav - mirrors DocumentStructurePanel */}
             <div className="flex flex-wrap gap-1.5 mb-7">
               {[
                 { label: "Personal", active: false },
@@ -683,7 +683,7 @@ function ProductShowcase() {
               ))}
             </div>
 
-            {/* Mini A4 preview — sits as white "paper" with a soft offset shadow */}
+            {/* Mini A4 preview - sits as white "paper" with a soft offset shadow */}
             <div className="relative mb-8">
               {/* Shadow paper */}
               <div
@@ -710,7 +710,7 @@ function ProductShowcase() {
                   zIndex: 1,
                 }}
               >
-                {/* Personal header — centered, matches ResumePage */}
+                {/* Personal header - centered, matches ResumePage */}
                 <div className="text-center">
                   <div
                     className="font-bold font-display"
@@ -904,9 +904,9 @@ function MoreFeatures() {
               Scholarship Finder
             </h3>
             <p className="text-[#525252] leading-relaxed mb-6 font-serif">
-              AI-powered matching surfaces scholarships tailored to your
-              profile, field of study, and background. Bookmark, track
-              deadlines, and apply — all in one place.
+              Scholarships matched to your profile, field of study, and
+              background surface first. Bookmark, track deadlines, and apply,
+              all in one place.
             </p>
             <Link
               href="/signup"
@@ -966,7 +966,7 @@ function MoreFeatures() {
                 <div className="h-px bg-black my-2" />
                 <div className="flex items-center justify-between">
                   <span className="font-serif text-[10px] text-[#525252]">
-                    98% match for your profile
+                    Matched to your profile
                   </span>
                   <span
                     className="font-code text-[9px] tracking-wide px-1.5 py-0.5"
@@ -1117,8 +1117,9 @@ function SecurityBanner() {
             <p className="text-[#999] leading-relaxed mb-10 text-lg font-serif">
               Your essays, scores, and applications are encrypted and only
               visible to you. We don&apos;t sell your data, share it with
-              advertisers, or use it to train AI. You can delete or export
-              everything in one click.
+              advertisers, or use it to train AI. You can export all your data,
+              or delete your account and everything tied to it, from your
+              account settings.
             </p>
 
             <div className="flex flex-wrap gap-3">
@@ -1264,7 +1265,7 @@ function FinalCTA() {
             Get Started for Free
             <ArrowRight size={14} strokeWidth={1.5} />
           </Link>
-          {/* Talk to an Advisor — coming soon. We'll connect students to
+          {/* Talk to an Advisor - coming soon. We'll connect students to
              signed-up advisors once that programme launches. */}
           <span
             aria-disabled="true"
@@ -1289,6 +1290,7 @@ function FinalCTA() {
 
 function Footer() {
   const links = [
+    { label: "Browse Scholarships", href: "/scholarship" },
     { label: "Privacy Policy", href: "/privacy" },
     { label: "Terms of Service", href: "/terms" },
     { label: "Contact Us", href: "/contact" },

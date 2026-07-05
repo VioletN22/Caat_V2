@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import {
   DndContext,
   PointerSensor,
+  KeyboardSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -14,6 +15,7 @@ import {
 import {
   SortableContext,
   verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
   arrayMove,
 } from "@dnd-kit/sortable";
 
@@ -68,6 +70,11 @@ export default function ResumeBuilderShell() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  // Initial-load failure. We must NOT silently fall back to a blank editor with
+  // an empty resumeId, because then onSave / autosave both early-return forever
+  // and the user's work is lost on refresh. Instead surface an error + retry.
+  const [loadError, setLoadError] = useState(false);
+  const [reloadNonce, setReloadNonce] = useState(0);
 
   // Which section should be immediately renamed (newly added)
   const [renamingSectionId, setRenamingSectionId] = useState<string | null>(null);
@@ -118,7 +125,25 @@ export default function ResumeBuilderShell() {
     return sections.find((s) => s.id === activeSectionId) ?? sections[0];
   }, [sections, activeSectionId]);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  // M11 — keyboard DnD as well as pointer: Tab to a section handle, Space to
+  // pick up, arrow keys to reorder, Space to drop.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  // Mirror the live editor state into refs so the pre-switch / unmount flush can
+  // persist the OUTGOING resume without depending on stale closures.
+  const sectionsRef = useRef(sections);
+  const settingsRef = useRef(settings);
+  const resumeIdRef = useRef(resumeId);
+  const resumeTitleRef = useRef(resumeTitle);
+  const isLoadingRef = useRef(isLoading);
+  sectionsRef.current = sections;
+  settingsRef.current = settings;
+  resumeIdRef.current = resumeId;
+  resumeTitleRef.current = resumeTitle;
+  isLoadingRef.current = isLoading;
 
   // --------------------------------------------------
   // Initial load from Supabase
@@ -129,6 +154,7 @@ export default function ResumeBuilderShell() {
     async function init() {
       try {
         setIsLoading(true);
+        setLoadError(false);
 
         const state = await loadOrCreateResumeState();
         if (cancelled) return;
@@ -185,14 +211,11 @@ export default function ResumeBuilderShell() {
         setActiveSectionId(loadedSections[0]?.id ?? "");
       } catch (err) {
         if (process.env.NODE_ENV !== "production") console.error(err);
-        toast.error("Could not load your resume. Working offline with default sections.");
-
-        // Fall back to local defaults so the UI still works
-        const defaults = getDefaultSections();
         if (cancelled) return;
-
-        setSections(defaults);
-        setActiveSectionId(defaults[0]?.id ?? "");
+        // Do NOT drop the user into a blank editor with resumeId="" — every
+        // save would silently no-op. Surface the failure and offer a retry.
+        toast.error("Could not load your resume. Please retry.");
+        setLoadError(true);
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -202,7 +225,8 @@ export default function ResumeBuilderShell() {
     return () => {
       cancelled = true;
     };
-  }, []);
+     
+  }, [reloadNonce]);
 
   // --------------------------------------------------
   // Drag & drop ordering
@@ -262,6 +286,14 @@ export default function ResumeBuilderShell() {
   // Delete section
   // --------------------------------------------------
   function deleteSection(id: string) {
+    // M1 — confirm before removing a section (destructive, loses its content).
+    const target = sections.find((s) => s.id === id);
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(`Delete the "${target?.label ?? "section"}" section? This cannot be undone.`)
+    ) {
+      return;
+    }
     setSections((prev) => {
       const next = prev.filter((s) => s.id !== id);
 
@@ -339,11 +371,67 @@ export default function ResumeBuilderShell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sections, settings]);
 
+  // M1 — warn on hard close/refresh while a save is still pending in the 2s
+  // autosave window (complements the flush-on-unmount for SPA navigation).
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (autosaveTimerRef.current || isSaving) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isSaving]);
+
+  // Persist the currently-loaded resume's pending edits before its content is
+  // replaced (switch / new / unmount), reading from refs so it never saves a
+  // stale snapshot. Clears the debounce so it can't fire against the new resume.
+  async function flushCurrentResume() {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+    if (!resumeIdRef.current || isLoadingRef.current) return;
+    try {
+      await saveResumeState({
+        resumeId: resumeIdRef.current,
+        title: resumeTitleRef.current,
+        template: null,
+        settings: settingsRef.current,
+        sections: sectionsRef.current.map((s, idx) => ({
+          id: s.id,
+          type: s.type,
+          label: s.label,
+          mode: s.mode,
+          contentHtml: s.contentHtml,
+          structuredData: s.structuredData,
+          sortOrder: idx,
+        })),
+      });
+    } catch {
+      // Best-effort; the manual Save button remains available.
+    }
+  }
+
+  // Flush pending edits on unmount (client-side nav) and tab close.
+  useEffect(() => {
+    const onBeforeUnload = () => { void flushCurrentResume(); };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      void flushCurrentResume();
+    };
+     
+  }, []);
+
   // --------------------------------------------------
   // Switch resume (load by id)
   // --------------------------------------------------
   async function switchResume(id: string) {
     if (id === resumeId) return;
+    // Flush the outgoing resume before its sections are replaced.
+    await flushCurrentResume();
     try {
       setIsLoading(true);
       const state = await loadResumeById(id);
@@ -400,6 +488,8 @@ export default function ResumeBuilderShell() {
   // New resume
   // --------------------------------------------------
   async function onNewResume() {
+    // Flush the outgoing resume before we swap in the fresh one.
+    await flushCurrentResume();
     try {
       setIsLoading(true);
       const state = await createResume();
@@ -518,10 +608,32 @@ export default function ResumeBuilderShell() {
     setTimeout(restore, 5000);
   }
 
+  if (loadError) {
+    return (
+      <div className="flex h-[calc(100vh-64px)] w-full flex-col items-center justify-center gap-4 px-6 text-center">
+        <div className="max-w-md space-y-2">
+          <h2 className="text-lg font-semibold">We could not load your resume</h2>
+          <p className="text-sm text-muted-foreground">
+            Something went wrong reaching your saved resume. To avoid overwriting
+            your work, we did not open a blank editor. Please retry.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setReloadNonce((n) => n + 1)}
+          disabled={isLoading}
+          className="rounded-md bg-[#9a1a27] px-4 py-2 text-sm font-medium text-white hover:bg-[#7d141f] disabled:opacity-50"
+        >
+          {isLoading ? "Retrying…" : "Retry"}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] w-full">
-      {/* Top bar */}
-      <div className="flex items-center justify-between border-b bg-background px-4 py-3">
+      {/* Top bar — wraps instead of running off-screen on small viewports (D8) */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-background px-4 py-3">
         <div className="flex items-center gap-2">
           {editingResumeTitle ? (
             <input
@@ -636,8 +748,9 @@ export default function ResumeBuilderShell() {
         </div>
       </div>
 
-      {/* Mobile tab bar */}
-      <div className="flex border-b md:hidden">
+      {/* Mobile/tablet tab bar — the 3-panel split needs ~880px of fixed width
+          (360 + 520), so single-panel tabs run up to lg (D8). */}
+      <div className="flex border-b lg:hidden">
         {(["structure", "editor", "preview"] as const).map((tab) => (
           <button
             key={tab}
@@ -656,7 +769,7 @@ export default function ResumeBuilderShell() {
       {/* 3-panel body */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Desktop: flex row with draggable divider */}
-        <div className="hidden md:flex flex-1 min-h-0 overflow-hidden">
+        <div className="hidden lg:flex flex-1 min-h-0 overflow-hidden">
           <div
             className="flex flex-col overflow-hidden shrink-0"
             style={{ width: leftWidth }}
@@ -705,8 +818,8 @@ export default function ResumeBuilderShell() {
           </div>
         </div>
 
-        {/* Mobile: single-panel with tab switching */}
-        <div className="md:hidden flex-1 flex flex-col overflow-hidden">
+        {/* Mobile/tablet: single-panel with tab switching */}
+        <div className="lg:hidden flex-1 flex flex-col overflow-hidden">
           {mobileTab === "structure" && (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
               <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>

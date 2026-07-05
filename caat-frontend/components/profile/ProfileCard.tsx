@@ -38,7 +38,7 @@ export function ProfileCard({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-          <span className="text-[#9a1a27]">{icon}</span>
+          <span className="text-[#9a1a27] dark:text-[#e06b78]">{icon}</span>
           {title}
         </CardTitle>
         {!hideEditButton && (
@@ -91,7 +91,7 @@ export function InfoRow({ label, value }: { label: string; value?: string | null
   return (
     <div className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
       <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium text-right">{value || "—"}</span>
+      <span className="text-sm font-medium text-right">{value || "-"}</span>
     </div>
   );
 }

@@ -7,7 +7,8 @@ import { School } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
+import { getClientUserId } from "@/lib/current-user";
 
 interface BookmarkedSchool {
   id: number;
@@ -31,26 +32,24 @@ export function BookmarkedSchoolsWidget() {
   useEffect(() => {
     async function load() {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) return;
+        const userId = await getClientUserId();
+        if (!userId) return;
 
         const [dataRes, countRes, trackedRes] = await Promise.all([
           supabase
             .from("user_bookmarked_schools")
             .select("school_id, schools(id, name, country)")
-            .eq("user_id", user.id)
+            .eq("user_id", userId)
             .order("created_at", { ascending: false })
             .limit(DISPLAY_LIMIT),
           supabase
             .from("user_bookmarked_schools")
             .select("*", { count: "exact", head: true })
-            .eq("user_id", user.id),
+            .eq("user_id", userId),
           supabase
             .from("user_school_applications")
             .select("school_id")
-            .eq("user_id", user.id),
+            .eq("user_id", userId),
         ]);
 
         if (dataRes.error) throw dataRes.error;
@@ -131,7 +130,7 @@ export function BookmarkedSchoolsWidget() {
       >
         {totalCount > DISPLAY_LIMIT
           ? `+${totalCount - DISPLAY_LIMIT} more · View all schools →`
-          : "View all schools →"}
+          : "View all schools"}
       </Link>
     </div>
   );

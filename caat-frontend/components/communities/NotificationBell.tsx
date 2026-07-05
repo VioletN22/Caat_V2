@@ -15,7 +15,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInitials } from "@/lib/user-utils";
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
 import { fetchNotificationsAction, markNotificationsReadAction } from "@/app/(main)/communities/actions";
 import type { NotificationItem } from "@/types/community";
 
@@ -104,7 +104,14 @@ export function NotificationBell() {
     // Static, non-interactive placeholder for SSR + first paint. Same shape
     // as the Button below so there's no layout shift on hydration.
     return (
-      <Button variant="ghost" size="icon" className="relative h-8 w-8" aria-hidden>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="relative h-8 w-8"
+        aria-hidden
+        tabIndex={-1}
+        disabled
+      >
         <Bell className="size-4" />
         <span className="sr-only">Notifications</span>
       </Button>
@@ -152,10 +159,17 @@ export function NotificationBell() {
             notifications.map((n) => {
               const cfg = TYPE_CONFIG[n.type] ?? FALLBACK_CONFIG;
               const Icon = cfg.icon;
+              // D5 — never link to /communities/null; route by what the
+              // notification actually points at.
+              const href = n.post_id
+                ? `/communities/${n.post_id}`
+                : n.type === "follow" && n.actor_id
+                  ? `/communities/profile/${n.actor_id}`
+                  : "/communities";
               return (
                 <Link
                   key={n.id}
-                  href={`/communities/${n.post_id}`}
+                  href={href}
                   onClick={() => setIsOpen(false)}
                   className="flex gap-3 px-3 py-3 hover:bg-muted/50 transition-colors"
                 >

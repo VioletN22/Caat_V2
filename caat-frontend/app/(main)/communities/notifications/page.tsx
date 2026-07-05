@@ -3,12 +3,13 @@ import { formatDistanceToNow } from "date-fns";
 import { Bell, Heart, MessageCircle, CornerDownRight, UserPlus, DoorOpen, Check } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator,
+  Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { getInitials } from "@/lib/user-utils";
-import { fetchNotificationsAction, markNotificationsReadAction } from "@/app/(main)/communities/actions";
+import { fetchNotificationsAction } from "@/app/(main)/communities/actions";
+import { MarkNotificationsRead } from "./MarkRead";
 import type { NotificationItem } from "@/types/community";
 
 const TYPE_CONFIG: Record<NotificationItem["type"], { icon: React.ElementType; label: string }> = {
@@ -24,10 +25,10 @@ const FALLBACK_CONFIG = { icon: Bell, label: "sent you a notification" };
 
 export default async function NotificationsPage() {
   const { notifications } = await fetchNotificationsAction(50);
-  await markNotificationsReadAction();
 
   return (
     <>
+      <MarkNotificationsRead />
       <header className="flex h-16 shrink-0 items-center gap-2 px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
@@ -38,7 +39,7 @@ export default async function NotificationsPage() {
             </BreadcrumbItem>
             <BreadcrumbSeparator className="hidden md:block" />
             <BreadcrumbItem>
-              <BreadcrumbLink>Notifications</BreadcrumbLink>
+              <BreadcrumbPage>Notifications</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -62,7 +63,12 @@ export default async function NotificationsPage() {
               {notifications.map((n) => {
                 const cfg = TYPE_CONFIG[n.type] ?? FALLBACK_CONFIG;
                 const Icon = cfg.icon;
-                const href = n.post_id ? `/communities/${n.post_id}` : n.type === "follow" ? `/communities/profile/${n.actor_name}` : "/communities";
+                // D5 — follow notifications must link by actor id, not name.
+                const href = n.post_id
+                  ? `/communities/${n.post_id}`
+                  : n.type === "follow" && n.actor_id
+                    ? `/communities/profile/${n.actor_id}`
+                    : "/communities";
                 return (
                   <Link
                     key={n.id}

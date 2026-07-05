@@ -25,6 +25,7 @@ import {
   Loader2,
   FileArchive,
 } from "lucide-react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -49,7 +50,6 @@ import {
   uploadDocument,
   deleteDocument,
   reuploadDocument,
-  updateDocumentStatus,
   getDocumentSignedUrl,
   DocumentRow,
   DocCategory,
@@ -143,7 +143,7 @@ function FileIcon({ fileName, status }: { fileName: string; status: string }) {
       <ImageIcon
         className={cn(
           "h-5 w-5 shrink-0",
-          isError ? "text-[#9a1a27]" : "text-blue-500"
+          isError ? "text-[#9a1a27] dark:text-[#e06b78]" : "text-blue-500"
         )}
       />
     );
@@ -153,7 +153,7 @@ function FileIcon({ fileName, status }: { fileName: string; status: string }) {
       <FileText
         className={cn(
           "h-5 w-5 shrink-0",
-          isError ? "text-[#9a1a27]" : "text-blue-500"
+          isError ? "text-[#9a1a27] dark:text-[#e06b78]" : "text-blue-500"
         )}
       />
     );
@@ -162,91 +162,38 @@ function FileIcon({ fileName, status }: { fileName: string; status: string }) {
     <FileArchive
       className={cn(
         "h-5 w-5 shrink-0",
-        isError ? "text-[#9a1a27]" : "text-muted-foreground"
+        isError ? "text-[#9a1a27] dark:text-[#e06b78]" : "text-muted-foreground"
       )}
     />
   );
 }
 
-const STATUS_OPTIONS = [
-  {
-    value: "verified",
-    label: "Verified",
-    icon: <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />,
-  },
-  {
-    value: "pending_review",
-    label: "In Review",
-    icon: <Clock className="h-3.5 w-3.5 text-amber-400" />,
-  },
-  {
-    value: "resubmit",
-    label: "Resubmit",
-    icon: <AlertTriangle className="h-3.5 w-3.5 text-[#9a1a27]" />,
-  },
-] as const;
-
-function StatusBadge({
-  status,
-  onStatusChange,
-}: {
-  status: string;
-  onStatusChange: (newStatus: string) => void;
-}) {
+// D4 — document status is system/admin-set, never chosen by the student.
+// This is a read-only display (no dropdown), so a student can't self-verify.
+function StatusBadge({ status }: { status: string }) {
   const mapped = mapStatus(status);
 
-  let badge: React.ReactNode;
   if (mapped === "Verified") {
-    badge = (
-      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-green-600">
+    return (
+      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-400">
         <CheckCircle2 className="h-4 w-4" />
         Verified
       </span>
     );
-  } else if (mapped === "In Review") {
-    badge = (
-      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-500">
+  }
+  if (mapped === "In Review") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-600 dark:text-amber-400">
         <Clock className="h-4 w-4" />
         In Review
       </span>
     );
-  } else {
-    badge = (
-      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9a1a27]">
-        <AlertTriangle className="h-4 w-4" />
-        Resubmit
-      </span>
-    );
   }
-
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button className="rounded px-1 text-left hover:bg-muted transition-colors focus:outline-none">
-          {badge}
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-40">
-        <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Set status
-        </p>
-        <DropdownMenuSeparator />
-        {STATUS_OPTIONS.map((opt) => (
-          <DropdownMenuItem
-            key={opt.value}
-            className="gap-2"
-            disabled={status === opt.value}
-            onClick={() => onStatusChange(opt.value)}
-          >
-            {opt.icon}
-            {opt.label}
-            {status === opt.value && (
-              <CheckCircle2 className="h-3.5 w-3.5 ml-auto text-muted-foreground" />
-            )}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9a1a27] dark:text-[#e06b78]">
+      <AlertTriangle className="h-4 w-4" />
+      Resubmit
+    </span>
   );
 }
 
@@ -261,41 +208,52 @@ function CategoryPill({ label }: { label: string }) {
 // ---------------------------------------------------------------------------
 // Delete confirmation modal
 // ---------------------------------------------------------------------------
+// M16 — a real Radix Dialog: role="dialog", focus trap, Escape + backdrop close.
 function DeleteModal({
   doc,
   onConfirm,
   onCancel,
   isDeleting,
 }: {
-  doc: DocumentRow;
+  doc: DocumentRow | null;
   onConfirm: () => void;
   onCancel: () => void;
   isDeleting: boolean;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-card rounded-xl border p-6 shadow-xl w-[90%] max-w-md">
-        <h3 className="font-semibold text-lg mb-1">Delete Document</h3>
-        <p className="text-sm text-muted-foreground mb-5">
-          Are you sure you want to delete{" "}
-          <span className="font-medium text-foreground">{doc.file_name}</span>?
-          This action cannot be undone.
-        </p>
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onCancel} disabled={isDeleting}>
-            Cancel
-          </Button>
-          <Button
-            onClick={onConfirm}
-            disabled={isDeleting}
-            className="bg-[#9a1a27] hover:bg-[#7d1520] text-white"
-          >
-            {isDeleting && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
-            Delete
-          </Button>
-        </div>
-      </div>
-    </div>
+    <Dialog.Root
+      open={doc !== null}
+      onOpenChange={(open) => {
+        if (!open && !isDeleting) onCancel();
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[90%] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border bg-card p-6 shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+          <Dialog.Title className="font-semibold text-lg mb-1">
+            Delete Document
+          </Dialog.Title>
+          <Dialog.Description className="text-sm text-muted-foreground mb-5">
+            Are you sure you want to delete{" "}
+            <span className="font-medium text-foreground">{doc?.file_name}</span>?
+            This action cannot be undone.
+          </Dialog.Description>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={onCancel} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button
+              onClick={onConfirm}
+              disabled={isDeleting}
+              className="bg-[#9a1a27] hover:bg-[#7d1520] text-white"
+            >
+              {isDeleting && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+              Delete
+            </Button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
@@ -395,9 +353,15 @@ function FileDropZone({
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
-export default function DocumentVaultClient() {
-  const [docs, setDocs] = useState<DocumentRow[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function DocumentVaultClient({
+  initialDocs,
+}: {
+  /** Documents list resolved on the server (C8) for an instant first paint. */
+  initialDocs?: DocumentRow[] | null;
+}) {
+  const hasInitialDocs = initialDocs != null;
+  const [docs, setDocs] = useState<DocumentRow[]>(initialDocs ?? []);
+  const [loading, setLoading] = useState(!hasInitialDocs);
   const [activeTab, setActiveTab] = useState<Tab>("All Files");
   const [page, setPage] = useState(1);
 
@@ -423,20 +387,25 @@ export default function DocumentVaultClient() {
   const reuploadInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/immutability
-    loadDocs();
+    // First-paint list came from the server; only fetch it here when it didn't.
+    if (!hasInitialDocs) {
+       
+      loadDocs();
+    }
     fetchMySchools().then(setMySchools).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Opened from a school's hub ("Attach a document for X") — pre-tag + open.
   useEffect(() => {
     const s = searchParams.get("school");
-    if (s) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+    const parsedSchoolId = s ? Number(s) : NaN;
+    if (s && Number.isFinite(parsedSchoolId)) {
+       
       setReuploadTarget(null);
       setUploadFile(null);
       setUploadCategory("transcripts");
-      setUploadSchoolId(Number(s));
+      setUploadSchoolId(parsedSchoolId);
       setSheetOpen(true);
     }
   }, [searchParams]);
@@ -546,16 +515,6 @@ export default function DocumentVaultClient() {
     }
   }
 
-  async function handleStatusChange(doc: DocumentRow, newStatus: string) {
-    try {
-      const updated = await updateDocumentStatus(doc.id, newStatus);
-      setDocs((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
-      toast.success("Status updated");
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to update status");
-    }
-  }
-
   // Filtering & pagination
   const filteredDocs =
     activeTab === "All Files"
@@ -568,6 +527,12 @@ export default function DocumentVaultClient() {
     (safePage - 1) * PAGE_SIZE,
     safePage * PAGE_SIZE
   );
+
+  // Clamp the page STATE (not just the displayed slice) so switching tabs or
+  // deleting the last item on a page can't strand `page` past the end.
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   // Stats
   const total = docs.length;
@@ -621,7 +586,7 @@ export default function DocumentVaultClient() {
         <StatCard
           label="Action Required"
           count={actionReq}
-          icon={<AlertTriangle className="h-5 w-5 text-[#9a1a27]" />}
+          icon={<AlertTriangle className="h-5 w-5 text-[#9a1a27] dark:text-[#e06b78]" />}
           barColor="bg-[#9a1a27]"
           total={total}
         />
@@ -724,11 +689,8 @@ export default function DocumentVaultClient() {
                 />
               </div>
 
-              {/* Status */}
-              <StatusBadge
-                status={doc.status}
-                onStatusChange={(newStatus) => handleStatusChange(doc, newStatus)}
-              />
+              {/* Status — read-only (system-set), see D4 */}
+              <StatusBadge status={doc.status} />
 
               {/* Date */}
               <span className="text-sm text-muted-foreground">
@@ -736,17 +698,19 @@ export default function DocumentVaultClient() {
               </span>
 
               {/* Action */}
-              <div className="flex justify-end">
-                {doc.status === "resubmit" ? (
+              <div className="flex justify-end items-center gap-1">
+                {doc.status === "resubmit" && (
                   <Button
                     size="sm"
                     onClick={() => openReuploadSheet(doc)}
-                    className="bg-[#9a1a27]/10 text-[#9a1a27] hover:bg-[#9a1a27]/20 border-[#9a1a27]/30 shadow-none text-xs font-semibold h-7"
+                    className="bg-[#9a1a27]/10 text-[#9a1a27] dark:text-[#e06b78] hover:bg-[#9a1a27]/20 border-[#9a1a27] dark:border-[#e06b78]/30 shadow-none text-xs font-semibold h-7"
                     variant="outline"
                   >
                     Fix Now
                   </Button>
-                ) : (
+                )}
+                {/* M10 — resubmit rows keep View/Delete too, not just Fix Now. */}
+                {(
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
@@ -773,7 +737,7 @@ export default function DocumentVaultClient() {
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        className="gap-2 text-[#9a1a27] focus:text-[#9a1a27] focus:bg-[#9a1a27]/10"
+                        className="gap-2 text-[#9a1a27] dark:text-[#e06b78] focus:text-[#9a1a27] focus:bg-[#9a1a27]/10"
                         onClick={() => setDeleteTarget(doc)}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -820,6 +784,7 @@ export default function DocumentVaultClient() {
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={safePage <= 1}
+              aria-label="Previous page"
               className="inline-flex h-7 w-7 items-center justify-center rounded border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -830,6 +795,7 @@ export default function DocumentVaultClient() {
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={safePage >= totalPages}
+              aria-label="Next page"
               className="inline-flex h-7 w-7 items-center justify-center rounded border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <ChevronRight className="h-4 w-4" />
@@ -877,7 +843,7 @@ export default function DocumentVaultClient() {
           </p>
           <a
             href="mailto:support@caat.app?subject=Document%20Upload%20Help"
-            className="inline-flex items-center gap-1 text-sm font-medium text-[#9a1a27] hover:underline underline-offset-4"
+            className="inline-flex items-center gap-1 text-sm font-medium text-[#9a1a27] dark:text-[#e06b78] hover:underline underline-offset-4"
           >
             Contact Support Team
             <ArrowRight className="h-3.5 w-3.5" />
@@ -1017,14 +983,12 @@ export default function DocumentVaultClient() {
       {/* ------------------------------------------------------------------ */}
       {/* Delete confirmation modal                                           */}
       {/* ------------------------------------------------------------------ */}
-      {deleteTarget && (
-        <DeleteModal
-          doc={deleteTarget}
-          onConfirm={handleDelete}
-          onCancel={() => setDeleteTarget(null)}
-          isDeleting={isDeleting}
-        />
-      )}
+      <DeleteModal
+        doc={deleteTarget}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+        isDeleting={isDeleting}
+      />
       </div>
     </div>
   );

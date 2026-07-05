@@ -52,6 +52,7 @@ Vercel / deployment
 Supabase local (if used later)
 ####################################
 .supabase/
+caat-frontend/supabase/.temp/
 
 ####################################
 Claude files
@@ -85,3 +86,9 @@ PRD_*.txt
 # the Supabase project. Files remain on disk for local reference.
 supabase/migrations/
 *.sql
+
+# Exception (Phase 1 E9): the RLS/policy migrations under the frontend app ARE
+# tracked in-repo so the security posture is versioned and reviewable. This is
+# a private repo, so the "stay private" rationale above does not apply here.
+!caat-frontend/supabase/migrations/
+!caat-frontend/supabase/migrations/*.sql

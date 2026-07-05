@@ -1,5 +1,6 @@
 // components/resume-builder/api.ts
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
+import { sanitizeError } from "@/lib/safe-error";
 import type {
         ResumeRow,
         ResumeSectionRow,
@@ -10,6 +11,7 @@ import type {
         SectionMode,
 } from "./types";
 import { coerceSettings, DEFAULT_SETTINGS } from "./settings";
+import type { TablesInsert, TablesUpdate } from "@/types/database";
 
 /* ---------------------------
    Small helpers: map DB to UI
@@ -49,7 +51,7 @@ function payloadSectionToRow(
 
 export async function requireUserId(): Promise<string> {
         const { data, error } = await supabase.auth.getUser();
-        if (error) throw new Error(error.message);
+        if (error) throw new Error(sanitizeError(error));
 
         const userId = data.user?.id;
         if (!userId) throw new Error("Not authenticated");
@@ -70,7 +72,7 @@ export async function listResumes(): Promise<Pick<ResumeRow, "id" | "title" | "c
 		.eq("user_id", userId)
 		.order("created_at", { ascending: false });
 
-	if (error) throw new Error(error.message);
+	if (error) throw new Error(sanitizeError(error));
 	return (data ?? []) as Pick<ResumeRow, "id" | "title" | "created_at">[];
 }
 
@@ -93,14 +95,14 @@ export async function loadResumeById(resumeId: string): Promise<ResumeState | nu
 		.eq("resume_id", resumeId)
 		.order("sort_order", { ascending: true });
 
-	if (secErr) throw new Error(secErr.message);
+	if (secErr) throw new Error(sanitizeError(secErr));
 
 	return {
 		resumeId: (resume as ResumeRow).id,
 		title: (resume as ResumeRow).title ?? "Untitled",
 		template: (resume as ResumeRow).template ?? null,
 		settings: coerceSettings((resume as ResumeRow).settings),
-		sections: (sectionRows ?? []).map(rowToState),
+		sections: (((sectionRows ?? []) as unknown as ResumeSectionRow[]).map(rowToState)),
 	};
 }
 
@@ -118,7 +120,7 @@ export async function createResume(title?: string): Promise<ResumeState> {
 		.select("*")
 		.single();
 
-	if (error) throw new Error(error.message);
+	if (error) throw new Error(sanitizeError(error));
 	const resume = created as ResumeRow;
 
 	return {
@@ -142,11 +144,11 @@ export async function loadOrCreateResumeState(): Promise<ResumeState> {
                 .limit(1)
                 .maybeSingle();
 
-        if (findErr) throw new Error(findErr.message);
+        if (findErr) throw new Error(sanitizeError(findErr));
 
         // 2) Create if missing
         const resume: ResumeRow =
-                foundResume ??
+                (foundResume as unknown as ResumeRow | null) ??
                 (await (async () => {
                         const { data: created, error: createErr } = await supabase
                                 .from("resumes")
@@ -158,8 +160,8 @@ export async function loadOrCreateResumeState(): Promise<ResumeState> {
                                 .select("*")
                                 .single();
 
-                        if (createErr) throw new Error(createErr.message);
-                        return created as ResumeRow;
+                        if (createErr) throw new Error(sanitizeError(createErr));
+                        return created as unknown as ResumeRow;
                 })());
 
         // 3) Load sections ordered by sort_order
@@ -169,14 +171,14 @@ export async function loadOrCreateResumeState(): Promise<ResumeState> {
                 .eq("resume_id", resume.id)
                 .order("sort_order", { ascending: true });
 
-        if (secErr) throw new Error(secErr.message);
+        if (secErr) throw new Error(sanitizeError(secErr));
 
         return {
                 resumeId: resume.id,
                 title: resume.title ?? "Main Resume",
                 template: resume.template ?? null,
                 settings: coerceSettings(resume.settings),
-                sections: (sectionRows ?? []).map(rowToState),
+                sections: (((sectionRows ?? []) as unknown as ResumeSectionRow[]).map(rowToState)),
         };
 }
 
@@ -197,7 +199,7 @@ export async function saveResumeState(payload: SaveResumePayload): Promise<void>
                 .eq("id", payload.resumeId)
                 .eq("user_id", userId);
 
-        if (resumeErr) throw new Error(resumeErr.message);
+        if (resumeErr) throw new Error(sanitizeError(resumeErr));
 
         // 1b) Best-effort: persist resume-level settings. Tolerates the `settings`
         //     column not existing yet (pre-migration) so saving never breaks —
@@ -205,7 +207,9 @@ export async function saveResumeState(payload: SaveResumePayload): Promise<void>
         if (payload.settings !== undefined) {
                 const { error: settingsErr } = await supabase
                         .from("resumes")
-                        .update({ settings: payload.settings })
+                        // `settings` is an optional column that may not exist pre-migration,
+                        // so it is not in the generated schema. Cast to write it best-effort.
+                        .update({ settings: payload.settings } as unknown as TablesUpdate<"resumes">)
                         .eq("id", payload.resumeId)
                         .eq("user_id", userId);
                 if (settingsErr && process.env.NODE_ENV !== "production") {
@@ -237,9 +241,9 @@ export async function saveResumeState(payload: SaveResumePayload): Promise<void>
         // 3) Upsert all sections (content + structured_data + sort_order)
         const { error: secErr } = await supabase
                 .from("resume_sections")
-                .upsert(rows, { onConflict: "id" });
+                .upsert(rows as unknown as TablesInsert<"resume_sections">[], { onConflict: "id" });
 
-        if (secErr) throw new Error(secErr.message);
+        if (secErr) throw new Error(sanitizeError(secErr));
 }
 
 /* ---------------------------
@@ -272,7 +276,7 @@ export async function deleteSection(sectionId: string): Promise<void> {
                 .delete()
                 .eq("id", sectionId);
 
-        if (error) throw new Error(error.message);
+        if (error) throw new Error(sanitizeError(error));
 }
 
 /** Delete a whole resume and its sections (user-scoped). */
@@ -293,12 +297,12 @@ export async function deleteResume(resumeId: string): Promise<void> {
 		.from("resume_sections")
 		.delete()
 		.eq("resume_id", resumeId);
-	if (secErr) throw new Error(secErr.message);
+	if (secErr) throw new Error(sanitizeError(secErr));
 
 	const { error: resumeErr } = await supabase
 		.from("resumes")
 		.delete()
 		.eq("id", resumeId)
 		.eq("user_id", userId);
-	if (resumeErr) throw new Error(resumeErr.message);
+	if (resumeErr) throw new Error(sanitizeError(resumeErr));
 }

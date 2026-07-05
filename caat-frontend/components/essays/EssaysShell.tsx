@@ -47,14 +47,20 @@ import {
   type EssayDraft,
   type CustomEssayPrompt,
 } from "./api";
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-export default function EssaysShell() {
-  const [prompts, setPrompts] = useState<EssayPrompt[] | null>(null);
+export default function EssaysShell({
+  initialPrompts,
+}: {
+  /** Global essay prompt list resolved on the server (C8) for an instant first paint. */
+  initialPrompts?: EssayPrompt[] | null;
+}) {
+  const hasInitialPrompts = initialPrompts != null;
+  const [prompts, setPrompts] = useState<EssayPrompt[] | null>(initialPrompts ?? null);
   const [promptsError, setPromptsError] = useState<string | null>(null);
-  const [promptsLoading, setPromptsLoading] = useState(true);
+  const [promptsLoading, setPromptsLoading] = useState(!hasInitialPrompts);
 
   const [customPrompts, setCustomPrompts] = useState<CustomEssayPrompt[]>([]);
   const [creatingCustomPrompt, setCreatingCustomPrompt] = useState(false);
@@ -64,14 +70,20 @@ export default function EssaysShell() {
   const [renameCustomValue, setRenameCustomValue] = useState("");
   const [confirmDeleteCustomId, setConfirmDeleteCustomId] = useState<string | null>(null);
 
-  const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
+  const [selectedPromptId, setSelectedPromptId] = useState<string | null>(
+    initialPrompts?.[0]?.id ?? null,
+  );
   const [drafts, setDrafts] = useState<EssayDraft[]>([]);
   const [draftsLoading, setDraftsLoading] = useState(false);
   const [activeDraft, setActiveDraft] = useState<EssayDraft | null>(null);
 
   // School tagging for per-school prompts (null = shared across applications)
   const searchParams = useSearchParams();
-  const urlSchoolId = searchParams.get("school") ? Number(searchParams.get("school")) : null;
+  // Guard against a malformed ?school=abc — Number("abc") is NaN, which would
+  // poison the school_id filter/state.
+  const urlSchoolRaw = searchParams.get("school");
+  const urlSchoolNum = urlSchoolRaw ? Number(urlSchoolRaw) : NaN;
+  const urlSchoolId = Number.isFinite(urlSchoolNum) ? urlSchoolNum : null;
   const [mySchools, setMySchools] = useState<MySchool[]>([]);
   const [tagSchoolId, setTagSchoolId] = useState<number | null>(urlSchoolId);
   const [essayContent, setEssayContent] = useState("");
@@ -89,8 +101,62 @@ export default function EssaysShell() {
   const selectedPrompt = prompts?.find((p) => p.id === selectedPromptId) ?? null;
   const selectedCustomPrompt = customPrompts.find((p) => p.id === selectedPromptId) ?? null;
 
+  // Refs mirror the latest editor state so save/flush logic reads current values
+  // (never a stale closure) and so we can flush the outgoing draft before its
+  // content is replaced (draft/prompt switch, new draft, unmount).
+  const essayContentRef = useRef(essayContent);
+  const activeDraftRef = useRef(activeDraft);
+  essayContentRef.current = essayContent;
+  activeDraftRef.current = activeDraft;
+  const savingRef = useRef(false);
+  const pendingSaveRef = useRef(false);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // M1 — warn on hard close/refresh while an essay edit is still within the
+  // autosave window (complements the flush-before-switch/unmount fixes).
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (autosaveTimerRef.current || savingRef.current || pendingSaveRef.current) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
+
+  // Persist the outgoing draft's pending edits before its content is replaced,
+  // so switching draft/prompt (or navigating) within the autosave window never
+  // drops work. Best-effort: updates the drafts list without touching the
+  // active editor, which is about to change. Declared here (before the effects
+  // that reference it) to avoid a use-before-declaration.
+  const flushPending = useCallback(async () => {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+    const draft = activeDraftRef.current;
+    const content = essayContentRef.current;
+    if (!draft || content === draft.content) return;
+    try {
+      await updateDraft(draft.id, { content });
+      setDrafts((prev) =>
+        prev.map((d) =>
+          d.id === draft.id
+            ? { ...d, content, updated_at: new Date().toISOString() }
+            : d
+        )
+      );
+    } catch {
+      // Non-fatal on switch; the manual Save button and autosave remain.
+    }
+  }, []);
+
   // Load prompts on mount
   useEffect(() => {
+    // First-paint prompt list came from the server; skip the client fetch then.
+    if (hasInitialPrompts) return;
+
     let cancelled = false;
 
     async function load() {
@@ -126,7 +192,7 @@ export default function EssaysShell() {
   // draft shows its own tag; with no draft we fall back to the URL-armed school
   // (e.g. arriving from a hub's "Start an essay for X" button).
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     setTagSchoolId(activeDraft ? activeDraft.school_id : urlSchoolId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeDraft?.id]);
@@ -134,7 +200,7 @@ export default function EssaysShell() {
   // When selected prompt changes, load drafts
   useEffect(() => {
     if (!selectedPromptId || !isAuthenticated) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setDrafts([]);
       setActiveDraft(null);
       setEssayContent("");
@@ -162,8 +228,13 @@ export default function EssaysShell() {
       })
       .finally(() => { if (!cancelled) setDraftsLoading(false); });
 
-    return () => { cancelled = true; };
-  }, [selectedPromptId, isAuthenticated]);
+    return () => {
+      cancelled = true;
+      // Flush the outgoing prompt's active draft before this effect re-runs and
+      // replaces the editor content for the newly selected prompt.
+      void flushPending();
+    };
+  }, [selectedPromptId, isAuthenticated, flushPending]);
 
   // Track auth
   useEffect(() => {
@@ -175,38 +246,59 @@ export default function EssaysShell() {
   }, []);
 
   const handleSave = useCallback(async () => {
-    if (!activeDraft || saving) return;
+    const draft = activeDraftRef.current;
+    if (!draft) return;
+    // If a save is already in flight, don't drop the edits typed since it
+    // started: mark that another save is needed and re-run when it resolves.
+    if (savingRef.current) {
+      pendingSaveRef.current = true;
+      return;
+    }
+    const content = essayContentRef.current;
+    if (content === draft.content) return;
     setSaveError(null);
+    savingRef.current = true;
     setSaving(true);
     try {
-      await updateDraft(activeDraft.id, { content: essayContent });
+      await updateDraft(draft.id, { content });
       setDrafts((prev) =>
         prev.map((d) =>
-          d.id === activeDraft.id
-            ? { ...d, content: essayContent, updated_at: new Date().toISOString() }
+          d.id === draft.id
+            ? { ...d, content, updated_at: new Date().toISOString() }
             : d
         )
       );
       setActiveDraft((prev) =>
-        prev?.id === activeDraft.id
-          ? { ...prev, content: essayContent, updated_at: new Date().toISOString() }
+        prev?.id === draft.id
+          ? { ...prev, content, updated_at: new Date().toISOString() }
           : prev
       );
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save");
     } finally {
+      savingRef.current = false;
       setSaving(false);
+      if (pendingSaveRef.current) {
+        pendingSaveRef.current = false;
+        // Re-run to capture edits made during the in-flight save.
+        void handleSave();
+      }
     }
-  }, [activeDraft, essayContent, saving]);
-
-  const handleSwitchDraft = useCallback((draft: EssayDraft) => {
-    setActiveDraft(draft);
-    setEssayContent(draft.content);
-    setRenamingId(null);
-    if (draft.prompt_id) {
-      setCurrentDraft(draft.id, draft.prompt_id).catch(() => {});
-    }
+     
   }, []);
+
+  const handleSwitchDraft = useCallback(
+    async (draft: EssayDraft) => {
+      await flushPending();
+      setActiveDraft(draft);
+      setEssayContent(draft.content);
+      setRenamingId(null);
+      if (draft.prompt_id) {
+        setCurrentDraft(draft.id, draft.prompt_id).catch(() => {});
+      }
+    },
+    [flushPending]
+  );
 
   const startRename = useCallback((draft: EssayDraft) => {
     setRenamingId(draft.id);
@@ -214,7 +306,7 @@ export default function EssaysShell() {
   }, []);
 
   const submitRename = useCallback(
-    // eslint-disable-next-line react-hooks/preserve-manual-memoization
+     
     async (draftId: string) => {
       const value = renameValue.trim() || "Untitled";
       setRenamingId(null);
@@ -232,6 +324,9 @@ export default function EssaysShell() {
 
   const handleNewDraft = useCallback(async () => {
     if (!selectedPromptId || creatingDraft || !isAuthenticated) return;
+    // Flush the outgoing draft's pending edits before we swap the editor to the
+    // fresh, empty draft.
+    await flushPending();
     const promptSlug = selectedPrompt?.slug ?? `custom-${selectedPromptId}`;
     setCreatingDraft(true);
     setSaveError(null);
@@ -250,7 +345,7 @@ export default function EssaysShell() {
     } finally {
       setCreatingDraft(false);
     }
-  }, [selectedPromptId, selectedPrompt, creatingDraft, isAuthenticated, drafts.length, tagSchoolId]);
+  }, [selectedPromptId, selectedPrompt, creatingDraft, isAuthenticated, drafts.length, tagSchoolId, flushPending]);
 
   // Persist a school tag onto the active draft (or just hold it for the next
   // new draft if none is active yet).
@@ -270,7 +365,7 @@ export default function EssaysShell() {
   );
 
   const handleDeleteDraft = useCallback(
-    // eslint-disable-next-line react-hooks/preserve-manual-memoization
+     
     async (draftId: string) => {
       if (deletingId) return;
       setConfirmDeleteId(null);
@@ -354,9 +449,8 @@ export default function EssaysShell() {
       ? format(new Date(activeDraft.updated_at), "MMM d, yyyy 'at' h:mm a")
       : "Never";
 
-  // Autosave — fires 2s after the user stops typing
-  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
+  // Autosave — fires 2s after the user stops typing. (autosaveTimerRef is
+  // declared with the other editor refs above.)
   useEffect(() => {
     if (essayContent === activeDraft?.content) return;
     if (!activeDraft || !isAuthenticated) return;
@@ -367,6 +461,17 @@ export default function EssaysShell() {
     return () => { if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [essayContent]);
+
+  // Flush pending edits on unmount (client-side navigation away) and on tab
+  // close, so leaving within the 2s autosave window doesn't lose work.
+  useEffect(() => {
+    const onBeforeUnload = () => { void flushPending(); };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      void flushPending();
+    };
+  }, [flushPending]);
 
   // Shared draft editor card — used for both prompt types
   const draftEditorCard = (
@@ -431,7 +536,7 @@ export default function EssaysShell() {
                                 className={cn(
                                   "flex min-w-0 flex-1 items-center gap-2 rounded px-1.5 py-1.5 text-left text-sm transition-colors",
                                   activeDraft?.id === draft.id
-                                    ? "bg-[#9a1a27]/10 text-[#9a1a27]"
+                                    ? "bg-[#9a1a27]/10 text-[#9a1a27] dark:text-[#e06b78]"
                                     : "hover:bg-muted/60"
                                 )}
                               >
@@ -579,7 +684,7 @@ export default function EssaysShell() {
         <Card className="h-fit rounded-xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <FileText className="h-4 w-4 text-[#9a1a27]" />
+              <FileText className="h-4 w-4 text-[#9a1a27] dark:text-[#e06b78]" />
               Essay prompts
             </CardTitle>
             <CardDescription>
@@ -598,7 +703,7 @@ export default function EssaysShell() {
                   className={cn(
                     "flex w-full items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
                     selectedPromptId === prompt.id
-                      ? "border-[#9a1a27] bg-[#9a1a27] text-white"
+                      ? "border-[#9a1a27] dark:border-[#e06b78] bg-[#9a1a27] text-white"
                       : "border-transparent hover:bg-muted/50"
                   )}
                 >
@@ -626,7 +731,7 @@ export default function EssaysShell() {
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-6 w-6 text-[#9a1a27] hover:text-[#7d141f] hover:bg-[#9a1a27]/10"
+                    className="h-6 w-6 text-[#9a1a27] dark:text-[#e06b78] hover:text-[#7d141f] hover:bg-[#9a1a27]/10"
                     onClick={() => { setCreatingCustomPrompt(true); setNewCustomTitle(""); }}
                     aria-label="Add custom essay"
                   >
@@ -694,7 +799,7 @@ export default function EssaysShell() {
                           className={cn(
                             "flex min-w-0 flex-1 items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
                             selectedPromptId === cp.id
-                              ? "border-[#9a1a27] bg-[#9a1a27] text-white"
+                              ? "border-[#9a1a27] dark:border-[#e06b78] bg-[#9a1a27] text-white"
                               : "border-transparent hover:bg-muted/50"
                           )}
                         >
@@ -783,7 +888,7 @@ export default function EssaysShell() {
                         size="sm"
                         className="flex items-center gap-2 text-muted-foreground"
                       >
-                        <Lightbulb className="h-4 w-4 text-[#9a1a27]" />
+                        <Lightbulb className="h-4 w-4 text-[#9a1a27] dark:text-[#e06b78]" />
                         Tips & guidance
                         <ChevronDown className="h-4 w-4" />
                       </Button>

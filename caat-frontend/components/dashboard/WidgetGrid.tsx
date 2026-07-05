@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { LayoutDashboard, Plus } from "lucide-react";
 import { WidgetCard } from "./WidgetCard";
 import { getWidgetById } from "./widget-registry";
@@ -11,9 +11,30 @@ import {
   GAP_PX,
   buildOccupied,
   hasConflict,
+  isPlacementValid,
   getGridHeight,
   pixelToCell,
 } from "@/lib/grid";
+
+/**
+ * Responsive column count. The stored layout is authored in COLS (4) columns;
+ * below `lg` we reflow into fewer columns and render a static (non-drag) grid
+ * so the flagship dashboard never overflows on a phone. `null` until measured
+ * on the client — the server/first paint assumes the desktop grid.
+ */
+function useResponsiveCols(): number {
+  const [cols, setCols] = useState<number>(COLS);
+  useEffect(() => {
+    const compute = () => {
+      const w = window.innerWidth;
+      setCols(w < 640 ? 1 : w < 1024 ? 2 : COLS);
+    };
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
+  }, []);
+  return cols;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -96,11 +117,57 @@ export function WidgetGrid({
   const [resize, setResize] = useState<ResizeState | null>(null);
   // Snapped landing zone shown as a ghost while dragging / resizing.
   const [preview, setPreview] = useState<Preview | null>(null);
+  const cols = useResponsiveCols();
+  const interactive = cols === COLS;
+
+  // Keyboard/step resize — grow or shrink a widget by whole cells. Works on
+  // every viewport (the only resize path when the grid is not drag-interactive).
+  const handleResizeStep = useCallback(
+    (instanceId: string, dw: number, dh: number) => {
+      const widget = widgets.find((w) => w.instanceId === instanceId);
+      if (!widget) return;
+      const def = getWidgetById(widget.widgetId);
+      const minW = def?.minW ?? 1;
+      const minH = def?.minH ?? 1;
+      const newW = Math.max(minW, Math.min(COLS - widget.gridX!, widget.gridW! + dw));
+      const newH = Math.max(minH, widget.gridH! + dh);
+      if (newW === widget.gridW! && newH === widget.gridH!) return;
+      const others = widgets
+        .filter((w) => w.gridX !== undefined)
+        .map((w) => ({ id: w.instanceId, x: w.gridX!, y: w.gridY!, w: w.gridW!, h: w.gridH! }));
+      if (!isPlacementValid({ x: widget.gridX!, y: widget.gridY!, w: newW, h: newH }, others, instanceId)) {
+        return;
+      }
+      onResize(instanceId, newW, newH);
+    },
+    [widgets, onResize]
+  );
 
   const getCanvasRect = useCallback(
     () => canvasRef.current?.getBoundingClientRect() ?? new DOMRect(),
     []
   );
+
+  // Latest values mirrored into refs so the window-level pointer handlers
+  // (attached once per gesture) always read current state, never a stale
+  // closure. Updating a ref during render is safe for this "latest value" use.
+  const dragRef = useRef<DragState | null>(null);
+  const resizeRef = useRef<ResizeState | null>(null);
+  const previewRef = useRef<Preview | null>(null);
+  const widgetsRef = useRef(widgets);
+  const onMoveRef = useRef(onMove);
+  const onResizeRef = useRef(onResize);
+  // Sync refs after each render (not during render) so the window-level pointer
+  // handlers read the latest values on the next event, which always fires after
+  // the render commits.
+  useEffect(() => {
+    dragRef.current = drag;
+    resizeRef.current = resize;
+    previewRef.current = preview;
+    widgetsRef.current = widgets;
+    onMoveRef.current = onMove;
+    onResizeRef.current = onResize;
+  });
 
   // ---------------------------------------------------------------------------
   // Geometry: cell width includes its share of the gap so snapping is exact.
@@ -112,15 +179,6 @@ export function WidgetGrid({
 
   function cellHeightPx() {
     return ROW_HEIGHT_PX + GAP_PX;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Shared: build the list of grid rects for collision checks
-  // ---------------------------------------------------------------------------
-  function toRects(excludeId?: string) {
-    return widgets
-      .filter((w) => w.gridX !== undefined && w.instanceId !== excludeId)
-      .map((w) => ({ id: w.instanceId, x: w.gridX!, y: w.gridY!, w: w.gridW!, h: w.gridH! }));
   }
 
   // ---------------------------------------------------------------------------
@@ -155,8 +213,6 @@ export function WidgetGrid({
 
     setDrag({ instanceId, grabPixelX, grabPixelY, grabCol, grabRow, mouseX, mouseY });
     setPreview({ x: widget.gridX!, y: widget.gridY!, w: widget.gridW!, h: widget.gridH!, valid: true });
-
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   }
 
   // ---------------------------------------------------------------------------
@@ -180,22 +236,31 @@ export function WidgetGrid({
       startH: widget.gridH!,
     });
     setPreview({ x: widget.gridX!, y: widget.gridY!, w: widget.gridW!, h: widget.gridH!, valid: true });
-
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   }
 
   // ---------------------------------------------------------------------------
   // Overlay pointer handlers
   // ---------------------------------------------------------------------------
 
-  function handleOverlayPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+  // Both handlers read live gesture state from refs, so they can be attached
+  // once to `window` for the duration of a gesture without going stale. They
+  // take a native PointerEvent (the DOM event), not a React synthetic event.
+  const handleOverlayPointerMove = useCallback((e: PointerEvent) => {
+    const drag = dragRef.current;
+    const resize = resizeRef.current;
+    const widgets = widgetsRef.current;
     const canvasRect = getCanvasRect();
     const relX = e.clientX - canvasRect.left;
     const relY = e.clientY - canvasRect.top;
 
+    const buildRects = (excludeId: string) =>
+      widgets
+        .filter((w) => w.gridX !== undefined && w.instanceId !== excludeId)
+        .map((w) => ({ id: w.instanceId, x: w.gridX!, y: w.gridY!, w: w.gridW!, h: w.gridH! }));
+
     if (drag) {
       // Update cursor position so the widget follows the mouse.
-      setDrag((prev) => prev ? { ...prev, mouseX: relX, mouseY: relY } : prev);
+      setDrag((prev) => (prev ? { ...prev, mouseX: relX, mouseY: relY } : prev));
 
       // Compute snapped ghost target.
       const widget = widgets.find((w) => w.instanceId === drag.instanceId);
@@ -205,7 +270,7 @@ export function WidgetGrid({
       const targetX = Math.max(0, Math.min(COLS - widget.gridW!, rawCol - drag.grabCol));
       const targetY = Math.max(0, rawRow - drag.grabRow);
 
-      const occupied = buildOccupied(toRects(drag.instanceId).map(r => ({ ...r })), drag.instanceId);
+      const occupied = buildOccupied(buildRects(drag.instanceId), drag.instanceId);
       const valid = !hasConflict({ x: targetX, y: targetY, w: widget.gridW!, h: widget.gridH! }, occupied);
 
       setPreview({ x: targetX, y: targetY, w: widget.gridW!, h: widget.gridH!, valid });
@@ -216,8 +281,8 @@ export function WidgetGrid({
       const widget = widgets.find((w) => w.instanceId === resize.instanceId);
       if (!widget) return;
 
-      const cw = cellWidthPx(canvasRect.width);
-      const ch = cellHeightPx();
+      const cw = (canvasRect.width + GAP_PX) / COLS;
+      const ch = ROW_HEIGHT_PX + GAP_PX;
 
       const def = getWidgetById(widget.widgetId);
       const minW = def?.minW ?? 1;
@@ -228,29 +293,46 @@ export function WidgetGrid({
       const newW = Math.max(minW, Math.min(COLS - widget.gridX!, resize.startW + Math.round(deltaX / cw)));
       const newH = Math.max(minH, resize.startH + Math.round(deltaY / ch));
 
-      const occupied = buildOccupied(
-        toRects(resize.instanceId).map(r => ({ ...r })),
-        resize.instanceId
-      );
+      const occupied = buildOccupied(buildRects(resize.instanceId), resize.instanceId);
       const valid = !hasConflict({ x: widget.gridX!, y: widget.gridY!, w: newW, h: newH }, occupied);
 
       setPreview({ x: widget.gridX!, y: widget.gridY!, w: newW, h: newH, valid });
     }
-  }
+  }, [getCanvasRect]);
 
-  function handleOverlayPointerUp() {
+  const handleOverlayPointerUp = useCallback(() => {
+    const drag = dragRef.current;
+    const resize = resizeRef.current;
+    const preview = previewRef.current;
+
     if (drag && preview && preview.valid) {
-      onMove(drag.instanceId, preview.x, preview.y);
+      onMoveRef.current(drag.instanceId, preview.x, preview.y);
     }
     setDrag(null);
 
     if (resize && preview && preview.valid) {
-      onResize(resize.instanceId, preview.w, preview.h);
+      onResizeRef.current(resize.instanceId, preview.w, preview.h);
     }
     setResize(null);
 
     setPreview(null);
-  }
+  }, []);
+
+  // Drive the gesture from window-level listeners. Removing setPointerCapture
+  // means move/up events are no longer retargeted to the handle; listening on
+  // window keeps the gesture alive even if the cursor leaves the canvas.
+  const gestureActive = drag !== null || resize !== null;
+  useEffect(() => {
+    if (!gestureActive) return;
+    const move = (e: PointerEvent) => handleOverlayPointerMove(e);
+    const up = () => handleOverlayPointerUp();
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+  }, [gestureActive, handleOverlayPointerMove, handleOverlayPointerUp]);
 
   // ---------------------------------------------------------------------------
   // Render
@@ -278,6 +360,57 @@ export function WidgetGrid({
   }
 
   const positionedWidgets = widgets.filter((w) => w.gridX !== undefined);
+
+  // ---------------------------------------------------------------------------
+  // Reflow (mobile / tablet): static CSS grid, no drag. Widgets flow in reading
+  // order into `cols` columns, each spanning at most `cols` columns so nothing
+  // clips or overflows the viewport. Controls stay reachable (touch/keyboard).
+  // ---------------------------------------------------------------------------
+  if (!interactive) {
+    const ordered = [...positionedWidgets].sort(
+      (a, b) => a.gridY! - b.gridY! || a.gridX! - b.gridX!
+    );
+    return (
+      <div className="space-y-4">
+        <div
+          className="grid"
+          style={{
+            gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+            gridAutoRows: `${ROW_HEIGHT_PX}px`,
+            gap: `${GAP_PX}px`,
+            gridAutoFlow: "dense",
+          }}
+        >
+          {ordered.map((widget) => (
+            <div
+              key={widget.instanceId}
+              style={{
+                gridColumn: `span ${Math.min(widget.gridW!, cols)}`,
+                gridRow: `span ${widget.gridH!}`,
+                minWidth: 0,
+              }}
+            >
+              <WidgetCard
+                widget={widget}
+                interactive={false}
+                onRemove={onRemove}
+                onResizeStep={(dw, dh) => handleResizeStep(widget.instanceId, dw, dh)}
+              />
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={onOpenStore}
+          className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-muted-foreground/20 py-5 text-sm text-muted-foreground hover:border-muted-foreground/35 hover:text-foreground transition-colors"
+        >
+          <LayoutDashboard className="h-4 w-4" />
+          Add more widgets from the Widget Store
+        </button>
+      </div>
+    );
+  }
+
   const gridRows = getGridHeight(
     positionedWidgets.map((w) => ({ id: w.instanceId, x: w.gridX!, y: w.gridY!, w: w.gridW!, h: w.gridH! }))
   );
@@ -355,6 +488,7 @@ export function WidgetGrid({
               onResizeHandlePointerDown={(e) =>
                 handleResizeHandlePointerDown(widget.instanceId, e)
               }
+              onResizeStep={(dw, dh) => handleResizeStep(widget.instanceId, dw, dh)}
             />
           );
         })}
@@ -387,8 +521,6 @@ export function WidgetGrid({
               // Extend below the canvas so fast drags don't escape
               bottom: "-200px",
             }}
-            onPointerMove={handleOverlayPointerMove}
-            onPointerUp={handleOverlayPointerUp}
           />
         )}
       </div>

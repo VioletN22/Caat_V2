@@ -1,4 +1,4 @@
-import { supabase } from "@/src/lib/supabaseClient";
+import { createServerClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { safeHref } from "@/lib/safe-href";
 import Link from "next/link";
@@ -26,15 +26,20 @@ export default async function SchoolDetailPage({
 }) {
   const { id } = await params;
 
-  const { data: school, error } = await supabase
+  const sb = await createServerClient();
+  const { data: schoolRow, error } = await sb
     .from("schools")
     .select("*")
-    .eq("id", id)
+    .eq("id", Number(id))
     .single();
 
-  if (error || !school) {
+  if (error || !schoolRow) {
     notFound();
   }
+
+  // `description` is not a column on schools; the render below guards on it and
+  // it is simply absent at runtime. Widen the type so the guard type-checks.
+  const school = schoolRow as typeof schoolRow & { description?: string | null };
 
   const { note } = await fetchSchoolNoteAction(school.id);
 
@@ -70,7 +75,7 @@ export default async function SchoolDetailPage({
         <div className="flex items-start justify-between gap-4 mb-6">
           <div className="space-y-1">
             {school.country && (
-              <span className="inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+              <span className="inline-block text-xs font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
                 {school.country}
               </span>
             )}

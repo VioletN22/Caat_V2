@@ -37,9 +37,9 @@ export function FollowButton({
   // as a toggleable, secondary state.
   const baseClasses = "min-w-[90px] transition-colors";
   const followClasses =
-    "bg-[#9a1a27] text-white border border-[#9a1a27] hover:bg-white hover:text-[#9a1a27]";
+    "bg-[#9a1a27] text-white border border-[#9a1a27] dark:border-[#e06b78] hover:bg-background hover:text-[#9a1a27] dark:hover:text-[#e06b78]";
   const followingClasses =
-    "bg-white text-[#9a1a27] border border-[#9a1a27] hover:bg-[#9a1a27] hover:text-white";
+    "bg-background text-[#9a1a27] dark:text-[#e06b78] border border-[#9a1a27] dark:border-[#e06b78] hover:bg-[#9a1a27] hover:text-white dark:hover:text-white";
 
   return (
     <Button

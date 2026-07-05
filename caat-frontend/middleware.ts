@@ -26,11 +26,16 @@ export async function middleware(request: NextRequest) {
     }
   );
 
+  // C5: gate on getClaims() instead of getUser(). The project signs JWTs with
+  // asymmetric ES256 keys and publishes a JWKS, so getClaims verifies the token
+  // locally (JWKS cached) rather than making a /auth/v1/user network round trip
+  // on every gated navigation. Full getUser() is reserved for sensitive
+  // mutations, which run in server actions/route handlers, not here.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: claimsData,
+  } = await supabase.auth.getClaims();
 
-  if (!user) {
+  if (!claimsData?.claims) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", request.nextUrl.pathname);
     return NextResponse.redirect(loginUrl);
@@ -52,5 +57,6 @@ export const config = {
     "/resume-builder/:path*",
     "/communities/:path*",
     "/communities/profile/:path*",
+    "/settings/:path*",
   ],
 };

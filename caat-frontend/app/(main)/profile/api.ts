@@ -1,4 +1,6 @@
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
+import { sanitizeError } from "@/lib/safe-error";
+import { PROFILE_COLUMNS } from "@/lib/profile-columns";
 import type {
   ProfileRow,
   StandardisedTestScore,
@@ -25,13 +27,11 @@ export async function fetchProfile(): Promise<ProfileRow> {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select(
-      "id, first_name, last_name, email, birth_date, phone, linkedin, github, avatar_url, nationality, current_location, school_name, curriculum, graduation_year, target_majors, preferred_countries, activities, default_resume_id"
-    )
+    .select(PROFILE_COLUMNS)
     .eq("id", user.id)
     .maybeSingle();
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
 
   // New user — no profile row yet. Create a blank one and return it.
   if (!data) {
@@ -58,7 +58,7 @@ export async function fetchProfile(): Promise<ProfileRow> {
       default_resume_id: null,
     };
     const { error: insertError } = await supabase.from("profiles").insert(blank);
-    if (insertError) throw new Error(insertError.message);
+    if (insertError) throw new Error(sanitizeError(insertError));
     return blank;
   }
 
@@ -88,7 +88,7 @@ export async function updateProfile(
     .update(safeFields)
     .eq("id", userId);
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
 }
 
 // ── Activities ────────────────────────────────────────────────────────────────
@@ -103,7 +103,7 @@ export async function fetchActivities(): Promise<string[]> {
     .eq("id", user.id)
     .maybeSingle();
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
   return (data?.activities as string[] | null) ?? [];
 }
 
@@ -116,7 +116,7 @@ export async function updateActivities(activities: string[]): Promise<void> {
     .update({ activities })
     .eq("id", user.id);
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
 }
 
 export async function setDefaultResumeId(resumeId: string | null): Promise<void> {
@@ -128,7 +128,7 @@ export async function setDefaultResumeId(resumeId: string | null): Promise<void>
     .update({ default_resume_id: resumeId })
     .eq("id", user.id);
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
 }
 
 // ── Majors ────────────────────────────────────────────────────────────────────
@@ -139,7 +139,7 @@ export async function fetchMajorNames(): Promise<string[]> {
     .select("name")
     .order("name", { ascending: true });
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
   return (data ?? []).map((r) => r.name as string);
 }
 
@@ -162,7 +162,7 @@ export async function fetchTestScores(
     .eq("profile_id", profileId)
     .order("created_at", { ascending: true });
 
-  if (scoresError) throw new Error(scoresError.message);
+  if (scoresError) throw new Error(sanitizeError(scoresError));
   if (!scores?.length) return [];
 
   return scores.map((score) => ({
@@ -198,7 +198,7 @@ export async function saveTestScores(
       .from("standardised_test_scores")
       .delete()
       .in("id", toDelete);
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(sanitizeError(error));
   }
 
   for (const score of scores) {
@@ -219,7 +219,7 @@ export async function saveTestScores(
       .select("id")
       .single();
 
-    if (scoreError) throw new Error(scoreError.message);
+    if (scoreError) throw new Error(sanitizeError(scoreError));
     const scoreId = upserted.id;
 
     // Replace subjects: delete all then re-insert
@@ -238,7 +238,7 @@ export async function saveTestScores(
             grade: sub.grade,
           }))
         );
-      if (subError) throw new Error(subError.message);
+      if (subError) throw new Error(sanitizeError(subError));
     }
   }
 }

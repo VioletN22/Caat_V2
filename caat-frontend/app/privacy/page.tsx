@@ -4,7 +4,7 @@ import Image from "next/image";
 const LAST_UPDATED = "May 2026";
 
 export const metadata = {
-  title: "Privacy Policy · CAAT",
+  title: "Privacy Policy",
   description:
     "How CAAT (a Purpl Solutions product) collects, uses, and protects your data.",
 };

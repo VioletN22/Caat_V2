@@ -28,6 +28,8 @@ export default function SchoolSearch({ defaultValue }: { defaultValue: string })
         params.set("page", "1"); // Reset pagination on new search
       } else {
         params.delete("q");
+        params.delete("page"); // Clearing the search resets to page 1 too,
+        // otherwise a stale ?page=N lands on an empty page of the full list.
       }
 
       router.replace(`${pathname}?${params.toString()}`);

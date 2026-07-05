@@ -1,375 +1,54 @@
-"use client";
+import { createServerClient } from "@/lib/supabase/server";
+import { fetchProfileServer } from "@/lib/profile-server";
+import type {
+  ProfileRow,
+  StandardisedTestScore,
+  StandardisedTestSubjectRow,
+} from "@/types/profile";
+import ProfileClient from "./client";
 
-import React, { useEffect, useState } from "react";
-import { PageHeader } from "@/components/PageHeader";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { MapPin } from "lucide-react";
-import { toast } from "sonner";
-import { AvatarUpload } from "@/components/profile/AvatarUpload";
-import { PersonalInfoCard } from "@/components/profile/PersonalInfoCard";
-import { AcademicProfileCard } from "@/components/profile/AcademicProfileCard";
-import { StandardisedTestingCard } from "@/components/profile/StandardisedTestingCard";
-import { InterestsGoalsCard } from "@/components/profile/InterestsGoalsCard";
-import { ExtracurricularsCard } from "@/components/profile/ExtracurricularsCard";
-import { RecommendersCard } from "@/components/profile/RecommendersCard";
-import type { ProfileRow, StandardisedTestScore } from "@/types/profile";
-import {
-  fetchProfile,
-  fetchMajorNames,
-  updateProfile,
-  fetchTestScores,
-  saveTestScores,
-} from "./api";
-import { calcCompletion, completionHint } from "@/lib/profile-utils";
+// C8: resolve the profile row, its test scores, and the majors option list on
+// the server so the page paints real content on first render instead of a
+// post-hydration skeleton. Mutations stay client-side. A brand-new user has no
+// profile row yet -> initialProfile is null and the client creates it as before.
+async function fetchProfileData(): Promise<{
+  profile: ProfileRow | null;
+  scores: StandardisedTestScore[];
+  majorOptions: string[];
+}> {
+  const sb = await createServerClient();
 
-// Maps SCHOOL_CURRICULUM_OPTIONS values → standardised test curriculum key
-const CURRICULUM_TO_TEST: Record<string, string> = {
-  "A-Levels": "A-Levels",
-  "IB Diploma (IBDP)": "IB",
-  "ATAR": "ATAR",
-  "AP (Advanced Placement)": "AP",
-  "CBSE": "CBSE",
-  "CISCE (ICSE/ISC)": "CISCE",
-  "IGCSE": "IGCSE",
-  "French Baccalauréat": "French Baccalauréat",
-  "German Abitur": "German Abitur",
-  "Gaokao": "Gaokao",
-  "Other": "Other",
-};
+  const [profile, majorsRes] = await Promise.all([
+    fetchProfileServer(),
+    sb.from("majors").select("name").order("name", { ascending: true }),
+  ]);
+  const majorOptions = (majorsRes.data ?? []).map((r) => r.name as string);
 
-// ── Loading skeleton ───────────────────────────────────────────────────────────
+  if (!profile) return { profile: null, scores: [], majorOptions };
 
-function ProfileSkeleton() {
-  return (
-    <>
-      <PageHeader title="My Profile" hideOnMobile />
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        {/* Hero */}
-        <Card>
-          <CardContent className="flex flex-col md:flex-row items-start md:items-center gap-5 py-2">
-            <Skeleton className="size-20 rounded-full shrink-0" />
-            <div className="flex-1 flex flex-col gap-2">
-              <Skeleton className="h-5 w-40" />
-              <Skeleton className="h-4 w-56" />
-              <Skeleton className="h-4 w-32" />
-            </div>
-            <div className="w-full md:w-64 flex flex-col gap-2">
-              <Skeleton className="h-3 w-full" />
-              <Skeleton className="h-1.5 w-full rounded-full" />
-              <Skeleton className="h-3 w-48" />
-            </div>
-          </CardContent>
-        </Card>
-        {/* Cards grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[180, 160, 220, 200].map((h, i) => (
-            <Skeleton key={i} className="rounded-xl" style={{ height: h }} />
-          ))}
-        </div>
-        <Skeleton className="h-24 rounded-xl" />
-      </div>
-    </>
-  );
+  const { data: scoreRows } = await sb
+    .from("standardised_test_scores")
+    .select("*, standardised_test_subjects(*)")
+    .eq("profile_id", profile.id)
+    .order("created_at", { ascending: true });
+
+  const scores = ((scoreRows ?? []) as unknown as (StandardisedTestScore & {
+    standardised_test_subjects: StandardisedTestSubjectRow[] | null;
+  })[]).map((score) => ({
+    ...score,
+    subjects: score.standardised_test_subjects ?? [],
+  })) as StandardisedTestScore[];
+
+  return { profile, scores, majorOptions };
 }
 
-// ── Page ───────────────────────────────────────────────────────────────────────
-
-export default function ProfilePage() {
-  const [profile, setProfile] = useState<ProfileRow | null>(null);
-  const [scores, setScores] = useState<StandardisedTestScore[]>([]);
-  const [majorOptions, setMajorOptions] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
-
-  useEffect(() => {
-    async function load() {
-      try {
-        setLoadError(false);
-        const [p, majors] = await Promise.all([fetchProfile(), fetchMajorNames()]);
-        const s = await fetchTestScores(p.id);
-        setProfile(p);
-        setScores(s);
-        setMajorOptions(majors);
-      } catch (err) {
-        if (process.env.NODE_ENV !== "production") console.error(err);
-        setLoadError(true);
-        toast.error("Failed to load profile.");
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, []);
-
-  async function handlePersonalSave(data: {
-    firstName: string;
-    lastName: string;
-    birthDate: string;
-    nationality: string;
-    currentLocation: string;
-    phone: string;
-    linkedin: string;
-    github: string;
-  }) {
-    if (!profile) return;
-    try {
-      await updateProfile(profile.id, {
-        first_name: data.firstName,
-        last_name: data.lastName,
-        birth_date: data.birthDate,
-        nationality: data.nationality,
-        current_location: data.currentLocation,
-        phone: data.phone || null,
-        linkedin: data.linkedin || null,
-        github: data.github || null,
-      });
-      setProfile((p) =>
-        p ? {
-          ...p,
-          first_name: data.firstName,
-          last_name: data.lastName,
-          birth_date: data.birthDate,
-          nationality: data.nationality,
-          current_location: data.currentLocation,
-          phone: data.phone || null,
-          linkedin: data.linkedin || null,
-          github: data.github || null,
-        } : p
-      );
-      toast.success("Personal info saved.");
-    } catch {
-      toast.error("Failed to save personal info.");
-      throw new Error("save failed");
-    }
-  }
-
-  async function handleAcademicSave(data: {
-    schoolName: string;
-    curriculum: string;
-    graduationYear: string;
-  }) {
-    if (!profile) return;
-    try {
-      await updateProfile(profile.id, {
-        school_name: data.schoolName,
-        curriculum: data.curriculum,
-        graduation_year: data.graduationYear ? Number(data.graduationYear) : null,
-      });
-      setProfile((p) =>
-        p ? {
-          ...p,
-          school_name: data.schoolName,
-          curriculum: data.curriculum,
-          graduation_year: data.graduationYear ? Number(data.graduationYear) : null,
-        } : p
-      );
-
-      // Auto-add matching test score entry if not already present
-      const testCurriculum = CURRICULUM_TO_TEST[data.curriculum];
-      if (testCurriculum) {
-        setScores((prev) => {
-          if (prev.some((s) => s.curriculum === testCurriculum)) return prev;
-          return [
-            ...prev,
-            {
-              id: crypto.randomUUID(),
-              profile_id: profile.id,
-              curriculum: testCurriculum,
-              cumulative_score: null,
-              score_scale: null,
-              subjects: [],
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-          ];
-        });
-      }
-
-      toast.success("Academic profile saved.");
-    } catch {
-      toast.error("Failed to save academic profile.");
-      throw new Error("save failed");
-    }
-  }
-
-  async function handleTestScoresSave(updated: StandardisedTestScore[]) {
-    if (!profile) return;
-    try {
-      await saveTestScores(profile.id, updated);
-      setScores(updated);
-      toast.success("Test scores saved.");
-    } catch {
-      toast.error("Failed to save test scores.");
-      throw new Error("save failed");
-    }
-  }
-
-  async function handleInterestsSave(data: {
-    targetMajors: string[];
-    preferredCountries: string[];
-  }) {
-    if (!profile) return;
-    try {
-      await updateProfile(profile.id, {
-        target_majors: data.targetMajors,
-        preferred_countries: data.preferredCountries,
-      });
-      setProfile((p) =>
-        p ? {
-          ...p,
-          target_majors: data.targetMajors,
-          preferred_countries: data.preferredCountries,
-        } : p
-      );
-      toast.success("Interests saved.");
-    } catch {
-      toast.error("Failed to save interests.");
-      throw new Error("save failed");
-    }
-  }
-
-  if (loading) return <ProfileSkeleton />;
-  if (!profile) {
-    return (
-      <>
-        <PageHeader title="My Profile" hideOnMobile />
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
-          <p className="text-lg font-medium text-muted-foreground">
-            {loadError
-              ? "We couldn\u2019t load your profile. Please check your connection and try again."
-              : "No profile found."}
-          </p>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setLoading(true);
-              setLoadError(false);
-              Promise.all([fetchProfile(), fetchMajorNames()])
-                .then(async ([p, majors]) => {
-                  const s = await fetchTestScores(p.id);
-                  setProfile(p);
-                  setScores(s);
-                  setMajorOptions(majors);
-                })
-                .catch(() => {
-                  setLoadError(true);
-                  toast.error("Failed to load profile.");
-                })
-                .finally(() => setLoading(false));
-            }}
-          >
-            Retry
-          </Button>
-        </div>
-      </>
-    );
-  }
-
-  const firstName = profile.first_name ?? "";
-  const lastName = profile.last_name ?? "";
-  const completionPercent = calcCompletion(profile, scores);
-
+export default async function ProfilePage() {
+  const { profile, scores, majorOptions } = await fetchProfileData();
   return (
-    <>
-      <PageHeader title="My Profile" hideOnMobile />
-
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-
-        {/* ── Profile hero ──────────────────────────────────────────────────── */}
-        <Card>
-          <CardContent className="flex flex-col md:flex-row items-start md:items-center gap-5 py-2">
-            <AvatarUpload
-              userId={profile.id}
-              avatarUrl={profile.avatar_url}
-              fallbackInitials={`${firstName[0] ?? "?"}${lastName[0] ?? "?"}`}
-              onUploaded={(url) =>
-                setProfile((p) => (p ? { ...p, avatar_url: url } : p))
-              }
-            />
-
-            <div className="flex-1 min-w-0">
-              <h1 className="text-lg font-semibold">
-                {firstName || lastName ? `${firstName} ${lastName}`.trim() : "Your Name"}
-              </h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {profile.graduation_year ? `Class of ${profile.graduation_year}` : ""}
-                {profile.graduation_year && profile.nationality ? " · " : ""}
-                {profile.nationality ?? ""}
-              </p>
-              {profile.current_location && (
-                <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
-                  <MapPin className="h-3.5 w-3.5 shrink-0" />
-                  {profile.current_location}
-                </div>
-              )}
-            </div>
-
-            <div className="w-full md:w-64 shrink-0">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Profile Progress
-                </span>
-                <span className="text-xs font-semibold">{completionPercent}%</span>
-              </div>
-              <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[#9a1a27] rounded-full transition-all duration-500"
-                  style={{ width: `${completionPercent}%` }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground mt-1.5">
-                {completionHint(completionPercent)}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* ── 2-column grid ─────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <PersonalInfoCard
-            data={{
-              firstName,
-              lastName,
-              birthDate: profile.birth_date ?? "",
-              nationality: profile.nationality ?? "",
-              currentLocation: profile.current_location ?? "",
-              phone: profile.phone ?? "",
-              linkedin: profile.linkedin ?? "",
-              github: profile.github ?? "",
-            }}
-            onSave={handlePersonalSave}
-          />
-          <AcademicProfileCard
-            data={{
-              schoolName: profile.school_name ?? "",
-              curriculum: profile.curriculum ?? "",
-              graduationYear: profile.graduation_year?.toString() ?? "",
-            }}
-            onSave={handleAcademicSave}
-          />
-          <StandardisedTestingCard
-            scores={scores}
-            onSave={handleTestScoresSave}
-          />
-          <InterestsGoalsCard
-            data={{
-              targetMajors: profile.target_majors ?? [],
-              preferredCountries: profile.preferred_countries ?? [],
-            }}
-            majorOptions={majorOptions}
-            onSave={handleInterestsSave}
-          />
-        </div>
-
-        {/* ── Extracurriculars (full width) ──────────────────────────────────── */}
-        <ExtracurricularsCard />
-
-        {/* ── Recommenders (full width) ──────────────────────────────────────── */}
-        <RecommendersCard />
-
-      </div>
-    </>
+    <ProfileClient
+      initialProfile={profile}
+      initialScores={scores}
+      initialMajorOptions={majorOptions}
+    />
   );
 }

@@ -13,8 +13,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import RichTextEditor from "@/components/RichTextEditor";
-import { postBodyHtml, htmlToText } from "@/lib/sanitize-html";
+import dynamic from "next/dynamic";
+import { postBodyHtml, htmlToText } from "@/lib/html-text";
+
+// The tiptap editor (StarterKit + 5 extensions) is only needed while editing a
+// post, so keep it out of the /communities feed bundle and load it on demand (C4).
+const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), {
+  ssr: false,
+  loading: () => (
+    <div className="min-h-24 rounded-md border border-input bg-muted/30" />
+  ),
+});
 import { getInitials } from "@/lib/user-utils";
 import { cn } from "@/lib/utils";
 import {
@@ -41,7 +50,7 @@ const TOPIC_STYLES: Record<TopicTag, string> = {
 const OUTCOME_CONFIG = {
   accepted:   { label: "Accepted",   icon: CheckCircle, color: "text-green-600 dark:text-green-400" },
   waitlisted: { label: "Waitlisted", icon: Clock,       color: "text-amber-600 dark:text-amber-400" },
-  rejected:   { label: "Rejected",   icon: XCircle,     color: "text-[#9a1a27] dark:text-[#9a1a27]" },
+  rejected:   { label: "Rejected",   icon: XCircle,     color: "text-[#9a1a27] dark:text-[#e06b78] dark:text-[#9a1a27]" },
 };
 
 interface PostCardProps {
@@ -159,9 +168,11 @@ export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved, on
   function handleEditSave() {
     if (!htmlToText(editContent).trim() || editContent === displayContent) { setIsEditing(false); return; }
     startTransition(async () => {
-      const { error } = await updatePostAction(post.id, editContent);
+      const { error, content: sanitized } = await updatePostAction(post.id, editContent);
       if (error) { toast.error(error); return; }
-      setDisplayContent(editContent);
+      // Render the server-sanitized HTML (postBodyHtml no longer sanitizes on
+      // the client), falling back to the editor output if none came back.
+      setDisplayContent(sanitized ?? editContent);
       setDisplayEditedAt(new Date().toISOString());
       setIsEditing(false);
       toast.success("Post updated.");
@@ -246,7 +257,7 @@ export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved, on
                       <BadgeCheck className="size-4" />
                       {isPinned ? "Unpin from profile" : "Pin to profile"}
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="text-[#9a1a27] focus:text-[#9a1a27] gap-2" onClick={handleDelete}>
+                    <DropdownMenuItem className="text-[#9a1a27] dark:text-[#e06b78] focus:text-[#9a1a27] gap-2" onClick={handleDelete}>
                       <Trash2 className="size-4" />
                       Delete post
                     </DropdownMenuItem>
@@ -258,7 +269,7 @@ export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved, on
                       Report post
                     </DropdownMenuItem>
                     {!post.is_anonymous && (
-                      <DropdownMenuItem className="text-[#9a1a27] focus:text-[#9a1a27] gap-2" onClick={handleBlock}>
+                      <DropdownMenuItem className="text-[#9a1a27] dark:text-[#e06b78] focus:text-[#9a1a27] gap-2" onClick={handleBlock}>
                         <ShieldOff className="size-4" />
                         Block user
                       </DropdownMenuItem>
@@ -367,8 +378,10 @@ export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved, on
         <div className="flex w-full items-center gap-1">
           <Button
             variant="ghost" size="sm"
-            className={cn("gap-1.5 h-8 px-2", optimistic.isLiked ? "text-[#9a1a27] hover:text-[#9a1a27]" : "text-muted-foreground")}
+            className={cn("gap-1.5 h-8 px-2", optimistic.isLiked ? "text-[#9a1a27] dark:text-[#e06b78] hover:text-[#9a1a27]" : "text-muted-foreground")}
             onClick={handleLike}
+            aria-pressed={optimistic.isLiked}
+            aria-label={`${optimistic.isLiked ? "Unlike" : "Like"} post, ${optimistic.likeCount} like${optimistic.likeCount === 1 ? "" : "s"}`}
           >
             <Heart className={cn("size-4", optimistic.isLiked && "fill-current")} />
             <span className="text-xs">{optimistic.likeCount}</span>
@@ -378,6 +391,8 @@ export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved, on
             variant="ghost" size="sm"
             className={cn("gap-1.5 h-8 px-2", isCommentsOpen ? "text-foreground" : "text-muted-foreground")}
             onClick={() => setIsCommentsOpen((v) => !v)}
+            aria-expanded={isCommentsOpen}
+            aria-label={`${isCommentsOpen ? "Hide" : "Show"} comments, ${commentCount} comment${commentCount === 1 ? "" : "s"}`}
           >
             <MessageCircle className="size-4" />
             <span className="text-xs">{commentCount}</span>
@@ -389,9 +404,10 @@ export function PostCard({ post, currentUser, initialIsLiked, initialIsSaved, on
             variant="ghost" size="sm"
             className={cn("h-8 w-8 p-0", optimistic.isSaved ? "text-foreground" : "text-muted-foreground")}
             onClick={handleSave}
+            aria-pressed={optimistic.isSaved}
           >
             <Bookmark className={cn("size-4", optimistic.isSaved && "fill-current")} />
-            <span className="sr-only">Save post</span>
+            <span className="sr-only">{optimistic.isSaved ? "Unsave post" : "Save post"}</span>
           </Button>
 
           <Button variant="ghost" size="sm" className="text-muted-foreground h-8 w-8 p-0" onClick={handleShare}>

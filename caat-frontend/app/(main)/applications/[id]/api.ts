@@ -1,4 +1,5 @@
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
+import { sanitizeError } from "@/lib/safe-error";
 import type { ApplicationRow, ApplicationStatus } from "@/types/applications";
 import type { ScholarshipRow } from "@/types/scholarships";
 import type { ProfileRow } from "@/types/profile";
@@ -112,7 +113,7 @@ export async function fetchApplicationHub(applicationId: string): Promise<Applic
     .eq("id", applicationId)
     .eq("user_id", user.id)
     .maybeSingle();
-  if (appErr) throw new Error(appErr.message);
+  if (appErr) throw new Error(sanitizeError(appErr));
   if (!appData) throw new Error("Application not found");
   const application = appData as unknown as ApplicationRow;
   const school = (appData as unknown as { schools: { name: string; country: string | null } }).schools;
@@ -276,7 +277,7 @@ export async function updateApplicationStatus(
     .update({ status, updated_at: new Date().toISOString() })
     .eq("id", id)
     .eq("user_id", user.id);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
 }
 
 export async function updateApplicationDeadline(
@@ -289,5 +290,5 @@ export async function updateApplicationDeadline(
     .update({ deadline_at, updated_at: new Date().toISOString() })
     .eq("id", id)
     .eq("user_id", user.id);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
 }

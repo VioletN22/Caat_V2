@@ -1,78 +1,164 @@
 import { Suspense } from "react";
-import { supabase } from "@/src/lib/supabaseClient";
-import { createSupabaseServer } from "@/lib/supabase-server";
+import { createServerClient } from "@/lib/supabase/server";
+import { PROFILE_COLUMNS } from "@/lib/profile-columns";
 import { PageHeader } from "@/components/PageHeader";
-import { ScholarshipRow } from "@/types/scholarships";
+import type { ScholarshipRow } from "@/types/scholarships";
 import type { ProfileRow } from "@/types/profile";
+import { scholarshipMatchParams } from "@/lib/profile-match";
+import type { ScholarshipStatus } from "@/lib/scholarship-tracking";
+import { getScholarshipUniversities } from "@/lib/scholarship-catalog";
 import ScholarshipsClient from "./client";
 
-async function fetchProfile(): Promise<ProfileRow | null> {
-  const sb = await createSupabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return null;
-  const { data } = await sb
-    .from("profiles")
-    .select("id, first_name, last_name, email, birth_date, phone, linkedin, github, avatar_url, nationality, current_location, school_name, curriculum, graduation_year, target_majors, preferred_countries, activities, default_resume_id")
-    .eq("id", user.id)
-    .maybeSingle();
-  return (data as ProfileRow | null) ?? null;
+// One page of cards. Was filtered/paginated client-side from the full 4,224-row
+// table; now the server asks Postgres for exactly one page (C1/M2).
+export const ITEMS_PER_PAGE = 6;
+
+function parseArrayParam(val: string | undefined): string[] {
+  if (!val) return [];
+  return val
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
-const SCHOLARSHIP_FETCH_BATCH_SIZE = 1000;
-const SCHOLARSHIP_LIST_COLUMNS = `
-  id, slug, external_id, external_url, title, provider_name, description,
-  amount_value, amount_currency, amount_display, awards_count, frequency,
-  study_level, funding_type, eligible_countries, excluded_countries,
-  citizenships, eligible_genders, minimum_gpa, requires_essay,
-  need_based, merit_based, school_name, country, state_region,
-  application_open_at, deadline_at, start_term, is_recurring, is_active,
-  is_featured, last_verified_at, source_last_synced_at, tags,
-  field_of_study, year_level, eligibility_summary, created_at, updated_at
-`;
+type SearchParams = {
+  q?: string;
+  location?: string;
+  funding?: string;
+  level?: string;
+  citizenship?: string;
+  field?: string;
+  university?: string;
+  open?: string;
+  bookmarked?: string;
+  status?: string;
+  page?: string;
+  view?: string;
+};
 
-async function fetchAllScholarships() {
-  const rows: ScholarshipRow[] = [];
+const STATUS_FILTER_MATCH: Record<string, ScholarshipStatus[]> = {
+  interested: ["interested"],
+  applied: ["applied"],
+  outcome: ["awarded", "not_selected"],
+};
 
-  for (let from = 0; ; from += SCHOLARSHIP_FETCH_BATCH_SIZE) {
-    const to = from + SCHOLARSHIP_FETCH_BATCH_SIZE - 1;
-    const { data, error } = await supabase
-      .from("scholarships")
-      .select(SCHOLARSHIP_LIST_COLUMNS)
-      .order("is_active", { ascending: false })
-      .order("is_featured", { ascending: false })
-      .order("created_at", { ascending: false })
-      .range(from, to);
+export default async function ScholarshipsPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const params = await searchParams;
+  const sb = await createServerClient();
 
-    if (error) return { data: null, error };
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
 
-    const batch = (data ?? []) as ScholarshipRow[];
-    rows.push(...batch);
-
-    if (batch.length < SCHOLARSHIP_FETCH_BATCH_SIZE) {
-      return { data: rows, error: null };
-    }
-  }
-}
-
-export default async function ScholarshipsPage() {
-  const [{ data, error }, profile] = await Promise.all([
-    fetchAllScholarships(),
-    fetchProfile(),
+  // Resolve profile + the user's bookmark/tracking set once, server-side, so the
+  // client renders bookmark icons and status labels on first paint (no per-card
+  // fetch) and so bookmarked/status filters can be applied at the query level.
+  const [profileRes, bookmarksRes] = await Promise.all([
+    user
+      ? sb.from("profiles").select(PROFILE_COLUMNS).eq("id", user.id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    user
+      ? sb
+          .from("user_bookmarked_scholarships")
+          .select("scholarship_id, status, school_id")
+          .eq("user_id", user.id)
+      : Promise.resolve({ data: null }),
   ]);
 
-  if (error) {
+  const profile = (profileRes.data as unknown as ProfileRow | null) ?? null;
+
+  const bookmarkRows =
+    (bookmarksRes.data as
+      | { scholarship_id: string; status: string | null; school_id: number | null }[]
+      | null) ?? [];
+  const bookmarkedIds = bookmarkRows.map((r) => r.scholarship_id);
+  const tracking = bookmarkRows.map((r) => ({
+    scholarship_id: r.scholarship_id,
+    status: (r.status as ScholarshipStatus | null) ?? "interested",
+    school_id: r.school_id ?? null,
+  }));
+
+  const currentPage = Math.max(1, Number(params.page) || 1);
+  const statusFilter = params.status ?? "all";
+  const showBookmarked = params.bookmarked === "1";
+
+  // The bookmarked pill and the status tabs are user-scoped. Turn them into an
+  // id allow-list computed from the user's own rows and hand it to the RPC, so
+  // filtering + pagination stay server-side (a bookmarked item on a later page
+  // still surfaces).
+  let restrictIds: string[] | null = null;
+  if (showBookmarked || statusFilter !== "all") {
+    let ids = new Set(bookmarkedIds);
+    if (statusFilter !== "all") {
+      const wanted = STATUS_FILTER_MATCH[statusFilter] ?? [];
+      ids = new Set(
+        tracking
+          .filter((t) => wanted.includes(t.status))
+          .map((t) => t.scholarship_id),
+      );
+    }
+    restrictIds = Array.from(ids);
+  }
+
+  const match = scholarshipMatchParams(profile);
+
+  // When the user filters to their own (bookmarked/status) set and it is empty,
+  // skip the query — the RPC would treat a null restrict list as "no filter".
+  const emptyRestrict = restrictIds !== null && restrictIds.length === 0;
+
+  const rpcRes = emptyRestrict
+    ? { data: null, error: null }
+    : await sb.rpc("search_scholarships", {
+        p_search: params.q?.trim() || undefined,
+        p_location: params.location?.trim() || undefined,
+        p_funding: parseArrayParam(params.funding),
+        p_levels: parseArrayParam(params.level),
+        p_citizenship: parseArrayParam(params.citizenship),
+        p_fields: parseArrayParam(params.field),
+        p_universities: parseArrayParam(params.university),
+        p_open_only: params.open === "1",
+        p_restrict_ids: restrictIds ?? undefined,
+        p_target_majors: match.targetMajors,
+        p_pref_countries: match.prefCountries,
+        p_home_country: match.homeCountry ?? undefined,
+        p_domestic_codes: match.domesticCodes,
+        p_grad_year: match.gradYear ?? undefined,
+        p_limit: ITEMS_PER_PAGE,
+        p_offset: (currentPage - 1) * ITEMS_PER_PAGE,
+      });
+
+  if (rpcRes.error) {
     return (
-      <div className="p-10 text-[#9a1a27]">
+      <div className="p-10 text-[#9a1a27] dark:text-[#e06b78]">
         Unable to load scholarships. Please try again later.
       </div>
     );
   }
 
+  const result = (rpcRes.data as { data: ScholarshipRow[]; total_count: number }[] | null)?.[0];
+  const rows = emptyRestrict ? [] : result?.data ?? [];
+  const totalCount = emptyRestrict ? 0 : result?.total_count ?? 0;
+
+  const availableUniversities = await getScholarshipUniversities();
+
   return (
     <>
       <PageHeader title="Scholarships" />
       <Suspense>
-        <ScholarshipsClient scholarships={data ?? []} profile={profile} />
+        <ScholarshipsClient
+          rows={rows}
+          totalCount={totalCount}
+          currentPage={currentPage}
+          itemsPerPage={ITEMS_PER_PAGE}
+          profile={profile}
+          initialBookmarkedIds={bookmarkedIds}
+          initialTracking={tracking}
+          availableUniversities={availableUniversities}
+        />
       </Suspense>
     </>
   );

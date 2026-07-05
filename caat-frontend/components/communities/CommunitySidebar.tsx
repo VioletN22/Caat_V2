@@ -144,7 +144,7 @@ export async function CommunitySidebar({ currentUser }: CommunitySidebarProps) {
             )}
             <Separator className="my-2" />
             <Link href="/communities/groups">
-              <Button size="sm" variant="outline" className="w-full gap-1.5 border-[#9a1a27] text-[#9a1a27] hover:bg-[#9a1a27]/10">
+              <Button size="sm" variant="outline" className="w-full gap-1.5 border-[#9a1a27] dark:border-[#e06b78] text-[#9a1a27] dark:text-[#e06b78] hover:bg-[#9a1a27]/10">
                 <Globe className="size-3.5" />
                 Browse all communities
               </Button>

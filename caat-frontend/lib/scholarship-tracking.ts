@@ -1,5 +1,6 @@
 // (data layer — see fetch/set functions below)
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
+import { getClientUserId } from "@/lib/current-user";
 
 /**
  * Roadmap item 5: a status lifecycle + optional school link for the
@@ -29,11 +30,9 @@ export interface BookmarkTracking {
   school_id: number | null;
 }
 
+// C5: local JWT claims instead of a /auth/v1/user round trip per call.
 async function getUserId(): Promise<string | null> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user?.id ?? null;
+  return getClientUserId();
 }
 
 /** scholarshipId -> { status, school_id } for the scholarships list. */

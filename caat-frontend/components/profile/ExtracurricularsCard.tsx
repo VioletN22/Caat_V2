@@ -20,7 +20,7 @@ import {
 import type { ResumeSection } from "@/components/resume-builder/types";
 import ResumePreviewPanel from "@/components/resume-builder/ResumePreviewPanel";
 import { fetchActivities, updateActivities, setDefaultResumeId } from "@/app/(main)/profile/api";
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
 const ACTIVITY_EXAMPLES = [
@@ -242,7 +242,7 @@ export function ExtracurricularsCard() {
                       <Button variant="outline" size="sm" className="h-8 justify-between font-medium gap-1.5 min-w-[160px]">
                         <span className="truncate">
                           {activeResume?.title ?? "Select a resume"}
-                          {activeResume?.id === defaultResumeId ? " ★" : ""}
+                          {activeResume?.id === defaultResumeId ? " (default)" : ""}
                         </span>
                         <ChevronDown className="h-3.5 w-3.5 opacity-60" />
                       </Button>
@@ -252,7 +252,7 @@ export function ExtracurricularsCard() {
                         <DropdownMenuItem key={r.id} onSelect={() => handleSwitchResume(r.id)}>
                           <span className="truncate">
                             {r.title}
-                            {r.id === defaultResumeId ? " ★" : ""}
+                            {r.id === defaultResumeId ? " (default)" : ""}
                           </span>
                           {r.id === activeResumeId ? <Check className="h-3.5 w-3.5 ml-auto text-muted-foreground" /> : null}
                         </DropdownMenuItem>
@@ -369,7 +369,7 @@ export function ExtracurricularsCard() {
                   {activities.map((activity, i) => (
                     <span
                       key={i}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium"
+                      className="inline-flex items-center gap-1.5 rounded-md bg-muted px-3 py-1 text-xs font-medium"
                     >
                       {activity}
                       <button
@@ -422,7 +422,7 @@ export function ExtracurricularsCard() {
                         key={s}
                         type="button"
                         onClick={() => addActivity(s)}
-                        className="rounded-full border border-dashed px-2.5 py-0.5 text-xs text-muted-foreground hover:border-foreground hover:text-foreground transition-colors"
+                        className="rounded-md border border-dashed px-2.5 py-0.5 text-xs text-muted-foreground hover:border-foreground hover:text-foreground transition-colors"
                       >
                         + {s}
                       </button>

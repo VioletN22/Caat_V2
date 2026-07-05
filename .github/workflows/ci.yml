@@ -36,13 +36,14 @@ jobs:
           echo "matrix=$(cat projects.json)" >> "$GITHUB_OUTPUT"
 
   lint:
-    name: Lint (non-blocking)
+    name: Lint
     needs: discover-projects
     runs-on: ubuntu-latest
-    continue-on-error: true  # Lint failures show red on the job but do not fail the PR
+    # Blocking (G5): the pre-existing "unused eslint-disable" backlog was cleared
+    # in Phase 6, so lint failures now fail the PR instead of just showing red.
     strategy:
       # Run lint for every discovered project, but keep it as a separate job so
-      # it can be marked as a non-required check in branch protection rules.
+      # it can be marked as a required check in branch protection rules.
       fail-fast: false
       matrix:
         project: ${{ fromJSON(needs.discover-projects.outputs.project_matrix).include }}
@@ -152,14 +153,21 @@ jobs:
         run: npm run typecheck
 
       - name: Test
-        # Lightweight smoke tests: these currently just echo that no tests exist yet.
-        # The placeholder script is intentional and can be replaced with a real test runner later.
+        # Real Vitest unit suite (the old file-existence "smoke" was removed in
+        # Phase 6). Kept as a distinct step so the matrix reports it by name.
         if: ${{ matrix.project.scripts.test }}
         run: npm test
 
       - name: Unit tests (Vitest)
         if: ${{ matrix.project.scripts['test:unit'] }}
         run: npm run test:unit
+
+      - name: Coverage summary (soft, reporting only)
+        # Prints a coverage text-summary for the pure-logic modules the unit
+        # suite targets. No hard threshold yet (G5): informational, does not
+        # fail the build.
+        if: ${{ matrix.project.scripts['test:coverage'] }}
+        run: npm run test:coverage
 
       - name: Build
         # Build only when a "build" script exists (e.g. Next.js "next build").
@@ -172,11 +180,14 @@ jobs:
     name: E2E runtime smoke (production build)
     needs: discover-projects
     runs-on: ubuntu-latest
-    # OFF by default so it never blocks a PR before a CI test-login is set up.
-    # To enable: add a repo VARIABLE (Settings > Secrets and variables >
-    # Actions > Variables) named ENABLE_E2E_SMOKE = true, and make sure the
-    # E2E_TEST_EMAIL / E2E_TEST_PASSWORD secrets point at a working account.
-    if: ${{ vars.ENABLE_E2E_SMOKE == 'true' }}
+    # Runs on every PR into develop/main (G1). It is read-only, so it is safe on
+    # the shared Supabase. It needs a working login: set the repo SECRETS
+    # NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, E2E_TEST_EMAIL,
+    # E2E_TEST_PASSWORD (Settings > Secrets and variables > Actions). The auth
+    # setup FAILS LOUDLY (does not silently skip) if the login does not succeed,
+    # so a missing/wrong credential surfaces as a red check rather than a false
+    # green. The E2E_TEST_* fallbacks below let a fork run it against a locally
+    # seeded account; in this repo the CI secrets should be set.
     # Read-only: loads every critical authenticated route against a real
     # production build and asserts no 5xx. This is the cheap check that catches
     # "build passed but the deployed app 500s" regressions (e.g. the
@@ -188,7 +199,8 @@ jobs:
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-      # Optional — falls back to the seeded test account if unset.
+      # Fall back to the seeded test account if the secrets are unset. If neither
+      # the secret nor the fallback can log in, auth.setup.ts fails the job.
       E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
       E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
       PLAYWRIGHT_BASE_URL: http://localhost:3000

@@ -9,6 +9,7 @@ import {
   IconDotsVertical,
   IconLogout,
   IconMoon,
+  IconSettings,
   IconSun,
   IconUser,
 } from "@tabler/icons-react"
@@ -35,7 +36,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 
-import { supabase } from "@/src/lib/supabaseClient"
+import { supabase } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { getInitials } from "@/lib/user-utils"
 
@@ -53,7 +54,7 @@ export function NavUser({
   const [mounted, setMounted] = React.useState(false)
   const router = useRouter()
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+   
   React.useEffect(() => setMounted(true), [])
 
   const initials = getInitials(user.name)
@@ -101,6 +102,12 @@ export function NavUser({
                 <Link href="/profile">
                   <IconUser />
                   My Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/settings">
+                  <IconSettings />
+                  Settings
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>

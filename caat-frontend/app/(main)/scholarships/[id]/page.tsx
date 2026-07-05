@@ -1,4 +1,4 @@
-import { supabase } from "@/src/lib/supabaseClient";
+import { createServerClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -102,7 +102,8 @@ export default async function ScholarshipDetailPage({
 }) {
   const { id } = await params;
 
-  const { data, error } = await supabase
+  const sb = await createServerClient();
+  const { data, error } = await sb
     .from("scholarships")
     .select("*")
     .eq("id", id)
@@ -158,7 +159,7 @@ export default async function ScholarshipDetailPage({
         {/* Hero                                                              */}
         {/* ---------------------------------------------------------------- */}
         <div className="flex items-start justify-between gap-4 mb-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400">
+          <span className="text-xs font-semibold uppercase tracking-wide text-[#9a1a27] dark:text-[#e06b78]">
             {scholarship.provider_name}
           </span>
 
@@ -193,7 +194,7 @@ export default async function ScholarshipDetailPage({
               return (
                 <span
                   key={tag}
-                  className={`text-xs font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide ${color}`}
+                  className={`text-xs font-semibold px-2.5 py-1 rounded-md uppercase tracking-wide ${color}`}
                 >
                   {tag}
                 </span>
@@ -408,7 +409,7 @@ export default async function ScholarshipDetailPage({
         {/* ---------------------------------------------------------------- */}
         {scholarship.external_url && (
           <div className="flex justify-center">
-            <Button asChild size="lg" className="gap-2 bg-blue-600 hover:bg-blue-700 text-white">
+            <Button asChild size="lg" className="gap-2 bg-[#9a1a27] hover:bg-[#7d1520] text-white">
               <a
                 href={scholarship.external_url}
                 target="_blank"

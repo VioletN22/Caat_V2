@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { parseLocalDate } from "@/lib/local-date";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   fetchApplicationHub,
   updateApplicationStatus,
+  updateApplicationDeadline,
   fetchMajorOptions,
   type ApplicationHub,
 } from "./api";
@@ -45,19 +47,23 @@ function daysUntil(dateStr: string): number {
   const target = new Date(dateStr.slice(0, 10) + "T00:00:00");
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return Math.ceil((target.getTime() - today.getTime()) / 86_400_000);
+  // Round, not ceil: a DST transition makes the span 23h or 25h, which ceil
+  // turns into an off-by-one day count.
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 function deadlineParts(dateStr: string | null) {
-  if (!dateStr) return { num: "—", label: "no deadline set", color: "text-muted-foreground" };
+  if (!dateStr) return { num: "-", label: "no deadline set", color: "text-muted-foreground" };
   const d = daysUntil(dateStr);
-  const color = d < 0 || d <= 7 ? "text-[#9a1a27]" : d <= 30 ? "text-amber-500" : "text-green-600";
+  const color = d < 0 || d <= 7 ? "text-[#9a1a27] dark:text-[#e06b78]" : d <= 30 ? "text-amber-600 dark:text-amber-400" : "text-green-600";
   const num = d < 0 ? `${Math.abs(d)}d` : d === 0 ? "Today" : `${d}d`;
   const label = d < 0 ? "overdue" : "until due";
   return { num, label, color };
 }
 function fmtDate(s: string | null) {
   if (!s) return null;
-  return new Date(s).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+  // Parse the date-only portion in local time so a UTC-midnight parse doesn't
+  // display the previous calendar day for users west of UTC.
+  return parseLocalDate(s.slice(0, 10)).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
 }
 
 export default function ApplicationHubClient({ applicationId }: { applicationId: string }) {
@@ -84,7 +90,7 @@ export default function ApplicationHubClient({ applicationId }: { applicationId:
   }, [applicationId]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     void load();
   }, [load]);
 
@@ -95,12 +101,35 @@ export default function ApplicationHubClient({ applicationId }: { applicationId:
     setHub({ ...hub, application: { ...hub.application, status } });
     try {
       await updateApplicationStatus(hub.application.id, status);
-      await load();
+      // The write succeeded — clear any stale error and refresh derived data.
+      // A refetch failure must NOT be conflated with an update failure: it
+      // shouldn't roll back the saved status or flip the page into an error.
+      setError(null);
+      try {
+        const data = await fetchApplicationHub(applicationId);
+        setHub(data);
+      } catch {
+        // Keep the optimistic hub; the status was persisted successfully.
+      }
     } catch (e) {
       setHub(prev);
       toast.error(e instanceof Error ? e.message : "Could not update status");
     } finally {
       setSavingStatus(false);
+    }
+  };
+
+  // M9 — set/clear the application deadline from the hub (was read-only).
+  const onDeadlineChange = async (value: string) => {
+    if (!hub) return;
+    const deadline_at = value || null;
+    const prev = hub;
+    setHub({ ...hub, application: { ...hub.application, deadline_at } });
+    try {
+      await updateApplicationDeadline(hub.application.id, deadline_at);
+    } catch (e) {
+      setHub(prev);
+      toast.error(e instanceof Error ? e.message : "Could not update deadline");
     }
   };
 
@@ -129,7 +158,7 @@ export default function ApplicationHubClient({ applicationId }: { applicationId:
       <div className="p-6">
         <div className="max-w-5xl mx-auto py-20 text-center">
           <p className="text-muted-foreground mb-4">{error ?? "Application not found."}</p>
-          <Link href="/applications" className="text-sm text-[#9a1a27] hover:underline">
+          <Link href="/applications" className="text-sm text-[#9a1a27] dark:text-[#e06b78] hover:underline">
             ← Back to applications
           </Link>
         </div>
@@ -209,7 +238,7 @@ export default function ApplicationHubClient({ applicationId }: { applicationId:
                 <CardTitle className="text-base">Essays</CardTitle>
                 <Link
                   href="/essays"
-                  className="text-sm text-[#9a1a27] hover:underline inline-flex items-center gap-1"
+                  className="text-sm text-[#9a1a27] dark:text-[#e06b78] hover:underline inline-flex items-center gap-1"
                 >
                   Open essays <ExternalLink className="h-3.5 w-3.5" />
                 </Link>
@@ -237,7 +266,7 @@ export default function ApplicationHubClient({ applicationId }: { applicationId:
                 ) : null}
                 <Link
                   href={`/essays?school=${schoolId}`}
-                  className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/20 py-2.5 text-sm text-[#9a1a27] hover:bg-muted/40"
+                  className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/20 py-2.5 text-sm text-[#9a1a27] dark:text-[#e06b78] hover:bg-muted/40"
                 >
                   <Plus className="h-4 w-4" /> Start an essay for {schoolName}
                 </Link>
@@ -250,7 +279,7 @@ export default function ApplicationHubClient({ applicationId }: { applicationId:
                 <CardTitle className="text-base">Documents</CardTitle>
                 <Link
                   href="/documents"
-                  className="text-sm text-[#9a1a27] hover:underline inline-flex items-center gap-1"
+                  className="text-sm text-[#9a1a27] dark:text-[#e06b78] hover:underline inline-flex items-center gap-1"
                 >
                   Open documents <ExternalLink className="h-3.5 w-3.5" />
                 </Link>
@@ -290,7 +319,7 @@ export default function ApplicationHubClient({ applicationId }: { applicationId:
                 </ul>
                 <Link
                   href={`/documents?school=${schoolId}`}
-                  className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/20 py-2.5 text-sm text-[#9a1a27] hover:bg-muted/40"
+                  className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/20 py-2.5 text-sm text-[#9a1a27] dark:text-[#e06b78] hover:bg-muted/40"
                 >
                   <Plus className="h-4 w-4" /> Attach a document for {schoolName}
                 </Link>
@@ -303,7 +332,7 @@ export default function ApplicationHubClient({ applicationId }: { applicationId:
                 <CardTitle className="text-base">Scholarships for this school</CardTitle>
                 <Link
                   href="/scholarships"
-                  className="text-sm text-[#9a1a27] hover:underline inline-flex items-center gap-1"
+                  className="text-sm text-[#9a1a27] dark:text-[#e06b78] hover:underline inline-flex items-center gap-1"
                 >
                   Browse all <ExternalLink className="h-3.5 w-3.5" />
                 </Link>
@@ -324,7 +353,7 @@ export default function ApplicationHubClient({ applicationId }: { applicationId:
                               {s.amount ?? s.provider}
                             </div>
                           </div>
-                          <span className="shrink-0 text-[10px] font-mono uppercase tracking-wide px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                          <span className="shrink-0 text-[10px] font-mono uppercase tracking-wide px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
                             {SCHOLARSHIP_STATUS_LABELS[s.status]}
                           </span>
                         </li>
@@ -422,8 +451,21 @@ export default function ApplicationHubClient({ applicationId }: { applicationId:
                     <div className="text-xs text-muted-foreground mt-3">{fmtDate(application.deadline_at)}</div>
                   </>
                 ) : (
-                  <div className="text-sm text-muted-foreground">No deadline set</div>
+                  <div className="text-sm text-muted-foreground mb-3">No deadline set</div>
                 )}
+                {/* M9 — make the deadline actionable from the hub. */}
+                <div className="mt-4 flex items-center gap-2">
+                  <label htmlFor="hub-deadline" className="text-xs text-muted-foreground">
+                    {application.deadline_at ? "Change" : "Set"} deadline
+                  </label>
+                  <Input
+                    id="hub-deadline"
+                    type="date"
+                    value={application.deadline_at ?? ""}
+                    onChange={(e) => onDeadlineChange(e.target.value)}
+                    className="h-8 w-auto text-xs"
+                  />
+                </div>
               </CardContent>
             </Card>
 
@@ -495,7 +537,7 @@ function MajorsEditor({
         <span>{text || "Your application"}</span>
         <button
           onClick={() => setEditing(true)}
-          className="inline-flex items-center gap-1 text-[#9a1a27] hover:underline ml-1"
+          className="inline-flex items-center gap-1 text-[#9a1a27] dark:text-[#e06b78] hover:underline ml-1"
         >
           <Pencil className="h-3 w-3" />
           {majors.length > 0 ? "edit majors" : "add majors"}
@@ -510,7 +552,7 @@ function MajorsEditor({
       <div className="flex flex-wrap items-center gap-2 mb-2">
         {country ? <span className="text-sm text-muted-foreground mr-1">{country} · applying for</span> : null}
         {majors.map((m) => (
-          <span key={m} className="inline-flex items-center gap-1.5 text-sm rounded-full bg-muted px-2.5 py-0.5">
+          <span key={m} className="inline-flex items-center gap-1.5 text-sm rounded-md bg-muted px-2.5 py-0.5">
             {m}
             <button onClick={() => remove(m)} className="text-muted-foreground hover:text-foreground">
               <X className="h-3 w-3" />
@@ -549,7 +591,7 @@ function MajorsEditor({
           </ul>
         ) : null}
       </div>
-      <button onClick={() => { setEditing(false); setInput(""); }} className="text-xs text-[#9a1a27] hover:underline mt-2">
+      <button onClick={() => { setEditing(false); setInput(""); }} className="text-xs text-[#9a1a27] dark:text-[#e06b78] hover:underline mt-2">
         Done
       </button>
     </div>
@@ -595,7 +637,7 @@ function ReadyItem({ done, children }: { done: boolean; children: React.ReactNod
   return (
     <li className="flex items-center gap-2.5 text-sm">
       {done ? (
-        <CheckCircle2 className="h-[18px] w-[18px] text-[#9a1a27] shrink-0" />
+        <CheckCircle2 className="h-[18px] w-[18px] text-[#9a1a27] dark:text-[#e06b78] shrink-0" />
       ) : (
         <Circle className="h-[18px] w-[18px] text-muted-foreground/40 shrink-0" />
       )}
@@ -607,8 +649,8 @@ function ReadyItem({ done, children }: { done: boolean; children: React.ReactNod
 function StatusText({ tone, children }: { tone: "green" | "amber" | "maroon"; children: React.ReactNode }) {
   const map = {
     green: { cls: "text-green-600", Icon: CheckCircle2 },
-    amber: { cls: "text-amber-500", Icon: Clock },
-    maroon: { cls: "text-[#9a1a27]", Icon: AlertTriangle },
+    amber: { cls: "text-amber-600 dark:text-amber-400", Icon: Clock },
+    maroon: { cls: "text-[#9a1a27] dark:text-[#e06b78]", Icon: AlertTriangle },
   } as const;
   const { cls, Icon } = map[tone];
   return (

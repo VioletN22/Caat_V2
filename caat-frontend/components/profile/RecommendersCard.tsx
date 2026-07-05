@@ -74,9 +74,9 @@ export function RecommendersCard() {
     try {
       const row = await addRecommender({
         name: addDraft.name.trim(),
-        subject: addDraft.subject.trim() || undefined,
+        subject: addDraft.subject.trim() || null,
         status: addDraft.status,
-        notes: addDraft.notes.trim() || undefined,
+        notes: addDraft.notes.trim() || null,
       });
       setRows((prev) => [...prev, row]);
       setAddDraft(EMPTY_DRAFT);
@@ -105,9 +105,9 @@ export function RecommendersCard() {
     try {
       await updateRecommender(editingId, {
         name: editDraft.name.trim(),
-        subject: editDraft.subject.trim() || undefined,
+        subject: editDraft.subject.trim() || null,
         status: editDraft.status,
-        notes: editDraft.notes.trim() || undefined,
+        notes: editDraft.notes.trim() || null,
       });
       setRows((prev) =>
         prev.map((r) =>
@@ -189,7 +189,7 @@ export function RecommendersCard() {
                       )}
                     </div>
                     <span
-                      className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_CONFIG[row.status].className}`}
+                      className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-md ${STATUS_CONFIG[row.status].className}`}
                     >
                       {STATUS_CONFIG[row.status].label}
                     </span>

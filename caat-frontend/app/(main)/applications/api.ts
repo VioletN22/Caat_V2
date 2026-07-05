@@ -1,13 +1,14 @@
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
+import { sanitizeError } from "@/lib/safe-error";
+import { getClientUserId } from "@/lib/current-user";
 import type { ApplicationRow, ApplicationStatus } from "@/types/applications";
 
-async function getUser() {
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-  if (error || !user) throw new Error("Not authenticated");
-  return user;
+// C5: resolve the user id via local JWT claims (getClientUserId) instead of a
+// /auth/v1/user network call on every fetcher. Callers only use `.id`.
+async function getUser(): Promise<{ id: string }> {
+  const id = await getClientUserId();
+  if (!id) throw new Error("Not authenticated");
+  return { id };
 }
 
 /** A new application defaults its "applying for" majors from the student's
@@ -28,7 +29,7 @@ export async function fetchApplications(): Promise<ApplicationRow[]> {
     .select("*, schools(id, name, country)")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
   return (data ?? []) as unknown as ApplicationRow[];
 }
 
@@ -42,7 +43,7 @@ export async function fetchApplicationForSchool(
     .eq("user_id", user.id)
     .eq("school_id", schoolId)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
   return data as unknown as ApplicationRow | null;
 }
 
@@ -56,7 +57,7 @@ export async function addApplication(
     .insert({ user_id: user.id, school_id: schoolId, status: "researching", intended_majors: intended })
     .select("*, schools(id, name, country)")
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
   return data as unknown as ApplicationRow;
 }
 
@@ -71,7 +72,7 @@ export async function updateApplicationMajors(
     .update({ intended_majors: majors, updated_at: new Date().toISOString() })
     .eq("id", id)
     .eq("user_id", user.id);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
 }
 
 export async function updateApplication(
@@ -88,7 +89,7 @@ export async function updateApplication(
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq("id", id)
     .eq("user_id", user.id);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
 }
 
 export async function deleteApplication(id: string): Promise<void> {
@@ -98,7 +99,7 @@ export async function deleteApplication(id: string): Promise<void> {
     .delete()
     .eq("id", id)
     .eq("user_id", user.id);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
 }
 
 /**
@@ -175,7 +176,7 @@ export async function importBookmarkedSchools(): Promise<{
     .insert(rows)
     .select("*, schools(id, name, country)");
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
 
   return {
     added: (data ?? []) as unknown as ApplicationRow[],
@@ -197,7 +198,7 @@ export async function searchSchools(
     .ilike("name", `%${safeQuery}%`)
     .order("name", { ascending: true })
     .limit(10);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(sanitizeError(error));
   return (data ?? []) as { id: number; name: string; country: string | null }[];
 }
 

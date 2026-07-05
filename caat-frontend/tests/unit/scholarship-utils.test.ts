@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { deriveDisplayTags, formatAmountDisplay } from "@/types/scholarships";
 import type { ScholarshipRow } from "@/types/scholarships";
+import {
+  ELIGIBILITY_MAP,
+  isDomesticEligible,
+  isInternationalEligible,
+  matchFieldsForRow,
+} from "@/lib/scholarship-filters";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -53,14 +59,6 @@ function baseScholarship(overrides: Partial<ScholarshipRow> = {}): ScholarshipRo
 }
 
 // ── ELIGIBILITY_MAP predicates ─────────────────────────────────────────────────
-
-const ELIGIBILITY_MAP: Record<string, (s: ScholarshipRow) => boolean> = {
-  "Merit-Based":   (s) => s.merit_based,
-  "Need-Based":    (s) => s.need_based,
-  "Full Ride":     (s) => s.funding_type.includes("full_ride"),
-  "Undergraduate": (s) => s.study_level.includes("undergraduate"),
-  "Postgraduate":  (s) => s.study_level.includes("postgraduate"),
-};
 
 describe("ELIGIBILITY_MAP predicates", () => {
   it("merit-based predicate: returns true when merit_based is true", () => {
@@ -217,5 +215,92 @@ describe("formatAmountDisplay()", () => {
   it("formats large amount with comma separator", () => {
     const result = formatAmountDisplay(baseScholarship({ amount_value: 65000, amount_currency: "USD" }));
     expect(result).toBe("$65,000");
+  });
+});
+
+// ── Citizenship eligibility ─────────────────────────────────────────────────────
+
+describe("isDomesticEligible()", () => {
+  it("treats empty citizenships as no restriction (eligible)", () => {
+    expect(isDomesticEligible(baseScholarship({ citizenships: [] }))).toBe(true);
+  });
+
+  it("matches a mapped domestic code for the scholarship's country", () => {
+    expect(
+      isDomesticEligible(
+        baseScholarship({ country: "Australia", citizenships: ["AU"] })
+      )
+    ).toBe(true);
+  });
+
+  it("treats INTERNATIONAL-only (mapped country) as not domestic", () => {
+    expect(
+      isDomesticEligible(
+        baseScholarship({ country: "Australia", citizenships: ["INTERNATIONAL"] })
+      )
+    ).toBe(false);
+  });
+
+  it("falls back to non-INTERNATIONAL = domestic for unmapped countries", () => {
+    expect(
+      isDomesticEligible(
+        baseScholarship({ country: "Canada", citizenships: ["CA"] })
+      )
+    ).toBe(true);
+    expect(
+      isDomesticEligible(
+        baseScholarship({ country: "Canada", citizenships: ["INTERNATIONAL"] })
+      )
+    ).toBe(false);
+  });
+});
+
+describe("isInternationalEligible()", () => {
+  it("treats empty citizenships as no restriction (eligible)", () => {
+    expect(isInternationalEligible(baseScholarship({ citizenships: [] }))).toBe(true);
+  });
+
+  it("is eligible when citizenships include INTERNATIONAL", () => {
+    expect(
+      isInternationalEligible(baseScholarship({ citizenships: ["INTERNATIONAL"] }))
+    ).toBe(true);
+  });
+
+  it("is not eligible for domestic-only citizenships", () => {
+    expect(
+      isInternationalEligible(baseScholarship({ citizenships: ["AU"] }))
+    ).toBe(false);
+  });
+});
+
+// ── matchFieldsForRow ────────────────────────────────────────────────────────────
+
+describe("matchFieldsForRow()", () => {
+  it("uses field_of_study when present, dropping 'General'", () => {
+    expect(
+      matchFieldsForRow(
+        baseScholarship({ field_of_study: ["Engineering", "General"] })
+      )
+    ).toEqual(["Engineering"]);
+  });
+
+  it("infers fields from title/description/tags when field_of_study is empty", () => {
+    const fields = matchFieldsForRow(
+      baseScholarship({
+        field_of_study: [],
+        title: "Software Engineering Scholarship",
+        description: "For students of computer science",
+      })
+    );
+    expect(fields).toContain("Engineering");
+    expect(fields).toContain("IT & Computing");
+  });
+
+  it("returns an empty array when nothing matches", () => {
+    expect(
+      matchFieldsForRow(
+        baseScholarship({ field_of_study: [], title: "Zzz", description: "", tags: [] })
+      )
+    ).toEqual([]);
   });
 });

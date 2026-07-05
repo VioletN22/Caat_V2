@@ -7,7 +7,6 @@ import {
   Plus,
   Trash2,
   ExternalLink,
-  ChevronDown,
   ClipboardList,
   Bookmark,
   ArrowRight,
@@ -74,15 +73,17 @@ function daysUntil(dateStr: string): number {
   const target = new Date(dateStr + "T00:00:00");
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return Math.ceil((target.getTime() - today.getTime()) / 86_400_000);
+  // Round, not ceil: a DST transition makes the span 23h or 25h, and ceil turns
+  // a same-count day into an off-by-one. Round keeps the whole-day count stable.
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 
 function deadlineLabel(dateStr: string) {
   const days = daysUntil(dateStr);
-  if (days < 0) return { text: `${Math.abs(days)}d overdue`, color: "text-[#9a1a27]" };
-  if (days === 0) return { text: "Today", color: "text-[#9a1a27]" };
-  if (days <= 7) return { text: `${days}d`, color: "text-[#9a1a27]" };
-  if (days <= 30) return { text: `${days}d`, color: "text-amber-500" };
+  if (days < 0) return { text: `${Math.abs(days)}d overdue`, color: "text-[#9a1a27] dark:text-[#e06b78]" };
+  if (days === 0) return { text: "Today", color: "text-[#9a1a27] dark:text-[#e06b78]" };
+  if (days <= 7) return { text: `${days}d`, color: "text-[#9a1a27] dark:text-[#e06b78]" };
+  if (days <= 30) return { text: `${days}d`, color: "text-amber-600 dark:text-amber-400" };
   return { text: `${days}d`, color: "text-green-600 dark:text-green-400" };
 }
 
@@ -102,6 +103,7 @@ export default function ApplicationsClient() {
   >([]);
   const [searching, setSearching] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const addingSchoolRef = useRef(false);
 
   // Delete confirmation
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -143,7 +145,7 @@ export default function ApplicationsClient() {
         setFreshIds(new Set(added.map((a) => a.id)));
         const names = added.map((a) => a.schools?.name ?? "Unknown").join(", ");
         toast.success(
-          `Added ${added.length} school${added.length === 1 ? "" : "s"} as Researching — ${names}`,
+          `Added ${added.length} school${added.length === 1 ? "" : "s"} as Researching: ${names}`,
           { duration: 6000 }
         );
       }
@@ -171,6 +173,7 @@ export default function ApplicationsClient() {
         setSearchResults(results);
       } catch {
         setSearchResults([]);
+        toast.error("School search failed. Please try again.");
       } finally {
         setSearching(false);
       }
@@ -183,6 +186,11 @@ export default function ApplicationsClient() {
       toast.info("This school is already in your applications.");
       return;
     }
+    // In-flight guard: a rapid double-click would otherwise fire two
+    // addApplication calls (the apps.some check hasn't updated yet), creating
+    // a duplicate application.
+    if (addingSchoolRef.current) return;
+    addingSchoolRef.current = true;
     try {
       const row = await addApplication(schoolId);
       setApps((prev) => [row, ...prev]);
@@ -192,44 +200,54 @@ export default function ApplicationsClient() {
       toast.success("School added to applications.");
     } catch {
       toast.error("Failed to add school.");
+    } finally {
+      addingSchoolRef.current = false;
     }
   }
 
   async function handleStatusChange(id: string, status: ApplicationStatus) {
-    setApps((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status } : a))
+    const prev = apps;
+    setApps((cur) =>
+      cur.map((a) => (a.id === id ? { ...a, status } : a))
     );
     try {
       await updateApplication(id, { status });
     } catch {
       toast.error("Failed to update status.");
-      // revert
-      const original = await fetchApplications();
-      setApps(original);
+      // Restore the pre-update snapshot instead of refetching: a refetch here
+      // can itself throw (leaving an unhandled rejection) and drop other
+      // in-flight optimistic edits.
+      setApps(prev);
     }
   }
 
   async function handleDeadlineChange(id: string, deadline_at: string) {
     const value = deadline_at || null;
-    setApps((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, deadline_at: value } : a))
+    const prev = apps;
+    setApps((cur) =>
+      cur.map((a) => (a.id === id ? { ...a, deadline_at: value } : a))
     );
     try {
       await updateApplication(id, { deadline_at: value });
     } catch {
       toast.error("Failed to update deadline.");
+      setApps(prev);
     }
   }
 
-  async function handleNotesChange(id: string, notes: string) {
+  async function handleNotesChange(id: string, notes: string): Promise<boolean> {
     const value = notes || null;
-    setApps((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, notes: value } : a))
+    const prev = apps;
+    setApps((cur) =>
+      cur.map((a) => (a.id === id ? { ...a, notes: value } : a))
     );
     try {
       await updateApplication(id, { notes: value });
+      return true;
     } catch {
       toast.error("Failed to update notes.");
+      setApps(prev);
+      return false;
     }
   }
 
@@ -288,7 +306,7 @@ export default function ApplicationsClient() {
             >
               <Bookmark className="h-4 w-4" />
               Import from Bookmarks
-              <span className="ml-1 inline-flex items-center justify-center text-[10px] font-semibold bg-[#9a1a27] text-white px-1.5 rounded-full leading-none py-0.5">
+              <span className="ml-1 inline-flex items-center justify-center text-[10px] font-semibold bg-[#9a1a27] text-white px-1.5 rounded-md leading-none py-0.5">
                 {unimportedCount}
               </span>
             </Button>
@@ -296,7 +314,7 @@ export default function ApplicationsClient() {
           <Button
             size="sm"
             onClick={() => setShowSearch(!showSearch)}
-            className="gap-1.5 bg-[#9a1a27] text-white hover:bg-[#7d141f] border-[#9a1a27]"
+            className="gap-1.5 bg-[#9a1a27] text-white hover:bg-[#7d141f] border-[#9a1a27] dark:border-[#e06b78]"
           >
             <Plus className="h-4 w-4" />
             Add School
@@ -366,9 +384,9 @@ export default function ApplicationsClient() {
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
-            className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium transition-colors border ${
+            className={`inline-flex items-center rounded-md px-3 py-1 text-sm font-medium transition-colors border ${
               filter === f.key
-                ? "bg-[#9a1a27] text-white border-[#9a1a27]"
+                ? "bg-[#9a1a27] text-white border-[#9a1a27] dark:border-[#e06b78]"
                 : "bg-background text-muted-foreground border-border hover:bg-muted"
             }`}
           >
@@ -433,7 +451,7 @@ function ApplicationCard({
   app: ApplicationRow;
   onStatusChange: (id: string, status: ApplicationStatus) => void;
   onDeadlineChange: (id: string, deadline: string) => void;
-  onNotesChange: (id: string, notes: string) => void;
+  onNotesChange: (id: string, notes: string) => Promise<boolean>;
   onDelete: (id: string) => void;
   confirmDeleteId: string | null;
   setConfirmDeleteId: (id: string | null) => void;
@@ -449,9 +467,11 @@ function ApplicationCard({
     setLocalNotes(val);
     setNotesSaved(false);
     if (notesTimeout.current) clearTimeout(notesTimeout.current);
-    notesTimeout.current = setTimeout(() => {
-      onNotesChange(app.id, val);
-      setNotesSaved(true);
+    notesTimeout.current = setTimeout(async () => {
+      // B18 — mark Saved only once the write resolves; a failed save must not
+      // display "Saved".
+      const ok = await onNotesChange(app.id, val);
+      setNotesSaved(ok);
     }, 800);
   }
 
@@ -475,7 +495,7 @@ function ApplicationCard({
     (SUBMITTED_PLUS.has(app.status) ? 1 : 0);
 
   return (
-    <div className={`rounded-lg border p-4 space-y-3 ${isFresh ? "bg-[#FFF8E1] border-l-[3px] border-l-[#9a1a27]" : "bg-card"}`}>
+    <div className={`rounded-lg border p-4 space-y-3 ${isFresh ? "bg-[#FFF8E1] dark:bg-amber-950/40 border-l-[3px] border-l-[#9a1a27] dark:border-l-[#e06b78]" : "bg-card"}`}>
       {/* Top row: school info + status + actions */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3 min-w-0">
@@ -509,7 +529,7 @@ function ApplicationCard({
             >
               <SelectTrigger
                 size="sm"
-                className={`h-auto w-auto rounded-full px-3 py-1 text-xs font-medium border-0 gap-1 ${STATUS_CONFIG[app.status].className}`}
+                className={`h-auto w-auto rounded-md px-3 py-1 text-xs font-medium border-0 gap-1 ${STATUS_CONFIG[app.status].className}`}
               >
                 <SelectValue />
               </SelectTrigger>
@@ -530,6 +550,7 @@ function ApplicationCard({
             onChange={(e) => onDeadlineChange(app.id, e.target.value)}
             className="h-7 rounded-md border border-input bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
             title="Application deadline"
+            aria-label={`Application deadline for ${schoolName}`}
           />
 
           {/* Deadline countdown */}
@@ -602,10 +623,14 @@ function ApplicationCard({
                   variant="ghost"
                   size="sm"
                   className="h-7 text-xs px-2 text-destructive hover:text-destructive"
-                  onClick={() => {
+                  onClick={async () => {
+                    // Cancel any pending debounced save so it can't fire with
+                    // the old text and re-add the notes we just cleared.
+                    if (notesTimeout.current) clearTimeout(notesTimeout.current);
                     setLocalNotes("");
-                    onNotesChange(app.id, "");
-                    setNotesSaved(true);
+                    setNotesSaved(false);
+                    const ok = await onNotesChange(app.id, "");
+                    setNotesSaved(ok);
                   }}
                 >
                   Clear Notes
@@ -616,10 +641,11 @@ function ApplicationCard({
                 variant="outline"
                 size="sm"
                 className="h-7 text-xs px-3"
-                onClick={() => {
+                onClick={async () => {
                   if (notesTimeout.current) clearTimeout(notesTimeout.current);
-                  onNotesChange(app.id, localNotes);
-                  setNotesSaved(true);
+                  setNotesSaved(false);
+                  const ok = await onNotesChange(app.id, localNotes);
+                  setNotesSaved(ok);
                 }}
               >
                 Save
@@ -641,7 +667,7 @@ function ApplicationCard({
         </span>
         <Link
           href={`/applications/${app.id}`}
-          className="font-code text-[11px] text-[#9a1a27] hover:underline whitespace-nowrap inline-flex items-center gap-1"
+          className="font-code text-[11px] text-[#9a1a27] dark:text-[#e06b78] hover:underline whitespace-nowrap inline-flex items-center gap-1"
         >
           open <ArrowRight className="h-3 w-3" />
         </Link>

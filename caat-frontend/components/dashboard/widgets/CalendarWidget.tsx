@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Trash2, MapPin, Wifi, Clock, CalendarDays, Pencil } from "lucide-react";
-import { supabase } from "@/src/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
+import { getClientUserId } from "@/lib/current-user";
 import { toast } from "sonner";
 import { toDateKey, formatTime } from "@/lib/calendar-utils";
 import {
@@ -30,6 +31,10 @@ interface CalendarEvent {
 
 interface EventForm {
   title: string;
+  // The event's own date (B15). Editing keeps this so changing only the title
+  // never moves the event onto whatever day the calendar happens to have
+  // selected. Empty for a new event, which falls back to the selected day.
+  event_date: string;
   description: string;
   time_start: string;
   time_end: string;
@@ -39,6 +44,7 @@ interface EventForm {
 
 const EMPTY_FORM: EventForm = {
   title: "",
+  event_date: "",
   description: "",
   time_start: "",
   time_end: "",
@@ -50,6 +56,7 @@ const EMPTY_FORM: EventForm = {
 function eventToForm(ev: CalendarEvent): EventForm {
   return {
     title: ev.title,
+    event_date: ev.event_date,
     description: ev.description ?? "",
     time_start: ev.time_start ?? "",
     time_end: ev.time_end ?? "",
@@ -69,17 +76,15 @@ export function CalendarWidget() {
 
   useEffect(() => {
     async function load() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+      const userId = await getClientUserId();
+      if (!userId) return;
 
       const { data, error } = await supabase
         .from("calendar_events")
         .select(
           "id, title, event_date, description, time_start, time_end, location, is_online"
         )
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .order("time_start", { ascending: true, nullsFirst: true });
 
       if (error) {
@@ -92,7 +97,7 @@ export function CalendarWidget() {
       // Events come from calendar_events natively above — exclude them here
       // to avoid double-rendering.
       try {
-        const all = await fetchUnifiedDeadlines(supabase, user.id);
+        const all = await fetchUnifiedDeadlines(supabase, userId);
         setDeadlines(all.filter((d) => d.source !== "event"));
       } catch {
         // non-critical
@@ -150,10 +155,8 @@ export function CalendarWidget() {
     if (!form.title.trim() || !date) return;
     setSaving(true);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
+    const userId = await getClientUserId();
+    if (!userId) {
       toast.error("Not authenticated.");
       setSaving(false);
       return;
@@ -161,7 +164,9 @@ export function CalendarWidget() {
 
     const payload = {
       title: form.title.trim(),
-      event_date: toDateKey(date),
+      // B15 — an edit keeps the event's own date; only a new event uses the
+      // currently selected calendar day.
+      event_date: editingId ? form.event_date : toDateKey(date),
       description: form.description.trim() || null,
       time_start: form.time_start || null,
       time_end: form.time_end || null,
@@ -174,7 +179,7 @@ export function CalendarWidget() {
         .from("calendar_events")
         .update(payload)
         .eq("id", editingId)
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .select(
           "id, title, event_date, description, time_start, time_end, location, is_online"
         )
@@ -191,7 +196,7 @@ export function CalendarWidget() {
     } else {
       const { data, error } = await supabase
         .from("calendar_events")
-        .insert({ user_id: user.id, ...payload })
+        .insert({ user_id: userId, ...payload })
         .select(
           "id, title, event_date, description, time_start, time_end, location, is_online"
         )
@@ -208,16 +213,14 @@ export function CalendarWidget() {
   }
 
   async function handleDeleteEvent(id: string) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = await getClientUserId();
+    if (!userId) return;
 
     const { error } = await supabase
       .from("calendar_events")
       .delete()
       .eq("id", id)
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
 
     if (error) {
       toast.error("Could not delete event.");
@@ -228,7 +231,7 @@ export function CalendarWidget() {
   }
 
   return (
-    <div className="flex gap-4">
+    <div className="flex flex-col sm:flex-row gap-4">
       {/* Left: calendar + form */}
       <div className="flex flex-col gap-3 shrink-0">
         <Calendar
@@ -392,8 +395,8 @@ export function CalendarWidget() {
         )}
       </div>
 
-      {/* Divider */}
-      <div className="w-px bg-border shrink-0" />
+      {/* Divider — vertical on wide, horizontal when stacked */}
+      <div className="h-px w-full sm:h-auto sm:w-px bg-border shrink-0" />
 
       {/* Right: events panel */}
       <div className="flex-1 flex flex-col gap-2 min-w-0 overflow-hidden">
@@ -469,7 +472,7 @@ export function CalendarWidget() {
                   <div className="flex items-center gap-1 text-muted-foreground">
                     <Clock className="h-3 w-3 shrink-0" />
                     <span>
-                      {formatTime(ev.time_start) ?? "—"}
+                      {formatTime(ev.time_start) ?? "-"}
                       {ev.time_end ? ` → ${formatTime(ev.time_end)}` : ""}
                     </span>
                   </div>

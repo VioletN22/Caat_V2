@@ -370,6 +370,12 @@ export default function ResumePreviewPanel({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [pages, setPages] = useState<PageModel[]>([]);
   const [fontsReady, setFontsReady] = useState(false);
+  // B17 — bounded retry when the measurement surface has no layout yet (e.g.
+  // it lives inside a display:none mobile tab). Bumping this nonce re-runs the
+  // pagination effect on the next frame instead of paginating from 0-height
+  // measurements (which collapses everything onto one clipped page).
+  const [measureNonce, setMeasureNonce] = useState(0);
+  const measureRetryRef = useRef<{ sig: string; count: number }>({ sig: "", count: 0 });
   const [displayScale, setDisplayScale] = useState(0.53);
   const [containerWidth, setContainerWidth] = useState(0);
   const [windowIndex, setWindowIndex] = useState(0);
@@ -429,7 +435,7 @@ export default function ResumePreviewPanel({
 
     if (blocks.length === 0) {
       const empty: PageModel[] = [{ pageIndex: 0, sections: [] }];
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setPages(empty);
       onPagesComputed?.(empty, personalHeader);
       return;
@@ -451,6 +457,24 @@ export default function ResumePreviewPanel({
       });
 
     if (!pageBody) return;
+
+    // Guard: if the measurement surface has no height (not laid out yet, or
+    // hidden inside an inactive mobile tab), paginating now would treat every
+    // block as fitting and clip the whole resume onto one page. Retry on the
+    // next frame, bounded per content signature so it never busy-loops while
+    // the surface stays hidden.
+    const sig = `${blocks.length}|${personalHeaderKey}|${marginPx}|${fontsReady}`;
+    if (measureRetryRef.current.sig !== sig) {
+      measureRetryRef.current = { sig, count: 0 };
+    }
+    if (pageBody.offsetHeight === 0) {
+      if (measureRetryRef.current.count < 20) {
+        measureRetryRef.current.count += 1;
+        const raf = requestAnimationFrame(() => setMeasureNonce((n) => n + 1));
+        return () => cancelAnimationFrame(raf);
+      }
+      return;
+    }
 
     const pageBodyHeight =
       PAGE_HEIGHT_PX - marginPx * 2 - PAGE_BOTTOM_RESERVE_PX;
@@ -659,7 +683,7 @@ export default function ResumePreviewPanel({
     pushCurrentPage();
     setPages(resultPages);
     onPagesComputed?.(resultPages, personalHeader);
-  }, [blocks, fontsReady, personalHeaderKey, marginPx]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [blocks, fontsReady, personalHeaderKey, marginPx, measureNonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const renderPage = (page: PageModel, scale: number) => (
     <div
