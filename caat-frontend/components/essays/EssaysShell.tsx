@@ -192,7 +192,7 @@ export default function EssaysShell({
   // draft shows its own tag; with no draft we fall back to the URL-armed school
   // (e.g. arriving from a hub's "Start an essay for X" button).
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     setTagSchoolId(activeDraft ? activeDraft.school_id : urlSchoolId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeDraft?.id]);
@@ -200,7 +200,7 @@ export default function EssaysShell({
   // When selected prompt changes, load drafts
   useEffect(() => {
     if (!selectedPromptId || !isAuthenticated) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setDrafts([]);
       setActiveDraft(null);
       setEssayContent("");
@@ -284,7 +284,7 @@ export default function EssaysShell({
         void handleSave();
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const handleSwitchDraft = useCallback(
@@ -306,7 +306,7 @@ export default function EssaysShell({
   }, []);
 
   const submitRename = useCallback(
-    // eslint-disable-next-line react-hooks/preserve-manual-memoization
+     
     async (draftId: string) => {
       const value = renameValue.trim() || "Untitled";
       setRenamingId(null);
@@ -365,7 +365,7 @@ export default function EssaysShell({
   );
 
   const handleDeleteDraft = useCallback(
-    // eslint-disable-next-line react-hooks/preserve-manual-memoization
+     
     async (draftId: string) => {
       if (deletingId) return;
       setConfirmDeleteId(null);

@@ -12,6 +12,12 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated test/coverage artifacts (gitignored); never lint their bundled
+    // output, or blocking lint would choke on thousands of minified-vendor
+    // findings that are not our source.
+    "playwright-report/**",
+    "test-results/**",
+    "coverage/**",
   ]),
   // CommonJS test files use require() by design.
   {

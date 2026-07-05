@@ -389,7 +389,7 @@ export default function DocumentVaultClient({
   useEffect(() => {
     // First-paint list came from the server; only fetch it here when it didn't.
     if (!hasInitialDocs) {
-      // eslint-disable-next-line react-hooks/immutability
+       
       loadDocs();
     }
     fetchMySchools().then(setMySchools).catch(() => {});
@@ -401,7 +401,7 @@ export default function DocumentVaultClient({
     const s = searchParams.get("school");
     const parsedSchoolId = s ? Number(s) : NaN;
     if (s && Number.isFinite(parsedSchoolId)) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setReuploadTarget(null);
       setUploadFile(null);
       setUploadCategory("transcripts");
